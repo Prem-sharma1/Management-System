@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
+  name          String
+  password      String
+  role          String         // "CEO", "ADMIN", "EMPLOYEE"
+  department    String         // e.g. "Executive", "Engineering", "HR", "Sales", "Marketing"
+  salary        Float          @default(0.0)
+  status        String         @default("ACTIVE") // "ACTIVE", "INACTIVE"
+  avatar        String?        // URL or base64 or emoji
+  createdAt     DateTime       @default(now())
+  
+  attendance    Attendance[]
+  leaveRequests LeaveRequest[]
+  assignedTasks Task[]         @relation("AssignedTasks")
+  createdTasks  Task[]         @relation("CreatedTasks")
+}
+
+model Attendance {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clockIn   DateTime
+  clockOut  DateTime?
+  status    String   // "PRESENT", "ABSENT", "LATE"
+  date      String   // "YYYY-MM-DD"
+  createdAt DateTime @default(now())
+}
+
+model LeaveRequest {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate String   // "YYYY-MM-DD"
+  endDate   String   // "YYYY-MM-DD"
+  reason    String
+  status    String   @default("PENDING") // "PENDING", "APPROVED", "REJECTED"
+  createdAt DateTime @default(now())
+}
+
+model Task {
+  id           Int       @id @default(autoincrement())
+  title        String
+  description  String?
+  status       String    @default("TODO") // "TODO", "IN_PROGRESS", "DONE"
+  assignedToId Int
+  assignedTo   User      @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
+  createdById  Int
+  createdBy    User      @relation("CreatedTasks", fields: [createdById], references: [id], onDelete: Cascade)
+  dueDate      String?   // "YYYY-MM-DD"
+  createdAt    DateTime  @default(now())
+}
+
+model AuditLog {
+  id               Int      @id @default(autoincrement())
+  action           String
+  performedByName  String
+  performedByRole  String
+  createdAt        DateTime @default(now())
+}
