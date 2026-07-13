@@ -1,0 +1,1348 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Clock, CheckSquare, Calendar, LogOut, Plus, Building, UserCheck,
+  CheckCircle, FileText, AlertCircle, Briefcase, Play, Check, Moon,
+  Sun, DollarSign, TrendingUp, Download, Users, FileDown, Activity
+} from 'lucide-react';
+
+export default function TLDashboard() {
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview'); 
+  // Tabs: overview, team-overview, assign-task, tasks, directory, client-tasks, leaves, payroll
+  const [loading, setLoading] = useState(true);
+
+  // Data states
+  const [allTasksList, setAllTasksList] = useState([]);
+  const [myTasksList, setMyTasksList] = useState([]);
+  const [tlTasksList, setTlTasksList] = useState([]);
+  const [leavesList, setLeavesList] = useState([]);
+  const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [todayLog, setTodayLog] = useState(null);
+  const [clientsList, setClientsList] = useState([]);
+  const [allClientTasks, setAllClientTasks] = useState([]);
+  const [allClientDeliveries, setAllClientDeliveries] = useState([]);
+  const [usersList, setUsersList] = useState([]);
+  const [employeesList, setEmployeesList] = useState([]);
+  
+  // TL Metrics
+  const [metrics, setMetrics] = useState({
+    teamMembers: 0,
+    activeTasks: 0,
+    completedTasks: 0,
+  });
+
+  // Assign Task Form Fields
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDesc, setTaskDesc] = useState(''); // Text URL
+  const [taskFile, setTaskFile] = useState(null); // File upload
+  const [taskAssignee, setTaskAssignee] = useState('');
+  const [taskDueDate, setTaskDueDate] = useState('');
+
+  // Timer States
+  const [timeStr, setTimeStr] = useState('');
+  const [workDuration, setWorkDuration] = useState('00:00:00');
+
+  // Modal State
+  const [showRequestModal, setShowRequestModal] = useState(false);
+
+  // Leave Form Fields
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [reason, setReason] = useState('');
+
+  const [formError, setFormError] = useState('');
+  const [formLoading, setFormLoading] = useState(false);
+  const [toast, setToast] = useState({ message: '', type: '' });
+
+  // Dark Mode State
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem('theme') === 'dark') {
+      setDarkMode(true);
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    if (darkMode) {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      setDarkMode(false);
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      setDarkMode(true);
+    }
+  };
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast({ message: '', type: '' }), 4000);
+  };
+
+  // Clock ticks
+  useEffect(() => {
+    const clock = setInterval(() => {
+      const now = new Date();
+      setTimeStr(now.toLocaleTimeString());
+    }, 1000);
+    return () => clearInterval(clock);
+  }, []);
+
+  // Work timer tick when clocked in
+  useEffect(() => {
+    let timer;
+    if (todayLog && !todayLog.clockOut) {
+      timer = setInterval(() => {
+        const start = new Date(todayLog.clockIn).getTime();
+        const now = new Date().getTime();
+        const diff = now - start;
+
+        const hrs = Math.floor(diff / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+        setWorkDuration(
+          `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+        );
+      }, 1000);
+    } else {
+      setWorkDuration('00:00:00');
+    }
+    return () => clearInterval(timer);
+  }, [todayLog]);
+
+  // Auth fetch
+  useEffect(() => {
+    async function initDashboard() {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+
+        if (!res.ok || !data.user || data.user.role !== 'TL') {
+          router.push('/');
+          return;
+        }
+
+        setCurrentUser(data.user);
+      } catch (err) {
+        console.error(err);
+        router.push('/');
+      }
+    }
+    initDashboard();
+  }, [router]);
+
+  useEffect(() => {
+    if (currentUser) {
+      refreshData();
+      setLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]);
+
+  const refreshData = async () => {
+    try {
+      // Fetch users
+      const usersRes = await fetch('/api/users');
+      const usersData = await usersRes.json();
+      const fetchedUsers = usersData.users || [];
+      
+      // Filter users to only include employees in the TL's department
+      const baseDept = currentUser?.department?.replace(' Lead', '') || '';
+      const employees = fetchedUsers.filter(u => u.role === 'EMPLOYEE' && (baseDept === '' || u.department.startsWith(baseDept)));
+      
+      setUsersList(employees);
+      setEmployeesList(employees);
+
+      if (employees.length > 0 && !taskAssignee) {
+        setTaskAssignee(employees[0].id.toString());
+      }
+
+      // Fetch tasks
+      const tasksRes = await fetch('/api/tasks');
+      const tasksData = await tasksRes.json();
+      const fetchedTasks = tasksData.tasks || [];
+      setAllTasksList(fetchedTasks);
+      
+      const myTasks = fetchedTasks.filter(t => t.assignedToId === currentUser?.id);
+      setMyTasksList(myTasks);
+
+      const teamTasks = fetchedTasks.filter(t => t.createdById === currentUser?.id || t.createdBy?.role === 'TL');
+      setTlTasksList(teamTasks);
+
+      setMetrics({
+        teamMembers: employees.length,
+        activeTasks: teamTasks.filter(t => t.status !== 'DONE').length,
+        completedTasks: teamTasks.filter(t => t.status === 'DONE').length
+      });
+
+      // Fetch leaves
+      const leavesRes = await fetch('/api/leaves');
+      const leavesData = await leavesRes.json();
+      const myLeaves = (leavesData.leaves || []).filter(l => l.userId === currentUser?.id);
+      setLeavesList(myLeaves);
+
+      // Fetch attendance clock info
+      const attRes = await fetch('/api/attendance');
+      const attData = await attRes.json();
+      setTodayLog(attData.todayLog);
+      setAttendanceLogs(attData.logs || []);
+
+      // Fetch clients
+      const clientsRes = await fetch('/api/clients');
+      const clientsData = await clientsRes.json();
+      setClientsList(clientsData.clients || []);
+
+      // Fetch client tasks
+      const ctRes = await fetch('/api/client-tasks');
+      const ctData = await ctRes.json();
+      setAllClientTasks(ctData.tasks || []);
+
+      // Fetch client deliveries
+      const cdRes = await fetch('/api/client-deliveries');
+      const cdData = await cdRes.json();
+      setAllClientDeliveries(cdData.deliveries || []);
+
+    } catch (err) {
+      console.error('Error refreshing TL dashboard:', err);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      router.push('/');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Clock operations
+  const handleClockToggle = async () => {
+    try {
+      const res = await fetch('/api/attendance', { method: 'POST' });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data.error || 'Clocking action failed.', 'error');
+        return;
+      }
+
+      showToast(data.message);
+      await refreshData();
+    } catch (err) {
+      showToast('Connection error.', 'error');
+    }
+  };
+
+  // Task operation (Own tasks)
+  const handleToggleTaskStatus = async (taskId, currentStatus) => {
+    let nextStatus = 'TODO';
+    if (currentStatus === 'TODO') nextStatus = 'IN_PROGRESS';
+    else if (currentStatus === 'IN_PROGRESS') nextStatus = 'DONE';
+    else return;
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus })
+      });
+
+      if (res.ok) {
+        showToast('Task updated successfully.');
+        await refreshData();
+      }
+    } catch (err) {
+      showToast('Failed to update task.', 'error');
+    }
+  };
+
+  // TL Task Status Change (Assigned scripts)
+  const handleTLStatusChange = async (taskId, newStatus) => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        showToast('Task status updated');
+        refreshData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCreateTask = async (e) => {
+    e.preventDefault();
+    setFormError('');
+    setFormLoading(true);
+
+    try {
+      let finalDescription = taskDesc;
+
+      if (taskFile) {
+        const formData = new FormData();
+        formData.append('file', taskFile);
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadData.error || 'Failed to upload PDF file');
+
+        finalDescription = uploadData.fileUrl;
+      }
+
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: taskTitle,
+          description: finalDescription,
+          assignedToId: taskAssignee,
+          dueDate: taskDueDate
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to assign task');
+
+      showToast('Task assigned successfully!');
+      
+      setTaskTitle('');
+      setTaskDesc('');
+      setTaskFile(null);
+      setTaskDueDate('');
+      
+      await refreshData();
+      setActiveTab('team-overview');
+    } catch (err) {
+      setFormError(err.message);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  // Leave request submission
+  const handleRequestLeave = async (e) => {
+    e.preventDefault();
+    if (!startDate || !endDate || !reason) {
+      setFormError('Please fill out all required fields.');
+      return;
+    }
+    setFormError('');
+    setFormLoading(true);
+
+    try {
+      const res = await fetch('/api/leaves', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startDate, endDate, reason })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setFormError(data.error || 'Failed to submit leave.');
+        setFormLoading(false);
+        return;
+      }
+
+      showToast('Leave request submitted successfully.');
+      setShowRequestModal(false);
+      setStartDate('');
+      setEndDate('');
+      setReason('');
+      await refreshData();
+    } catch (err) {
+      setFormError('Connection error.');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0a0a0a] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-slate-500 font-semibold animate-pulse">Loading TL Console...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const completedMyTasks = myTasksList.filter(t => t.status === 'DONE').length;
+  const pendingMyTasks = myTasksList.filter(t => t.status !== 'DONE').length;
+
+  return (
+    <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
+      
+      {/* Toast Alert */}
+      {toast.message && (
+        <div className={`fixed bottom-5 right-5 z-50 p-4 rounded-xl shadow-2xl flex items-center gap-3 border text-sm font-semibold animate-slide-in
+          ${toast.type === 'success' 
+            ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300' 
+            : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-900 text-red-850 dark:text-red-300'
+          }`}
+        >
+          <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+          <span>{toast.message}</span>
+        </div>
+      )}
+
+      {/* Sidebar */}
+      <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0 h-screen overflow-y-auto">
+        <div>
+          {/* Brand */}
+          <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 sticky top-0 bg-white dark:bg-slate-900 z-10">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
+              <Building className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+              WorkForce TL
+            </span>
+          </div>
+
+          {/* User profile details */}
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 bg-slate-50/50 dark:bg-slate-800/20">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white text-lg font-bold shadow-md">
+              {currentUser.avatar || '👨‍💼'}
+            </div>
+            <div className="overflow-hidden">
+              <div className="font-bold text-sm text-slate-900 dark:text-white truncate">{currentUser.name}</div>
+              <div className="text-[10px] text-blue-600 dark:text-blue-400 font-extrabold tracking-widest uppercase">
+                {currentUser.department} LEAD
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar Navigation */}
+          <nav className="p-4 flex flex-col gap-1">
+            <p className="px-4 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 mt-2">Personal</p>
+            
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'overview'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Clock className="w-4 h-4" />
+              Overview & Clock
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('tasks')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'tasks'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <CheckSquare className="w-4 h-4" />
+              My Assigned Tasks
+              {pendingMyTasks > 0 && (
+                <span className="ml-auto w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold">
+                  {pendingMyTasks}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('client-tasks')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'client-tasks'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Briefcase className="w-4 h-4" />
+              Client Deliverables
+            </button>
+
+            <button
+              onClick={() => setActiveTab('leaves')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'leaves'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              Time-Off Requests
+            </button>
+
+            <button
+              onClick={() => setActiveTab('payroll')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'payroll'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <DollarSign className="w-4 h-4" />
+              Payslips & Info
+            </button>
+            
+            <p className="px-4 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 mt-6">Team Leader</p>
+            
+            <button
+              onClick={() => setActiveTab('team-overview')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'team-overview'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              Team Overview
+            </button>
+
+            <button
+              onClick={() => setActiveTab('assign-task')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'assign-task'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Plus className="w-4 h-4" />
+              Assign Script
+            </button>
+
+            <button
+              onClick={() => setActiveTab('directory')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'directory'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Employee Directory
+            </button>
+
+          </nav>
+        </div>
+
+        {/* Sidebar Footer Logout */}
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 sticky bottom-0 bg-white dark:bg-slate-900">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-slate-200 dark:border-slate-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-bold rounded-xl text-sm transition"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Panel Content */}
+      <main className="flex-grow flex flex-col min-w-0 overflow-y-auto h-screen">
+        
+        {/* Header */}
+        <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-8 shrink-0 sticky top-0 z-20">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white capitalize">
+            {activeTab === 'overview' ? 'Personal workspace' : activeTab.replace('-', ' ')}
+          </h2>
+          
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={toggleDarkMode}
+              className="w-9 h-9 border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            >
+              {darkMode ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+            </button>
+
+            <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
+              <Calendar className="w-4 h-4" />
+              <span>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+            </div>
+          </div>
+        </header>
+
+        {/* Tab Content Container */}
+        <div className="p-8 flex-grow">
+          
+          {/* TAB 1: OVERVIEW & CLOCK (Personal) */}
+          {activeTab === 'overview' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in">
+              
+              {/* Left Column: Clock and Attendance info */}
+              <div className="lg:col-span-7 space-y-8">
+                
+                {/* Clock Card Panel */}
+                <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] flex flex-col items-center justify-center text-center gap-6 overflow-hidden animate-slide-up" style={{ animationDelay: '100ms' }}>
+                  <div className="absolute inset-0 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl animate-pulse-soft pointer-events-none"></div>
+                  <div className="absolute -left-12 -top-12 w-40 h-40 bg-blue-100/50 dark:bg-blue-800/20 rounded-full blur-3xl pointer-events-none animate-pulse-soft" style={{ animationDelay: '1s' }}></div>
+                  <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-cyan-100/50 dark:bg-cyan-800/20 rounded-full blur-3xl pointer-events-none animate-pulse-soft" style={{ animationDelay: '2s' }}></div>
+                  
+                  <div className="relative z-10 w-full flex flex-col items-center justify-center gap-6">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-400 uppercase tracking-widest mb-1">Punctuality Clock</h3>
+                      <div className="text-4xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
+                        {timeStr || '00:00:00'}
+                      </div>
+                    </div>
+
+                    {todayLog && !todayLog.clockOut ? (
+                      <div className="space-y-1">
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Shift Duration (Today)</div>
+                        <div className="text-2xl font-extrabold text-blue-600 dark:text-blue-400 font-mono">{workDuration}</div>
+                      </div>
+                    ) : null}
+
+                    <div className="flex flex-col items-center gap-2">
+                      <button 
+                        onClick={handleClockToggle}
+                        className={`h-12 px-8 font-extrabold text-sm tracking-wider uppercase rounded-full shadow-lg transition flex items-center gap-2 text-white hover:scale-105 active:scale-95
+                          ${todayLog && !todayLog.clockOut
+                            ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' 
+                            : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20'}`}
+                      >
+                        <Clock className="w-4 h-4 animate-pulse" />
+                        <span>{todayLog && !todayLog.clockOut ? 'Clock Out' : 'Clock In'}</span>
+                      </button>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        {todayLog && !todayLog.clockOut 
+                          ? `Clocked in today at ${new Date(todayLog.clockIn).toLocaleTimeString()}`
+                          : todayLog
+                          ? `Shift completed today at ${new Date(todayLog.clockOut).toLocaleTimeString()}`
+                          : 'No session active for today.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Clock Logs history */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-4">My Sign-in Sheet (Recent)</h4>
+                  
+                  <div className="space-y-3">
+                    {attendanceLogs.length === 0 ? (
+                      <p className="text-xs text-slate-400">No shift hours logged.</p>
+                    ) : (
+                      attendanceLogs.slice(0, 3).map((log) => (
+                        <div key={log.id} className="flex justify-between items-center text-xs p-3 bg-slate-50 dark:bg-slate-800/30 border border-slate-200/50 dark:border-slate-800 rounded-xl">
+                          <div>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{log.date}</span>
+                            <div className="text-[10px] text-slate-400 mt-0.5">
+                              In: {new Date(log.clockIn).toLocaleTimeString()} 
+                              {log.clockOut ? ` | Out: ${new Date(log.clockOut).toLocaleTimeString()}` : ' | Active'}
+                            </div>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase
+                            ${log.status === 'PRESENT' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600' : 'bg-red-50 dark:bg-red-950/40 text-red-600'}`}
+                          >
+                            {log.status}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Right Column: Brief summary cards */}
+              <div className="lg:col-span-5 space-y-6">
+                
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">Active Deliverables</span>
+                    <h3 className="text-2xl font-black dark:text-white">{pendingMyTasks}</h3>
+                  </div>
+                  <div className="w-10 h-10 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center">
+                    <CheckSquare className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">Approved Absences</span>
+                    <h3 className="text-2xl font-black dark:text-white">
+                      {leavesList.filter(l => l.status === 'APPROVED').length}
+                    </h3>
+                  </div>
+                  <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">Completed Actions</span>
+                    <h3 className="text-2xl font-black dark:text-white">{completedMyTasks}</h3>
+                  </div>
+                  <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5" />
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 2: MY TASKS (Personal) */}
+          {activeTab === 'tasks' && (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-fade-in">
+              <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Assigned Duties checklist</h4>
+                <p className="text-xs text-slate-400 mt-1">Review task details and report updates by clicking status transitions.</p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {myTasksList.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-6">No tasks assigned yet.</p>
+                ) : (
+                  myTasksList.map((task) => (
+                    <div 
+                      key={task.id} 
+                      className={`p-4 border rounded-xl flex items-center justify-between transition duration-300
+                        ${task.status === 'DONE' 
+                          ? 'border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/40 opacity-75' 
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800 hover:-translate-y-1 cursor-default'}`}
+                    >
+                      <div className="space-y-1 pr-6 overflow-hidden">
+                        <p className={`text-xs font-bold leading-tight ${task.status === 'DONE' ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                          {task.title}
+                        </p>
+                        {task.description && (task.description.startsWith('http') || task.description.startsWith('/uploads/')) ? (
+                          <a 
+                            href={task.description} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md"
+                          >
+                            <FileDown className="w-3.5 h-3.5" /> View Script PDF
+                          </a>
+                        ) : (
+                          <p className="text-[10px] text-slate-450 truncate mt-1">{task.description}</p>
+                        )}
+                        <p className="text-[9px] text-slate-400 font-medium mt-1.5">Assigned by: {task.createdBy?.name || 'Admin'} ({task.createdBy?.role || ''}) | Due: {task.dueDate || 'No Limit'}</p>
+                      </div>
+
+                      <div className="shrink-0 flex items-center gap-2">
+                        {task.status === 'TODO' && (
+                          <button 
+                            onClick={() => handleToggleTaskStatus(task.id, 'TODO')}
+                            className="py-1 px-3 border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-400 rounded-lg text-[9px] font-bold hover:bg-blue-50 dark:hover:bg-blue-950/20 transition flex items-center gap-1"
+                          >
+                            <Play className="w-2.5 h-2.5" /> Start Work
+                          </button>
+                        )}
+                        {task.status === 'IN_PROGRESS' && (
+                          <button 
+                            onClick={() => handleToggleTaskStatus(task.id, 'IN_PROGRESS')}
+                            className="py-1 px-3 border border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400 rounded-lg text-[9px] font-bold hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition flex items-center gap-1"
+                          >
+                            <Check className="w-3 h-3" /> Mark Completed
+                          </button>
+                        )}
+                        {task.status === 'DONE' && (
+                          <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 text-[9px] font-bold rounded-lg uppercase tracking-wider">
+                            Completed
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: CLIENT TASKS */}
+          {activeTab === 'client-tasks' && (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-fade-in">
+              <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">CRM Deliverables</h4>
+                  <p className="text-xs text-slate-400 mt-1">View and manage client tasks assigned to you or your department.</p>
+                </div>
+              </div>
+              <div className="p-6 space-y-8">
+                
+                {/* Client Tasks Section */}
+                <div>
+                  <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Client Tasks</h5>
+                  <div className="space-y-4">
+                    {allClientTasks.filter(t => t.workingOn ? t.workingOn === currentUser?.name : t.assignTo === currentUser?.department).length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-6">No client tasks found for you.</p>
+                    ) : (
+                      allClientTasks
+                        .filter(t => t.workingOn ? t.workingOn === currentUser?.name : t.assignTo === currentUser?.department)
+                        .map((task) => (
+                          <div key={task.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/20">
+                            <div className="flex flex-col md:flex-row justify-between gap-4">
+                              <div className="space-y-1">
+                                <p className="text-sm font-bold text-slate-900 dark:text-white">{task.taskTitle} <span className="text-[10px] text-slate-400 font-normal ml-2">({task.taskId})</span></p>
+                                <p className="text-xs text-slate-500">
+                                  Client: <span className="font-semibold text-slate-700 dark:text-slate-300">{task.businessName}</span> | 
+                                  Type: {task.postType} | 
+                                  Date: <input 
+                                    type="date" 
+                                    className="bg-transparent border-b border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-blue-500 mx-1 px-1"
+                                    defaultValue={task.date || ''}
+                                    onChange={async (e) => {
+                                      await fetch(`/api/client-tasks/${task.id}`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ date: e.target.value })
+                                      });
+                                      refreshData();
+                                    }}
+                                  />
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <select
+                                  value={task.status}
+                                  onChange={async (e) => {
+                                    await fetch(`/api/client-tasks/${task.id}`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ status: e.target.value })
+                                    });
+                                    refreshData();
+                                  }}
+                                  className={`text-xs font-bold px-3 py-1.5 rounded-lg border outline-none
+                                    ${task.status === 'Complete Task' ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400'
+                                    : task.status === 'In Progress' ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
+                                    : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'}
+                                  `}
+                                >
+                                  <option value="Not Started">Not Started</option>
+                                  <option value="In Progress">In Progress</option>
+                                  <option value="Complete Task">Complete Task</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Client Deliveries Section */}
+                <div>
+                  <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4 border-t border-slate-200 dark:border-slate-800 pt-6">Client Deliveries</h5>
+                  <div className="space-y-4">
+                    {allClientDeliveries.filter(d => d.workingOn ? d.workingOn === currentUser?.name : d.assignTo === currentUser?.department).length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-6">No client deliveries found for you.</p>
+                    ) : (
+                      allClientDeliveries
+                        .filter(d => d.workingOn ? d.workingOn === currentUser?.name : d.assignTo === currentUser?.department)
+                        .map((delivery) => (
+                          <div key={delivery.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/20">
+                            <div className="flex flex-col md:flex-row justify-between gap-4">
+                              <div className="space-y-1">
+                                <p className="text-sm font-bold text-slate-900 dark:text-white">{delivery.businessName} <span className="text-[10px] text-slate-400 font-normal ml-2">({delivery.clientId})</span></p>
+                                <p className="text-xs text-slate-500">
+                                  Amount: <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{delivery.amount}</span> | 
+                                  Date: <input 
+                                    type="date" 
+                                    className="bg-transparent border-b border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-blue-500 mx-1 px-1"
+                                    defaultValue={delivery.date || ''}
+                                    onChange={async (e) => {
+                                      await fetch(`/api/client-deliveries/${delivery.id}`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ date: e.target.value })
+                                      });
+                                      refreshData();
+                                    }}
+                                  /> | Note: {delivery.notes || '-'}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <select
+                                  value={delivery.status}
+                                  onChange={async (e) => {
+                                    await fetch(`/api/client-deliveries/${delivery.id}`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ status: e.target.value })
+                                    });
+                                    refreshData();
+                                  }}
+                                  className={`text-xs font-bold px-3 py-1.5 rounded-lg border outline-none
+                                    ${delivery.status === 'Completed' ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400'
+                                    : delivery.status === 'In Progress' ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
+                                    : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'}
+                                  `}
+                                >
+                                  <option value="Not Started">Not Started</option>
+                                  <option value="In Progress">In Progress</option>
+                                  <option value="Completed">Completed</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: LEAVE REQUESTS */}
+          {activeTab === 'leaves' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex justify-between items-center">
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Absence & Leave tracker</h4>
+                  <p className="text-xs text-slate-400 mt-1">Submit new leave requests and track pending approvals.</p>
+                </div>
+                <button
+                  onClick={() => { setFormError(''); setShowRequestModal(true); }}
+                  className="bg-blue-800 hover:bg-blue-900 text-white py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition"
+                >
+                  <Plus className="w-4 h-4" />
+                  Submit Request
+                </button>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/40 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800">
+                        <th className="p-4 uppercase tracking-wider">Reason / Details</th>
+                        <th className="p-4 uppercase tracking-wider">Date Interval</th>
+                        <th className="p-4 uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leavesList.length === 0 ? (
+                        <tr>
+                          <td colSpan="3" className="p-8 text-center text-slate-400">No leave history found.</td>
+                        </tr>
+                      ) : (
+                        leavesList.map((leave) => (
+                          <tr key={leave.id} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50/30 transition">
+                            <td className="p-4 font-bold text-slate-900 dark:text-white">"{leave.reason}"</td>
+                            <td className="p-4 text-slate-550 font-semibold">{leave.startDate} to {leave.endDate}</td>
+                            <td className="p-4">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase
+                                ${leave.status === 'APPROVED' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600' : leave.status === 'REJECTED' ? 'bg-red-50 dark:bg-red-950/40 text-red-650' : 'bg-orange-50 dark:bg-orange-950/40 text-orange-600'}`}
+                              >
+                                {leave.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: PAYSLIPS */}
+          {activeTab === 'payroll' && (
+            <div className="space-y-8 animate-fade-in">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h4 className="text-base font-extrabold text-slate-900 dark:text-white">Active Compensation Details</h4>
+                    <p className="text-xs text-slate-400 mt-1">Estimations and detailed structures of your corporate payroll.</p>
+                  </div>
+                  <button 
+                    onClick={() => alert("Payroll statement PDF print request triggers mock download.")}
+                    className="p-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-400 transition flex items-center gap-1.5 text-xs font-bold"
+                  >
+                    <Download className="w-4.5 h-4.5" />
+                    Download Pay Stub
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold">Monthly Base Salary</span>
+                    <h3 className="text-xl font-bold dark:text-white">${currentUser.salary.toLocaleString()}</h3>
+                    <p className="text-[10px] text-emerald-500 font-semibold">Verified Ledger Record</p>
+                  </div>
+
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold">Estimated Net Pay (After Tax)</span>
+                    <h3 className="text-xl font-bold dark:text-white">${(currentUser.salary * 0.78).toLocaleString()}</h3>
+                    <p className="text-[10px] text-slate-400">Assumes 22% overall tax deductions</p>
+                  </div>
+
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold">Annual Salary Equivalent</span>
+                    <h3 className="text-xl font-bold dark:text-white">${(currentUser.salary * 12).toLocaleString()}</h3>
+                    <p className="text-[10px] text-slate-400">Based on active corporate contract</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: EMPLOYEE DIRECTORY */}
+          {activeTab === 'directory' && (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-fade-in">
+              <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Employee Directory</h4>
+                <p className="text-xs text-slate-400 mt-1">View your colleagues and their departments.</p>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {usersList.map((u) => (
+                    <div key={u.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center gap-3 bg-slate-50 dark:bg-slate-800/20">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
+                        {u.avatar || '👤'}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">{u.name}</p>
+                        <p className="text-[10px] text-slate-500">{u.department} - {u.role}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{u.email}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TL SPECIFIC: TEAM OVERVIEW */}
+          {activeTab === 'team-overview' && (
+            <div className="space-y-8 animate-fade-in">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* Team Members Card */}
+                <div className="relative bg-white dark:bg-slate-900 p-5 xl:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 animate-slide-up group" style={{ animationDelay: '100ms' }}>
+                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-blue-50 dark:bg-blue-900/20 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-24 h-24 bg-blue-50/80 dark:bg-blue-900/40 rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
+                  
+                  <div className="space-y-1 relative z-10 min-w-0 pr-2">
+                    <div className="text-[10px] xl:text-xs text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Team Members</div>
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <h3 className="text-2xl xl:text-3xl font-black text-slate-900 dark:text-white truncate">{metrics.teamMembers}</h3>
+                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Employees</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0 relative z-10 w-10 h-10 xl:w-12 xl:h-12 rounded-xl bg-white/90 dark:bg-slate-800 backdrop-blur-sm shadow-md border border-white dark:border-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                    <Users className="w-5 h-5 xl:w-6 xl:h-6" />
+                  </div>
+                </div>
+
+                {/* Assigned Tasks Card */}
+                <div className="relative bg-white dark:bg-slate-900 p-5 xl:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 animate-slide-up group" style={{ animationDelay: '200ms' }}>
+                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 dark:bg-purple-900/20 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-24 h-24 bg-purple-50/80 dark:bg-purple-900/40 rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
+                  
+                  <div className="space-y-1 relative z-10 min-w-0 pr-2">
+                    <div className="text-[10px] xl:text-xs text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Active Scripts</div>
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <h3 className="text-2xl xl:text-3xl font-black text-slate-900 dark:text-white truncate">{metrics.activeTasks}</h3>
+                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Pending</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0 relative z-10 w-10 h-10 xl:w-12 xl:h-12 rounded-xl bg-white/90 dark:bg-slate-800 backdrop-blur-sm shadow-md border border-white dark:border-slate-700 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                    <CheckSquare className="w-5 h-5 xl:w-6 xl:h-6" />
+                  </div>
+                </div>
+
+                {/* Completed Scripts Card */}
+                <div className="relative bg-white dark:bg-slate-900 p-5 xl:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 animate-slide-up group" style={{ animationDelay: '300ms' }}>
+                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-emerald-50 dark:bg-emerald-900/20 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-24 h-24 bg-emerald-50/80 dark:bg-emerald-900/40 rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
+                  
+                  <div className="space-y-1 relative z-10 min-w-0 pr-2">
+                    <div className="text-[10px] xl:text-xs text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Completed Scripts</div>
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <h3 className="text-2xl xl:text-3xl font-black text-slate-900 dark:text-white truncate">{metrics.completedTasks}</h3>
+                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Done</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0 relative z-10 w-10 h-10 xl:w-12 xl:h-12 rounded-xl bg-white/90 dark:bg-slate-800 backdrop-blur-sm shadow-md border border-white dark:border-slate-700 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle className="w-5 h-5 xl:w-6 xl:h-6" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tasks Tracking Table */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm animate-slide-up" style={{ animationDelay: '400ms' }}>
+                <div className="flex items-center justify-between mb-6">
+                  <h4 className="text-base font-extrabold text-slate-900 dark:text-white">Assigned Scripts Tracking</h4>
+                  <button 
+                    onClick={() => setActiveTab('assign-task')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg text-xs font-bold transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Assign New
+                  </button>
+                </div>
+                
+                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                        <th className="py-3 px-4 text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-1/3">Task & Script</th>
+                        <th className="py-3 px-4 text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Assignee</th>
+                        <th className="py-3 px-4 text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Due Date</th>
+                        <th className="py-3 px-4 text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {tlTasksList.length === 0 ? (
+                        <tr>
+                          <td colSpan="4" className="py-8 text-center text-slate-500 font-semibold text-sm">
+                            No scripts assigned yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        tlTasksList.map(task => (
+                          <tr key={task.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                            <td className="py-3 px-4">
+                              <div className="font-bold text-sm text-slate-900 dark:text-white">{task.title}</div>
+                              {task.description && (
+                                <a 
+                                  href={task.description} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="inline-flex items-center gap-1 mt-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                  <FileDown className="w-3 h-3" /> View Script PDF
+                                </a>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs">
+                                  {task.assignedTo?.avatar || '👤'}
+                                </div>
+                                <span className="font-semibold text-sm text-slate-700 dark:text-slate-300">
+                                  {task.assignedTo?.name || 'Unknown'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 font-medium text-sm text-slate-600 dark:text-slate-400">
+                              {task.dueDate || '-'}
+                            </td>
+                            <td className="py-3 px-4">
+                              <select 
+                                value={task.status}
+                                onChange={(e) => handleTLStatusChange(task.id, e.target.value)}
+                                className={`text-xs font-bold px-2 py-1 rounded-md outline-none border cursor-pointer ${
+                                  task.status === 'DONE' 
+                                    ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' 
+                                    : task.status === 'IN_PROGRESS'
+                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                }`}
+                              >
+                                <option value="TODO">TODO</option>
+                                <option value="IN_PROGRESS">IN PROGRESS</option>
+                                <option value="DONE">DONE</option>
+                              </select>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TL SPECIFIC: ASSIGN TASK */}
+          {activeTab === 'assign-task' && (
+            <div className="max-w-2xl mx-auto bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm animate-fade-in-up">
+              <div className="flex items-center gap-3 mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">Assign New Script</h3>
+                  <p className="text-xs font-semibold text-slate-500">Provide a link to the script PDF and assign it to an employee.</p>
+                </div>
+              </div>
+
+              {formError && (
+                <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-bold rounded-lg border border-red-100 dark:border-red-800 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {formError}
+                </div>
+              )}
+
+              <form onSubmit={handleCreateTask} className="space-y-5">
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Script Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={taskTitle}
+                    onChange={e => setTaskTitle(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    placeholder="e.g. YouTube Reel Script - Top 10 Places"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Assign To Employee</label>
+                  <select
+                    required
+                    value={taskAssignee}
+                    onChange={e => setTaskAssignee(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none"
+                  >
+                    {employeesList.map(u => (
+                      <option key={u.id} value={u.id}>{u.name} (Employee)</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Script / PDF Link (URL)</label>
+                    <input
+                      type="url"
+                      value={taskDesc}
+                      onChange={e => setTaskDesc(e.target.value)}
+                      disabled={!!taskFile}
+                      className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50"
+                      placeholder="https://drive.google.com/file/d/... (Optional)"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 flex items-center justify-center">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">OR</span>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Upload PDF File</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        onChange={e => setTaskFile(e.target.files[0] || null)}
+                        disabled={!!taskDesc}
+                        className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Due Date</label>
+                  <input
+                    type="date"
+                    value={taskDueDate}
+                    onChange={e => setTaskDueDate(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  />
+                </div>
+
+                <div className="pt-4 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={formLoading}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl text-sm transition shadow-md shadow-blue-600/20 disabled:opacity-50"
+                  >
+                    {formLoading ? 'Assigning...' : 'Assign Script'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+          
+          {/* LEAVE REQUEST MODAL (Only when showRequestModal is true) */}
+          {showRequestModal && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-slide-up">
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                  <h3 className="font-bold text-slate-900 dark:text-white">Request Time-Off</h3>
+                  <button onClick={() => setShowRequestModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                    ✕
+                  </button>
+                </div>
+                
+                <form onSubmit={handleRequestLeave} className="p-6 space-y-4">
+                  {formError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-lg flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      {formError}
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Start Date</label>
+                      <input 
+                        type="date" 
+                        required
+                        value={startDate}
+                        onChange={e => setStartDate(e.target.value)}
+                        className="w-full text-sm px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">End Date</label>
+                      <input 
+                        type="date" 
+                        required
+                        value={endDate}
+                        onChange={e => setEndDate(e.target.value)}
+                        className="w-full text-sm px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Reason for leave</label>
+                    <textarea 
+                      required
+                      value={reason}
+                      onChange={e => setReason(e.target.value)}
+                      rows="3"
+                      className="w-full text-sm px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+                      placeholder="Medical, vacation, personal, etc."
+                    ></textarea>
+                  </div>
+                  
+                  <div className="pt-2 flex gap-3">
+                    <button 
+                      type="button"
+                      onClick={() => setShowRequestModal(false)}
+                      className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit"
+                      disabled={formLoading}
+                      className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition shadow-md shadow-blue-600/20 disabled:opacity-50"
+                    >
+                      {formLoading ? 'Submitting...' : 'Submit Request'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </main>
+    </div>
+  );
+}

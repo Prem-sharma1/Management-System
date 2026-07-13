@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,13 +11,12 @@ model User {
   email         String         @unique
   name          String
   password      String
-  role          String         // "CEO", "ADMIN", "EMPLOYEE"
-  department    String         // e.g. "Executive", "Engineering", "HR", "Sales", "Marketing"
+  role          String
+  department    String
   salary        Float          @default(0.0)
-  status        String         @default("ACTIVE") // "ACTIVE", "INACTIVE"
-  avatar        String?        // URL or base64 or emoji
+  status        String         @default("ACTIVE")
+  avatar        String?
   createdAt     DateTime       @default(now())
-  
   attendance    Attendance[]
   leaveRequests LeaveRequest[]
   assignedTasks Task[]         @relation("AssignedTasks")
@@ -28,44 +24,116 @@ model User {
 }
 
 model Attendance {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   clockIn   DateTime
   clockOut  DateTime?
-  status    String   // "PRESENT", "ABSENT", "LATE"
-  date      String   // "YYYY-MM-DD"
-  createdAt DateTime @default(now())
+  status    String
+  date      String
+  location  String?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model LeaveRequest {
   id        Int      @id @default(autoincrement())
   userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  startDate String   // "YYYY-MM-DD"
-  endDate   String   // "YYYY-MM-DD"
+  startDate String
+  endDate   String
   reason    String
-  status    String   @default("PENDING") // "PENDING", "APPROVED", "REJECTED"
+  status    String   @default("PENDING")
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Task {
-  id           Int       @id @default(autoincrement())
-  title        String
-  description  String?
-  status       String    @default("TODO") // "TODO", "IN_PROGRESS", "DONE"
-  assignedToId Int
-  assignedTo   User      @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
-  createdById  Int
-  createdBy    User      @relation("CreatedTasks", fields: [createdById], references: [id], onDelete: Cascade)
-  dueDate      String?   // "YYYY-MM-DD"
-  createdAt    DateTime  @default(now())
+  id            Int      @id @default(autoincrement())
+  title         String
+  description   String?
+  status        String   @default("TODO")
+  assignedToId  Int
+  createdById   Int
+  dueDate       String?
+  createdAt     DateTime @default(now())
+  priority      String   @default("Normal")
+  reason        String?
+  workSampleUrl String?
+  assignedTo    User     @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
+  createdBy     User     @relation("CreatedTasks", fields: [createdById], references: [id], onDelete: Cascade)
 }
 
 model AuditLog {
-  id               Int      @id @default(autoincrement())
-  action           String
-  performedByName  String
-  performedByRole  String
-  createdAt        DateTime @default(now())
+  id              Int      @id @default(autoincrement())
+  action          String
+  performedByName String
+  performedByRole String
+  createdAt       DateTime @default(now())
+}
+
+model Client {
+  id             Int              @id @default(autoincrement())
+  clientId       String           @unique
+  businessName   String
+  clientName     String?
+  joiningDate    String
+  services       String
+  packageName    String
+  packageAmount  Float
+  contact        String?
+  email          String?
+  website        String?
+  sector         String?
+  requirement    String?
+  accountReady   Boolean          @default(false)
+  active         Boolean          @default(true)
+  notes          String?
+  createdAt      DateTime         @default(now())
+  ClientDelivery ClientDelivery[]
+  ClientTask     ClientTask[]
+}
+
+model ClientDelivery {
+  id           Int      @id @default(autoincrement())
+  deliveryId   String   @unique
+  clientId     String
+  clientName   String
+  postType     String
+  postDate     String
+  status       String   @default("Pending")
+  linkedTaskId String?
+  workingOn    String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  Client       Client   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+}
+
+model ClientTask {
+  id            Int      @id @default(autoincrement())
+  taskId        String   @unique
+  clientId      String
+  businessName  String
+  taskTitle     String
+  date          String
+  assignTo      String?
+  workingOn     String?
+  status        String   @default("Not Started")
+  service       String?
+  packageName   String?
+  postType      String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  priority      String   @default("Normal")
+  reason        String?
+  workSampleUrl String?
+  Client        Client   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+}
+
+model Plan {
+  id           Int      @id @default(autoincrement())
+  category     String
+  name         String
+  price        Float
+  billingCycle String?
+  features     Json
+  createdAt    DateTime @default(now())
 }

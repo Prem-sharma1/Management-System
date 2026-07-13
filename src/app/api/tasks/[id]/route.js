@@ -19,7 +19,7 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { title, description, status, assignedToId, dueDate } = await request.json();
+    const { title, description, status, assignedToId, dueDate, reason, workSampleUrl, priority } = await request.json();
 
     const task = await prisma.task.findUnique({ where: { id } });
     if (!task) {
@@ -37,9 +37,13 @@ export async function PUT(request, { params }) {
         return NextResponse.json({ error: 'Status is required' }, { status: 400 });
       }
 
+      const updateData = { status };
+      if (reason !== undefined) updateData.reason = reason;
+      if (workSampleUrl !== undefined) updateData.workSampleUrl = workSampleUrl;
+
       const updatedTask = await prisma.task.update({
         where: { id },
-        data: { status }
+        data: updateData
       });
 
       return NextResponse.json({ task: updatedTask });
@@ -51,6 +55,9 @@ export async function PUT(request, { params }) {
     if (status) data.status = status;
     if (assignedToId) data.assignedToId = parseInt(assignedToId);
     if (dueDate !== undefined) data.dueDate = dueDate;
+    if (reason !== undefined) data.reason = reason;
+    if (workSampleUrl !== undefined) data.workSampleUrl = workSampleUrl;
+    if (priority !== undefined) data.priority = priority;
 
     const updatedTask = await prisma.task.update({
       where: { id },

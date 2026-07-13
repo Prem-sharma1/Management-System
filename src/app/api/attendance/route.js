@@ -52,10 +52,12 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request) {
   try {
     const cookieStore = await cookies();
     const requester = await getRequester(cookieStore);
+    const body = await request.json().catch(() => ({}));
+    const { location } = body;
 
     if (!requester) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -111,7 +113,8 @@ export async function POST() {
           userId: requester.id,
           clockIn: now,
           status,
-          date: todayStr
+          date: todayStr,
+          location: location || null
         }
       });
 

@@ -49,11 +49,11 @@ export async function POST(request) {
     const cookieStore = await cookies();
     const requester = await getRequester(cookieStore);
 
-    if (!requester || (requester.role !== 'CEO' && requester.role !== 'ADMIN')) {
+    if (!requester || (requester.role !== 'CEO' && requester.role !== 'ADMIN' && requester.role !== 'TL')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { title, description, assignedToId, dueDate } = await request.json();
+    const { title, description, assignedToId, dueDate, priority } = await request.json();
 
     if (!title || !assignedToId) {
       return NextResponse.json({ error: 'Title and Assignee are required' }, { status: 400 });
@@ -71,7 +71,8 @@ export async function POST(request) {
         assignedToId: parseInt(assignedToId),
         createdById: requester.id,
         dueDate,
-        status: 'TODO'
+        status: 'TODO',
+        priority: priority || 'Normal'
       }
     });
 
