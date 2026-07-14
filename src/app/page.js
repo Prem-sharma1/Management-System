@@ -30,6 +30,10 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [department, setDepartment] = useState('Engineering');
 
+  // Client states
+  const [isClient, setIsClient] = useState(false);
+  const [clientId, setClientId] = useState('');
+
   const isSpecialRole = email === 'nikhil@aidigital.com' || email === 'admin@workforce.com';
 
   // Check if user is already logged in
@@ -53,6 +57,32 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (isClient) {
+      if (!clientId) {
+        setError('Please enter your Client Access ID.');
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await fetch('/api/auth/client-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || 'Client Access ID not found.');
+          setLoading(false);
+          return;
+        }
+        router.push('/dashboard');
+      } catch (err) {
+        setError('Failed to connect to the server.');
+        setLoading(false);
+      }
+      return;
+    }
 
     if (isSignUp) {
       if (!name || !email || !password || !department) {
@@ -182,31 +212,38 @@ export default function LoginPage() {
         <div className="w-full max-w-md mx-auto my-auto flex flex-col gap-8 relative z-10 animate-scale-in">
 
           {/* Tabs */}
-          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
             <button
               type="button"
-              onClick={() => { setIsSignUp(false); setError(''); }}
-              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${!isSignUp ? 'bg-white text-blue-800 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}
+              onClick={() => { setIsSignUp(false); setIsClient(false); setError(''); }}
+              className={`flex-1 py-2 font-bold uppercase rounded-lg transition ${!isSignUp && !isClient ? 'bg-white text-blue-800 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              Login
+              Staff Login
             </button>
-            {!isSpecialRole && (
+            {!isSpecialRole && !isClient && (
               <button
                 type="button"
-                onClick={() => { setIsSignUp(true); setError(''); }}
-                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${isSignUp ? 'bg-white text-blue-800 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}
+                onClick={() => { setIsSignUp(true); setIsClient(false); setError(''); }}
+                className={`flex-1 py-2 font-bold uppercase rounded-lg transition ${isSignUp ? 'bg-white text-blue-800 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Sign Up
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => { setIsClient(true); setIsSignUp(false); setError(''); }}
+              className={`flex-1 py-2 font-bold uppercase rounded-lg transition ${isClient ? 'bg-white text-blue-800 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Client Portal
+            </button>
           </div>
 
           <div>
             <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 mb-2">
-              {isSignUp ? 'Create account' : 'Welcome back'}
+              {isClient ? 'Client Portal' : isSignUp ? 'Create account' : 'Welcome back'}
             </h2>
             <p className="text-slate-500 text-sm">
-              {isSignUp ? 'Self-register as a new employee to get started.' : 'Enter your credentials to access your dashboard.'}
+              {isClient ? 'Enter your unique Client ID to track your plan deliverables.' : isSignUp ? 'Self-register as a new employee to get started.' : 'Enter your credentials to access your dashboard.'}
             </p>
           </div>
 
@@ -218,91 +255,109 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5" autoComplete="off">
-            {isSignUp && (
+            {isClient ? (
+              <div className="flex flex-col gap-1.5 animate-fade-in">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Client Access ID</label>
+                <div className="relative flex items-center">
+                  <Building2 className="absolute left-3 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={clientId}
+                    onChange={(e) => setClientId(e.target.value)}
+                    placeholder="AID-1295"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition text-sm text-slate-900 uppercase"
+                  />
+                </div>
+              </div>
+            ) : (
               <>
-                <div className="flex flex-col gap-1.5 animate-fade-in">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Full Name</label>
+                {isSignUp && (
+                  <>
+                    <div className="flex flex-col gap-1.5 animate-fade-in">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Full Name</label>
+                      <div className="relative flex items-center">
+                        <User className="absolute left-3 w-5 h-5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="John Doe"
+                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition text-sm text-slate-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 animate-fade-in">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Department</label>
+                      <div className="relative flex items-center">
+                        <Building className="absolute left-3 w-5 h-5 text-slate-400" />
+                        <select
+                          value={department}
+                          onChange={(e) => setDepartment(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition text-sm text-slate-900 appearance-none cursor-pointer"
+                        >
+                          <option value="Engineering">Engineering</option>
+                          <option value="HR">Human Resources</option>
+                          <option value="Sales">Sales</option>
+                          <option value="Marketing">Marketing</option>
+                          <option value="Finance">Finance</option>
+                        </select>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    {isSignUp ? 'Work Email' : 'Corporate Email'}
+                  </label>
                   <div className="relative flex items-center">
-                    <User className="absolute left-3 w-5 h-5 text-slate-400" />
+                    <Mail className="absolute left-3 w-5 h-5 text-slate-400" />
                     <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="John Doe"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@company.com"
+                      autoComplete="off"
                       className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition text-sm text-slate-900"
                     />
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1.5 animate-fade-in">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Department</label>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
+                    {!isSignUp && (
+                      <a href="#" onClick={(e) => { e.preventDefault(); alert("Demo passwords are ceo123, admin123, and emp123"); }} className="text-xs font-bold text-blue-700 hover:underline">Forgot password?</a>
+                    )}
+                  </div>
                   <div className="relative flex items-center">
-                    <Building className="absolute left-3 w-5 h-5 text-slate-400" />
-                    <select
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition text-sm text-slate-900 appearance-none cursor-pointer"
+                    <Lock className="absolute left-3 w-5 h-5 text-slate-400" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                      className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition text-sm text-slate-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 p-1 text-slate-400 hover:text-slate-650 transition"
                     >
-                      <option value="Engineering">Engineering</option>
-                      <option value="HR">Human Resources</option>
-                      <option value="Sales">Sales</option>
-                      <option value="Marketing">Marketing</option>
-                      <option value="Finance">Finance</option>
-                    </select>
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
-              </>
-            )}
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                {isSignUp ? 'Work Email' : 'Corporate Email'}
-              </label>
-              <div className="relative flex items-center">
-                <Mail className="absolute left-3 w-5 h-5 text-slate-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@company.com"
-                  autoComplete="off"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition text-sm text-slate-900"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <div className="flex justify-between items-center">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
                 {!isSignUp && (
-                  <a href="#" onClick={(e) => { e.preventDefault(); alert("Demo passwords are ceo123, admin123, and emp123"); }} className="text-xs font-bold text-blue-700 hover:underline">Forgot password?</a>
+                  <div className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer py-1">
+                    <input type="checkbox" id="stay-signed" className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500" defaultChecked />
+                    <label htmlFor="stay-signed" className="cursor-pointer select-none">Stay signed in for 30 days</label>
+                  </div>
                 )}
-              </div>
-              <div className="relative flex items-center">
-                <Lock className="absolute left-3 w-5 h-5 text-slate-400" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                  className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition text-sm text-slate-900"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 p-1 text-slate-400 hover:text-slate-600 transition"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {!isSignUp && (
-              <div className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer py-1">
-                <input type="checkbox" id="stay-signed" className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500" defaultChecked />
-                <label htmlFor="stay-signed" className="cursor-pointer select-none">Stay signed in for 30 days</label>
-              </div>
+              </>
             )}
 
             <button
@@ -314,7 +369,7 @@ export default function LoginPage() {
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <>
-                  <span>{isSignUp ? 'Register Account' : 'Continue to Dashboard'}</span>
+                  <span>{isClient ? 'Access Portal' : isSignUp ? 'Register Account' : 'Continue to Dashboard'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

@@ -25,6 +25,43 @@ import {
   FileDown
 } from 'lucide-react';
 
+const convertDbDateToIso = (dateStr) => {
+  if (!dateStr) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const day = parts[0];
+    const monthName = parts[1];
+    const year = parts[2];
+    
+    const months = {
+      jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+      jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
+    };
+    const month = months[monthName.toLowerCase()];
+    if (month && day && year) {
+      return `${year}-${month}-${day.padStart(2, '0')}`;
+    }
+  }
+  
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    return d.toISOString().split('T')[0];
+  }
+  return '';
+};
+
+const getFilterFormats = (isoDateStr) => {
+  if (!isoDateStr) return { dbFormat: '', isoFormat: '' };
+  const d = new Date(isoDateStr);
+  if (isNaN(d.getTime())) return { dbFormat: '', isoFormat: '' };
+  
+  const dbFormat = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
+  const isoFormat = isoDateStr;
+  return { dbFormat, isoFormat };
+};
+
 export default function EmployeeDashboard() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
@@ -66,6 +103,7 @@ export default function EmployeeDashboard() {
 
   // Dark Mode State
   const [darkMode, setDarkMode] = useState(false);
+  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     if (localStorage.getItem('theme') === 'dark') {
@@ -370,13 +408,43 @@ export default function EmployeeDashboard() {
     );
   }
 
-  const completedTasks = tasksList.filter(t => t.status === 'DONE').length;
-  const pendingTasks = tasksList.filter(t => t.status !== 'DONE').length;
+  const todayIso = new Date().toISOString().split('T')[0];
 
-  const myClientTasks = allClientTasks.filter(task => {
+  const employeeTasksList = tasksList;
+
+  const employeeMyClientTasks = allClientTasks.filter(task => {
     if (!task.workingOn || !currentUser?.name) return false;
     return task.workingOn.toLowerCase().includes(currentUser.name.toLowerCase());
   });
+
+  const completedTasks = employeeTasksList.filter(t => t.status === 'DONE').length;
+  const pendingTasks = employeeTasksList.filter(t => t.status !== 'DONE').length;
+
+  const formats = getFilterFormats(filterDate);
+
+  const filteredTasksList = employeeTasksList.filter(task => {
+    if (!filterDate) return true;
+    return task.dueDate === formats.isoFormat;
+  });
+
+  const filteredClientTasks = employeeMyClientTasks.filter(ct => {
+    if (!filterDate) return true;
+    return convertDbDateToIso(ct.date) === formats.isoFormat;
+  });
+
+  const myDepartmentClientTasks = allClientTasks.filter(t => {
+    return t.workingOn ? t.workingOn === currentUser?.name : t.assignTo === currentUser?.department;
+  });
+
+  const filteredDeptClientTasks = myDepartmentClientTasks.filter(ct => {
+    if (!filterDate) return true;
+    return convertDbDateToIso(ct.date) === formats.isoFormat;
+  });
+
+  const todaysTasksCount = [
+    ...employeeTasksList.filter(t => t.status !== 'DONE' && t.dueDate === todayIso),
+    ...employeeMyClientTasks.filter(ct => ct.status !== 'Completed' && ct.status !== 'Done' && convertDbDateToIso(ct.date) === todayIso)
+  ].length;
 
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
@@ -591,6 +659,88 @@ export default function EmployeeDashboard() {
                   </div>
                 </div>
 
+                {/* Today's Tasks List Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm mt-6">
+                  <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <div>
+                      <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Today's Tasks Checklist</h4>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Assigned deliverables and checklist duties for today.</p>
+                    </div>
+                    <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[9px] font-bold rounded-lg uppercase">Today ({todaysTasksCount})</span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {[
+                      ...employeeTasksList
+                        .filter(t => t.dueDate === todayIso)
+                        .map(t => ({ ...t, type: 'internal' })),
+                      ...employeeMyClientTasks
+                        .filter(ct => convertDbDateToIso(ct.date) === todayIso)
+                        .map(ct => ({ ...ct, type: 'client' }))
+                    ].length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-6 italic font-medium">No tasks scheduled for today.</p>
+                    ) : (
+                      [
+                        ...employeeTasksList
+                          .filter(t => t.dueDate === todayIso)
+                          .map(t => ({ ...t, type: 'internal' })),
+                        ...employeeMyClientTasks
+                          .filter(ct => convertDbDateToIso(ct.date) === todayIso)
+                          .map(ct => ({ ...ct, type: 'client' }))
+                      ].map((item) => (
+                        <div 
+                          key={item.type === 'internal' ? `today-int-${item.id}` : `today-cli-${item.id}`}
+                          className="p-3.5 border border-slate-200/60 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-800/10 flex items-center justify-between gap-3 text-xs shadow-sm hover:shadow transition duration-200"
+                        >
+                          <div className="space-y-1 overflow-hidden pr-2">
+                            <p className="font-bold text-slate-900 dark:text-white truncate">
+                              {item.type === 'internal' ? item.title : item.taskTitle}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] font-semibold text-slate-500">
+                              <span className={`px-1 rounded text-[8px] uppercase ${item.type === 'internal' ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/25 dark:text-blue-400'}`}>
+                                {item.type === 'internal' ? 'Internal' : 'Client Task'}
+                              </span>
+                              <span>•</span>
+                              <span className="truncate">{item.type === 'internal' ? `Assigned by: ${item.createdBy.name}` : `Client: ${item.businessName}`}</span>
+                              {item.priority && (
+                                <>
+                                  <span>•</span>
+                                  <span className={`uppercase text-[8px] font-bold ${item.priority === 'Urgent' ? 'text-red-500' : item.priority === 'High' ? 'text-orange-500' : 'text-slate-400'}`}>
+                                    {item.priority}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="shrink-0 flex items-center gap-2">
+                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider
+                              ${item.status === 'Completed' || item.status === 'DONE' 
+                                ? 'bg-emerald-100 text-emerald-850 dark:bg-emerald-950/40 dark:text-emerald-400' 
+                                : item.status === 'Working On It' || item.status === 'Working' 
+                                ? 'bg-orange-100 text-orange-850 dark:bg-orange-950/40 dark:text-orange-400' 
+                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'}`}
+                            >
+                              {item.status === 'DONE' || item.status === 'Completed' ? 'Done' : item.status}
+                            </span>
+                            <button 
+                              onClick={() => {
+                                setSelectedTaskForStatus(item);
+                                setNewStatus(item.status);
+                                setStatusReason(item.reason || '');
+                                setShowStatusModal(true);
+                              }}
+                              className="py-1 px-2.5 bg-blue-55 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg text-[9px] font-bold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition flex items-center gap-0.5 cursor-pointer"
+                            >
+                              Update
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
                 {/* Clock Logs history */}
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
                   <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-4">My Sign-in Sheet (Recent)</h4>
@@ -624,6 +774,17 @@ export default function EmployeeDashboard() {
               {/* Right Column: Brief summary cards */}
               <div className="lg:col-span-5 space-y-6">
                 
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border-l-4 border-l-blue-600 flex items-center justify-between transition hover:shadow-md animate-slide-up" style={{ animationDelay: '150ms' }}>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-455 font-extrabold uppercase tracking-widest block">Today's Assigned Tasks</span>
+                    <h3 className="text-2xl font-black text-blue-600 dark:text-blue-400">{todaysTasksCount}</h3>
+                    <p className="text-[9px] text-slate-400 font-medium">Scheduled for today</p>
+                  </div>
+                  <div className="w-10 h-10 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                </div>
+
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
                   <div className="space-y-1">
                     <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">Active Deliverables</span>
@@ -659,51 +820,57 @@ export default function EmployeeDashboard() {
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm mt-6">
                   <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-4">Today's Priorities</h4>
                   <div className="space-y-3">
-                    {[
-                      ...tasksList
-                        .filter(t => t.status !== 'DONE')
-                        .map(t => ({ ...t, type: 'internal' })),
-                      ...myClientTasks
-                        .filter(ct => ct.status !== 'Completed' && ct.status !== 'Done')
-                        .map(ct => ({ ...ct, type: 'client' }))
-                    ]
-                      .sort((a, b) => {
-                        const p = { Urgent: 3, High: 2, Normal: 1 };
-                        return (p[b.priority] || 1) - (p[a.priority] || 1);
-                      })
-                      .slice(0, 3)
-                      .map(item => (
-                        item.type === 'internal' ? (
-                          <div key={`int-${item.id}`} className="p-3 border border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/30">
-                            <div className="flex justify-between items-start gap-2">
-                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{item.title}</p>
-                              <span className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase
-                                ${item.priority === 'Urgent' ? 'bg-red-500 text-white' 
-                                  : item.priority === 'High' ? 'bg-orange-400 text-white' 
-                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                                {item.priority || 'Normal'}
-                              </span>
+                    {(() => {
+                      const todayIso = new Date().toISOString().split('T')[0];
+                      const todayTasks = [
+                        ...employeeTasksList
+                          .filter(t => t.status !== 'DONE' && (t.dueDate === todayIso))
+                          .map(t => ({ ...t, type: 'internal' })),
+                        ...employeeMyClientTasks
+                          .filter(ct => ct.status !== 'Completed' && ct.status !== 'Done' && (convertDbDateToIso(ct.date) === todayIso))
+                          .map(ct => ({ ...ct, type: 'client' }))
+                      ];
+                      
+                      if (todayTasks.length === 0) {
+                        return <p className="text-[10px] text-slate-400 text-center py-4 font-semibold">No pending tasks for today!</p>;
+                      }
+                      
+                      return todayTasks
+                        .sort((a, b) => {
+                          const p = { Urgent: 3, High: 2, Normal: 1 };
+                          return (p[b.priority] || 1) - (p[a.priority] || 1);
+                        })
+                        .slice(0, 3)
+                        .map(item => (
+                          item.type === 'internal' ? (
+                            <div key={`int-${item.id}`} className="p-3 border border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/30">
+                              <div className="flex justify-between items-start gap-2">
+                                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{item.title}</p>
+                                <span className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase
+                                  ${item.priority === 'Urgent' ? 'bg-red-500 text-white' 
+                                    : item.priority === 'High' ? 'bg-orange-400 text-white' 
+                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                                  {item.priority || 'Normal'}
+                                </span>
+                              </div>
+                              <p className="text-[9px] text-slate-400 mt-1.5 font-bold">Due: {item.dueDate || 'No limit'}</p>
                             </div>
-                            <p className="text-[9px] text-slate-500 mt-1 uppercase tracking-wider">Due: {item.dueDate || 'No limit'}</p>
-                          </div>
-                        ) : (
-                          <div key={`cli-${item.id}`} className="p-3 border border-blue-100 dark:border-blue-900/30 rounded-xl bg-blue-50/50 dark:bg-blue-900/10">
-                            <div className="flex justify-between items-start gap-2">
-                              <p className="text-xs font-bold text-blue-900 dark:text-blue-100 truncate">{item.taskTitle}</p>
-                              <span className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase
-                                ${item.priority === 'Urgent' ? 'bg-red-500 text-white' 
-                                  : item.priority === 'High' ? 'bg-orange-400 text-white' 
-                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                                {item.priority || 'Normal'}
-                              </span>
+                          ) : (
+                            <div key={`cli-${item.id}`} className="p-3 border border-blue-100 dark:border-blue-900/30 rounded-xl bg-blue-50/50 dark:bg-blue-900/10">
+                              <div className="flex justify-between items-start gap-2">
+                                <p className="text-xs font-bold text-blue-900 dark:text-blue-100 truncate">{item.taskTitle}</p>
+                                <span className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase
+                                  ${item.priority === 'Urgent' ? 'bg-red-500 text-white' 
+                                    : item.priority === 'High' ? 'bg-orange-400 text-white' 
+                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                                  {item.priority || 'Normal'}
+                                </span>
+                              </div>
+                              <p className="text-[9px] text-blue-600/70 dark:text-blue-400/70 mt-1.5 font-bold">Client: {item.businessName} | Date: {item.date}</p>
                             </div>
-                            <p className="text-[9px] text-blue-600/70 dark:text-blue-400/70 mt-1 uppercase tracking-wider">Client: {item.businessName}</p>
-                          </div>
-                        )
-                    ))}
-                    {tasksList.filter(t => t.status !== 'DONE').length === 0 && myClientTasks.filter(ct => ct.status !== 'Completed' && ct.status !== 'Done').length === 0 && (
-                      <p className="text-[10px] text-slate-400 text-center py-4 font-semibold">No pending tasks for today!</p>
-                    )}
+                          )
+                        ));
+                    })()}
                   </div>
                   <button onClick={() => setActiveTab('tasks')} className="mt-4 w-full py-2 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/50 transition uppercase tracking-wider">
                     View All Tasks →
@@ -718,16 +885,35 @@ export default function EmployeeDashboard() {
           {/* TAB 2: MY TASKS */}
           {activeTab === 'tasks' && (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-fade-in">
-              <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Assigned Duties checklist</h4>
-                <p className="text-xs text-slate-400 mt-1">Review task details and report updates by clicking status transitions.</p>
+              <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Assigned Duties checklist</h4>
+                  <p className="text-xs text-slate-400 mt-1">Review task details and report updates by clicking status transitions.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Date:</span>
+                  <input
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none"
+                  />
+                  {filterDate && (
+                    <button 
+                      onClick={() => setFilterDate('')}
+                      className="py-1 px-2.5 bg-red-55 hover:bg-red-100 dark:hover:bg-red-950/20 text-red-600 rounded-lg text-[10px] font-bold transition"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="p-6 space-y-4">
-                {tasksList.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-6">No tasks assigned yet. Check in with your Admin!</p>
+                {filteredTasksList.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-6">No tasks assigned yet for this date.</p>
                 ) : (
-                  tasksList.map((task) => (
+                  filteredTasksList.map((task) => (
                     <div 
                       key={task.id} 
                       className={`p-4 border rounded-xl flex items-center justify-between transition duration-300
@@ -786,10 +972,10 @@ export default function EmployeeDashboard() {
                 <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
                   <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-4">Client Deliverables</h4>
                   <div className="space-y-4">
-                    {myClientTasks.length === 0 ? (
-                      <p className="text-xs text-slate-400 text-center py-6">No client tasks assigned yet.</p>
+                    {filteredClientTasks.length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-6">No client tasks assigned yet for this date.</p>
                     ) : (
-                      myClientTasks.map((ct) => (
+                      filteredClientTasks.map((ct) => (
                         <div 
                           key={ct.id} 
                           className="p-4 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition duration-300 hover:shadow-md"
@@ -962,10 +1148,27 @@ export default function EmployeeDashboard() {
           {/* TAB: CLIENT TASKS */}
           {activeTab === 'client-tasks' && (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-fade-in">
-              <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+              <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">CRM Deliverables</h4>
                   <p className="text-xs text-slate-400 mt-1">View and manage client tasks assigned to you or your department.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Date:</span>
+                  <input
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none"
+                  />
+                  {filterDate && (
+                    <button 
+                      onClick={() => setFilterDate('')}
+                      className="py-1 px-2.5 bg-red-55 hover:bg-red-100 dark:hover:bg-red-950/20 text-red-600 rounded-lg text-[10px] font-bold transition"
+                    >
+                      Clear
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="p-6 space-y-8">
@@ -974,11 +1177,10 @@ export default function EmployeeDashboard() {
                 <div>
                   <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Client Tasks</h5>
                   <div className="space-y-4">
-                    {allClientTasks.filter(t => t.workingOn ? t.workingOn === currentUser?.name : t.assignTo === currentUser?.department).length === 0 ? (
-                      <p className="text-xs text-slate-400 text-center py-6">No client tasks found for you.</p>
+                    {filteredDeptClientTasks.length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-6">No client tasks found for this date.</p>
                     ) : (
-                      allClientTasks
-                        .filter(t => t.workingOn ? t.workingOn === currentUser?.name : t.assignTo === currentUser?.department)
+                      filteredDeptClientTasks
                         .map((task) => (
                           <div key={task.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/20">
                             <div className="flex flex-col md:flex-row justify-between gap-4">
@@ -999,7 +1201,7 @@ export default function EmployeeDashboard() {
                                   Date: <input 
                                     type="date" 
                                     className="bg-transparent border-b border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-blue-500 mx-1 px-1"
-                                    defaultValue={task.date || ''}
+                                    value={convertDbDateToIso(task.date)}
                                     onChange={async (e) => {
                                       await fetch(`/api/client-tasks/${task.id}`, {
                                         method: 'PUT',

@@ -22,6 +22,7 @@ export async function POST() {
     }
 
     cookieStore.delete('userId');
+    cookieStore.delete('clientId');
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Logout error:', error);

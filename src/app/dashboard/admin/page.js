@@ -24,7 +24,10 @@ import {
   ThumbsDown,
   Moon,
   Sun,
-  Send
+  Send,
+  AlertTriangle,
+  RefreshCw,
+  MessageSquare
 } from 'lucide-react';
 
 const SERVICES_PRICING = {
@@ -134,11 +137,14 @@ export default function AdminDashboard() {
   const [clientFormReady, setClientFormReady] = useState(true);
   const [clientFormActive, setClientFormActive] = useState(true);
   const [clientFormNotes, setClientFormNotes] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState('Full');
+  const [paidAmount, setPaidAmount] = useState('19499');
+  const [actualNotes, setActualNotes] = useState('');
 
   // Deliverable Assignment States
   const [showDeliverableAssignmentModal, setShowDeliverableAssignmentModal] = useState(false);
   const [pendingClientSave, setPendingClientSave] = useState(null); // 'ADD' or 'EDIT'
-  const [assignedStaff, setAssignedStaff] = useState({ c: '', r: '', a: '', sm: '' });
+  const [assignedStaff, setAssignedStaff] = useState({ c: 'AUTO', r: 'AUTO', a: 'AUTO', sm: 'AUTO' });
 
   // Client Tasks states
   const [selectedClientTasks, setSelectedClientTasks] = useState([]);
@@ -158,6 +164,15 @@ export default function AdminDashboard() {
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const [toast, setToast] = useState({ message: '', type: '' });
+
+  // Renewal Filters State
+  const [renewalFilter, setRenewalFilter] = useState('All');
+  const [renewalSearch, setRenewalSearch] = useState('');
+
+  // Client Feedbacks & Concerns states
+  const [feedbacksList, setFeedbacksList] = useState([]);
+  const [feedbackAdminFilter, setFeedbackAdminFilter] = useState('All'); // 'All', 'Feedback', 'Concern', 'Pending', 'Reviewed'
+  const [feedbackAdminSearch, setFeedbackAdminSearch] = useState('');
 
   // Dark Mode State
   const [darkMode, setDarkMode] = useState(false);
@@ -284,6 +299,11 @@ export default function AdminDashboard() {
       const cdData = await cdRes.json();
       setAllClientDeliveries(cdData.deliveries || []);
 
+      // Fetch client feedbacks/concerns
+      const fbRes = await fetch('/api/client/feedback');
+      const fbData = await fbRes.json();
+      setFeedbacksList(fbData.feedbacks || []);
+
       // Calculate Metrics
       const totalStaff = fetchedUsers.filter(u => u.role === 'EMPLOYEE').length;
       const activeTasks = fetchedTasks.filter(t => t.status !== 'DONE').length;
@@ -309,6 +329,29 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleMarkFeedbackReviewed = async (id) => {
+    setFormLoading(true);
+    try {
+      const res = await fetch(`/api/client/feedback/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Reviewed' })
+      });
+      if (res.ok) {
+        showToast('Feedback marked as reviewed successfully!');
+        await refreshData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to update feedback status.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error updating feedback status.');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   const resetClientForm = (client = null) => {
     setFormError('');
     if (client) {
@@ -328,6 +371,27 @@ export default function AdminDashboard() {
       setClientFormReady(client.accountReady);
       setClientFormActive(client.active);
       setClientFormNotes(client.notes || '');
+      
+      let pStatus = 'Full';
+      let pAmt = client.packageAmount.toString();
+      let aNotes = '';
+      try {
+        if (client.notes) {
+          const parsed = JSON.parse(client.notes);
+          if (parsed && typeof parsed === 'object') {
+            pStatus = parsed.paymentStatus || 'Full';
+            pAmt = parsed.paidAmount !== undefined ? parsed.paidAmount.toString() : client.packageAmount.toString();
+            aNotes = parsed.actualNotes || '';
+          } else {
+            aNotes = client.notes;
+          }
+        }
+      } catch (e) {
+        aNotes = client.notes || '';
+      }
+      setPaymentStatus(pStatus);
+      setPaidAmount(pAmt);
+      setActualNotes(aNotes);
     } else {
       setSelectedClient(null);
       let nextId = 'AID-0001';
@@ -345,7 +409,7 @@ export default function AdminDashboard() {
       setClientFormDate(new Date().toISOString().split('T')[0]);
       setClientFormServices('Meta Ads');
       setClientFormPkg('Standard(Meta Ads)');
-      setClientFormAmt('2000');
+      setClientFormAmt('19499');
       setClientFormContact('');
       setClientFormEmail('');
       setClientFormWebsite('');
@@ -354,7 +418,11 @@ export default function AdminDashboard() {
       setClientFormReady(true);
       setClientFormActive(true);
       setClientFormNotes('');
+      setPaymentStatus('Full');
+      setPaidAmount('19499');
+      setActualNotes('');
     }
+    setAssignedStaff({ c: 'AUTO', r: 'AUTO', a: 'AUTO', sm: 'AUTO' });
   };
 
   const handleAddClient = async (e) => {
@@ -398,7 +466,11 @@ export default function AdminDashboard() {
         requirement: clientFormReq,
         accountReady: clientFormReady,
         active: clientFormActive,
-        notes: clientFormNotes
+        notes: JSON.stringify({
+          paymentStatus,
+          paidAmount: parseFloat(paidAmount) || 0,
+          actualNotes
+        })
       };
 
       const res = await fetch(url, {
@@ -438,15 +510,18 @@ export default function AdminDashboard() {
       const rCount = parseInt(reqBuilder.r);
       const aCount = parseInt(reqBuilder.a);
 
-      const resolveStaff = (staffId) => {
+      const resolveStaff = (staffId, defaultDept) => {
+        if (staffId === 'AUTO') {
+          return { assignTo: defaultDept, workingOn: 'AUTO' };
+        }
         const staff = employeesList.find(e => e.id.toString() === staffId);
         return staff ? { assignTo: staff.department, workingOn: staff.name } : { assignTo: 'Unknown', workingOn: '' };
       };
 
-      const cStaff = assignedStaff.c ? resolveStaff(assignedStaff.c) : null;
-      const rStaff = assignedStaff.r ? resolveStaff(assignedStaff.r) : null;
-      const aStaff = assignedStaff.a ? resolveStaff(assignedStaff.a) : null;
-      const smStaff = assignedStaff.sm ? resolveStaff(assignedStaff.sm) : null;
+      const cStaff = assignedStaff.c ? resolveStaff(assignedStaff.c, 'Graphic Designer') : null;
+      const rStaff = assignedStaff.r ? resolveStaff(assignedStaff.r, 'Video Editor') : null;
+      const aStaff = assignedStaff.a ? resolveStaff(assignedStaff.a, 'Ai Video Editor') : null;
+      const smStaff = assignedStaff.sm ? resolveStaff(assignedStaff.sm, 'Digital Marketing Executive') : null;
 
       for (let i = 1; i <= cCount; i++) items.push(['SM Graphic', i, cStaff, 'Graphic']);
       for (let i = 1; i <= rCount; i++) items.push(['SM Reels', i, rStaff, 'Reel']);
@@ -678,6 +753,71 @@ export default function AdminDashboard() {
       await refreshClientTasks(selectedClient.id);
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const parseDbDate = (dateStr) => {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0]);
+      const monthName = parts[1];
+      const year = parseInt(parts[2]);
+      const months = {
+        jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+        jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+      };
+      const month = months[monthName.toLowerCase()];
+      if (month !== undefined && !isNaN(day) && !isNaN(year)) {
+        return new Date(year, month, day);
+      }
+    }
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const getClientPlanStatus = (client) => {
+    const start = parseDbDate(client.joiningDate);
+    if (!start) return { status: 'Unknown', daysLeft: 0, expiryDateStr: '' };
+    
+    const expiry = new Date(start);
+    expiry.setDate(expiry.getDate() + 21); // 21-day cycle
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    expiry.setHours(0, 0, 0, 0);
+    
+    const diffTime = expiry.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    const expiryDateStr = expiry.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
+    
+    if (diffDays < 0) {
+      return { status: 'Expired', daysLeft: diffDays, expiryDateStr };
+    } else if (diffDays <= 3) {
+      return { status: 'Expiring Soon', daysLeft: diffDays, expiryDateStr };
+    }
+    return { status: 'Active', daysLeft: diffDays, expiryDateStr };
+  };
+
+  const handleRenewClientPlan = async (clientDbId, bizName) => {
+    if (!confirm(`Are you sure you want to renew the plan for "${bizName}"? Setup/onboarding tasks will be skipped; only content deliverables (Creatives, Reels, AI Videos, Weekly Reports) will be generated for the new 21-day cycle.`)) return;
+    
+    setFormLoading(true);
+    try {
+      const res = await fetch(`/api/clients/${clientDbId}/renew`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to renew plan');
+      
+      showToast(`Plan successfully renewed for ${bizName}! ${data.taskCount} content tasks generated starting from ${data.newJoiningDate}.`);
+      await refreshData();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setFormLoading(false);
     }
   };
 
@@ -980,6 +1120,13 @@ export default function AdminDashboard() {
     u.department.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const expiringClientsList = clientsList.filter(client => {
+    if (!client.active) return false;
+    const { status } = getClientPlanStatus(client);
+    return status === 'Expired' || status === 'Expiring Soon';
+  });
+  const expiringCount = expiringClientsList.length;
+
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
       
@@ -1081,6 +1228,40 @@ export default function AdminDashboard() {
             >
               <CheckSquare className="w-4 h-4" />
               CRM Deliverables
+            </button>
+
+            <button
+              onClick={() => setActiveTab('feedback')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'feedback'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              Client Feedback
+              {feedbacksList.filter(f => f.status === 'Pending').length > 0 && (
+                <span className="ml-auto w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold animate-pulse">
+                  {feedbacksList.filter(f => f.status === 'Pending').length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('renewals')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'renewals'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <RefreshCw className={`w-4 h-4 ${expiringCount > 0 ? 'animate-spin-slow text-orange-500' : ''}`} />
+              Renew Plan
+              {expiringCount > 0 && (
+                <span className="ml-auto w-5 h-5 bg-orange-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold animate-pulse">
+                  {expiringCount}
+                </span>
+              )}
             </button>
 
             <button
@@ -1190,6 +1371,27 @@ export default function AdminDashboard() {
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
             <div className="space-y-8 animate-fade-in">
+              {expiringCount > 0 && (
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-amber-955/20 dark:to-orange-955/20 border border-orange-200 dark:border-orange-900/60 p-4 rounded-2xl flex items-center justify-between gap-4 shadow-sm animate-pulse-soft">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Plan Renewals Required!</h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        {expiringCount} client plan(s) have expired or are finishing within the next 3 days.
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setActiveTab('renewals')}
+                    className="py-2 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-orange-500/20 whitespace-nowrap shrink-0"
+                  >
+                    View Renewals
+                  </button>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 
                 {/* Total Staff Card */}
@@ -1909,6 +2111,196 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* TAB: CLIENT FEEDBACK & CONCERNS */}
+          {activeTab === 'feedback' && (
+            <div className="space-y-6 animate-fade-in text-xs">
+              
+              {/* Stats Summary cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider">Total Submissions</span>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">{feedbacksList.length}</div>
+                  <span className="text-[9px] text-slate-400 font-medium">All reviews and concerns received</span>
+                </div>
+                
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1 border-l-4 border-l-red-500">
+                  <span className="text-[10px] text-red-500 font-extrabold uppercase tracking-wider">Pending Work Concerns</span>
+                  <div className="text-xl font-bold text-red-655 dark:text-red-400 mt-1">
+                    {feedbacksList.filter(f => f.type === 'Concern' && f.status === 'Pending').length}
+                  </div>
+                  <span className="text-[9px] text-slate-400 font-medium">Urgent issues needing response</span>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1 border-l-4 border-l-emerald-500">
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-500 font-extrabold uppercase tracking-wider">Client Feedback Reviews</span>
+                  <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                    {feedbacksList.filter(f => f.type === 'Feedback').length}
+                  </div>
+                  <span className="text-[9px] text-slate-400 font-medium">Average Rating: {(
+                    feedbacksList.filter(f => f.type === 'Feedback' && f.rating).reduce((acc, curr) => acc + curr.rating, 0) / 
+                    (feedbacksList.filter(f => f.type === 'Feedback' && f.rating).length || 1)
+                  ).toFixed(1)} ★</span>
+                </div>
+              </div>
+
+              {/* Action Toolbar */}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div className="relative flex items-center w-full max-w-md">
+                  <Search className="absolute left-3 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={feedbackAdminSearch}
+                    onChange={(e) => setFeedbackAdminSearch(e.target.value)}
+                    placeholder="Search by client name, client ID, or message..."
+                    className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl focus:outline-none focus:border-blue-600 text-xs transition"
+                  />
+                </div>
+
+                <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+                  {[
+                    { key: 'All', label: 'All Submissions' },
+                    { key: 'Concern', label: 'Work Concerns' },
+                    { key: 'Feedback', label: 'Reviews / Feedbacks' },
+                    { key: 'Pending', label: 'Pending Action' },
+                    { key: 'Reviewed', label: 'Reviewed' }
+                  ].map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => setFeedbackAdminFilter(f.key)}
+                      className={`px-3.5 py-1.5 rounded-lg text-[9px] font-bold uppercase transition cursor-pointer ${
+                        feedbackAdminFilter === f.key
+                          ? 'bg-blue-650 text-white shadow-sm shadow-blue-500/10'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Main List */}
+              <div className="grid grid-cols-1 gap-6">
+                {feedbacksList
+                  .filter(fb => {
+                    const q = feedbackAdminSearch.toLowerCase();
+                    const matchesSearch = 
+                      fb.businessName.toLowerCase().includes(q) ||
+                      fb.clientId.toLowerCase().includes(q) ||
+                      fb.message.toLowerCase().includes(q);
+                    
+                    if (!matchesSearch) return false;
+                    
+                    if (feedbackAdminFilter === 'All') return true;
+                    if (feedbackAdminFilter === 'Concern') return fb.type === 'Concern';
+                    if (feedbackAdminFilter === 'Feedback') return fb.type === 'Feedback';
+                    if (feedbackAdminFilter === 'Pending') return fb.status === 'Pending';
+                    if (feedbackAdminFilter === 'Reviewed') return fb.status === 'Reviewed';
+                    return true;
+                  }).length === 0 ? (
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-12 text-center text-slate-400 border border-slate-200 dark:border-slate-800 italic">
+                      No client feedbacks or concerns match the active filter criteria.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {feedbacksList
+                        .filter(fb => {
+                          const q = feedbackAdminSearch.toLowerCase();
+                          const matchesSearch = 
+                            fb.businessName.toLowerCase().includes(q) ||
+                            fb.clientId.toLowerCase().includes(q) ||
+                            fb.message.toLowerCase().includes(q);
+                          
+                          if (!matchesSearch) return false;
+                          
+                          if (feedbackAdminFilter === 'All') return true;
+                          if (feedbackAdminFilter === 'Concern') return fb.type === 'Concern';
+                          if (feedbackAdminFilter === 'Feedback') return fb.type === 'Feedback';
+                          if (feedbackAdminFilter === 'Pending') return fb.status === 'Pending';
+                          if (feedbackAdminFilter === 'Reviewed') return fb.status === 'Reviewed';
+                          return true;
+                        })
+                        .map(fb => {
+                          const isConcern = fb.type === 'Concern';
+                          const isPending = fb.status === 'Pending';
+                          const dateObj = new Date(fb.createdAt);
+                          
+                          return (
+                            <div 
+                              key={fb.id} 
+                              className={`bg-white dark:bg-slate-900 rounded-2xl p-5 border shadow-sm flex flex-col justify-between gap-4 transition-all hover:shadow-md ${
+                                isConcern 
+                                  ? isPending 
+                                    ? 'border-red-200 dark:border-red-900/60 bg-red-50/5 dark:bg-red-955/5' 
+                                    : 'border-slate-200 dark:border-slate-800'
+                                  : 'border-slate-200 dark:border-slate-800'
+                              }`}
+                            >
+                              <div className="space-y-3">
+                                <div className="flex justify-between items-start gap-2">
+                                  <div>
+                                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">{fb.businessName}</h4>
+                                    <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">ID: {fb.clientId} | Rep: {fb.clientName || 'N/A'}</p>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                                      isConcern 
+                                        ? 'bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-450 border border-red-205 dark:border-red-900/50' 
+                                        : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-450 border border-emerald-205 dark:border-emerald-900/40'
+                                    }`}>
+                                      {fb.type}
+                                    </span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider ${
+                                      isPending 
+                                        ? 'bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-450 border border-orange-205 dark:border-orange-900/40 animate-pulse' 
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                                    }`}>
+                                      {fb.status}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Stars for feedback */}
+                                {!isConcern && fb.rating && (
+                                  <div className="flex items-center text-amber-500 text-xs">
+                                    {Array.from({ length: 5 }).map((_, idx) => (
+                                      <span key={idx}>{idx < fb.rating ? '★' : '☆'}</span>
+                                    ))}
+                                  </div>
+                                )}
+
+                                <p className="text-slate-700 dark:text-slate-350 font-medium whitespace-pre-wrap leading-relaxed text-[10.5px]">
+                                  {fb.message}
+                                </p>
+                              </div>
+
+                              <div className="border-t border-slate-100 dark:border-slate-800/80 pt-3 mt-2 flex items-center justify-between">
+                                <span className="text-[9px] text-slate-400 font-semibold">
+                                  Submitted: {dateObj.toLocaleDateString()} {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                
+                                {isPending && (
+                                  <button
+                                    onClick={() => handleMarkFeedbackReviewed(fb.id)}
+                                    disabled={formLoading}
+                                    className="py-1 px-3 bg-blue-50 hover:bg-blue-100 dark:bg-blue-955/40 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-900/50 text-blue-700 dark:text-blue-400 font-bold rounded-lg transition text-[9px] cursor-pointer disabled:opacity-50"
+                                  >
+                                    Mark Reviewed
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      }
+                    </div>
+                  )
+                }
+              </div>
+
+            </div>
+          )}
+
           {/* TAB 8: GLOBAL CAMPAIGN DELIVERIES */}
           {activeTab === 'campaign-deliveries' && (
             <div className="space-y-6 animate-fade-in text-xs">
@@ -2081,6 +2473,269 @@ export default function AdminDashboard() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          )}
+          
+          {/* TAB: PLAN RENEWALS */}
+          {activeTab === 'renewals' && (
+            <div className="space-y-6 animate-fade-in text-xs">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Renew Plan</h4>
+                  <p className="text-xs text-slate-400 mt-1">Review active plan cycles, view expiring contracts, and renew subscription plans for clients.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-355 text-[10px] font-bold rounded-lg border border-slate-200/60 dark:border-slate-700">
+                    Expired/Expiring: <span className="text-orange-500 font-extrabold">{expiringCount}</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                
+                {/* Search and Filters Bar */}
+                <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  
+                  {/* Status Buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { key: 'All', label: 'All Contracts', count: clientsList.filter(c => c.active).length },
+                      { key: 'Expired', label: 'Expired', count: clientsList.filter(c => c.active && getClientPlanStatus(c).status === 'Expired').length, color: 'text-red-500 bg-red-50 dark:bg-red-950/20' },
+                      { key: 'Expiring Soon', label: 'Expiring Soon', count: clientsList.filter(c => c.active && getClientPlanStatus(c).status === 'Expiring Soon').length, color: 'text-orange-500 bg-orange-50 dark:bg-orange-955/20' },
+                      { key: 'Active', label: 'Active', count: clientsList.filter(c => c.active && getClientPlanStatus(c).status === 'Active').length, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-955/20' }
+                    ].map(btn => (
+                      <button
+                        key={btn.key}
+                        onClick={() => setRenewalFilter(btn.key)}
+                        className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+                          renewalFilter === btn.key
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                        }`}
+                      >
+                        <span>{btn.label}</span>
+                        <span className={`px-1.5 py-0.5 text-[8px] rounded-md font-black
+                          ${renewalFilter === btn.key 
+                            ? 'bg-white/20 text-white' 
+                            : btn.color || 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
+                        >
+                          {btn.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Search input field */}
+                  <div className="relative w-full md:w-72 shrink-0">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                      <Search className="w-4 h-4" />
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Search business or client name..."
+                      value={renewalSearch}
+                      onChange={(e) => setRenewalSearch(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    />
+                    {renewalSearch && (
+                      <button
+                        onClick={() => setRenewalSearch('')}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-655"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  
+                </div>
+
+                <div className="overflow-x-auto p-4 space-y-6">
+                  {/* Renewable Contracts Table */}
+                  {(renewalFilter === 'All' || renewalFilter === 'Expired' || renewalFilter === 'Expiring Soon') && (
+                    <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                      <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-655 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                          Renew Plan Required
+                        </span>
+                        <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 text-[8px] font-bold rounded uppercase tracking-wider border border-orange-200 dark:border-orange-900/50">
+                          Renew Plan
+                        </span>
+                      </div>
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50/50 dark:bg-slate-800/20 text-slate-500 font-semibold border-b border-slate-200 dark:border-slate-800 text-[9px] uppercase tracking-wider">
+                            <th className="p-4">Business / Client Name</th>
+                            <th className="p-4">Current Cycle Date</th>
+                            <th className="p-4">Calculated Expiry Date</th>
+                            <th className="p-4">Days Remaining</th>
+                            <th className="p-4">Active Plan Services</th>
+                            <th className="p-4">Status</th>
+                            <th className="p-4 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {(() => {
+                            const list = clientsList
+                              .filter(c => c.active)
+                              .filter(c => {
+                                const { status } = getClientPlanStatus(c);
+                                if (renewalFilter === 'Expired') return status === 'Expired';
+                                if (renewalFilter === 'Expiring Soon') return status === 'Expiring Soon';
+                                return status === 'Expired' || status === 'Expiring Soon';
+                              })
+                              .filter(c => {
+                                if (!renewalSearch) return true;
+                                const q = renewalSearch.toLowerCase();
+                                return c.businessName.toLowerCase().includes(q) || c.clientId.toLowerCase().includes(q);
+                              });
+
+                            if (list.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan="7" className="p-8 text-center text-slate-400 italic">No renewable contracts found.</td>
+                                </tr>
+                              );
+                            }
+
+                            return list.map(client => {
+                              const { status, daysLeft, expiryDateStr } = getClientPlanStatus(client);
+                              return (
+                                <tr key={`renew-${client.id}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition text-slate-700 dark:text-slate-300">
+                                  <td className="p-4">
+                                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                      {client.businessName}
+                                      <span className="px-1 py-0.5 bg-orange-600 text-white text-[7px] font-black rounded uppercase tracking-widest shrink-0">
+                                        RENEW PLAN
+                                      </span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">ID: {client.clientId} | Person: {client.clientName || 'N/A'}</div>
+                                  </td>
+                                  <td className="p-4 font-semibold">{client.joiningDate}</td>
+                                  <td className="p-4 font-semibold">{expiryDateStr || 'N/A'}</td>
+                                  <td className="p-4 font-bold">
+                                    {daysLeft < 0 ? (
+                                      <span className="text-red-500 font-extrabold">{Math.abs(daysLeft)} day(s) overdue</span>
+                                    ) : daysLeft === 0 ? (
+                                      <span className="text-orange-500 font-extrabold">Today</span>
+                                    ) : (
+                                      <span className="text-slate-600 dark:text-slate-400">{daysLeft} day(s) left</span>
+                                    )}
+                                  </td>
+                                  <td className="p-4">
+                                    <div className="font-bold text-blue-650 dark:text-blue-400">{client.services}</div>
+                                    <div className="text-[9px] text-slate-450 mt-0.5">{client.packageName}</div>
+                                  </td>
+                                  <td className="p-4">
+                                    <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider
+                                      ${status === 'Expired' 
+                                        ? 'bg-red-105 text-red-800 dark:bg-red-955/40 dark:text-red-400 border border-red-200 dark:border-red-900/45' 
+                                        : 'bg-orange-100 text-orange-850 dark:bg-orange-955/40 dark:text-orange-400 border border-orange-200 dark:border-orange-900/45'}`}
+                                    >
+                                      {status}
+                                    </span>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <button
+                                      onClick={() => handleRenewClientPlan(client.id, client.businessName)}
+                                      disabled={formLoading}
+                                      className="py-1.5 px-3 rounded-lg text-[10px] font-bold transition flex items-center gap-1 shadow-sm disabled:opacity-50 ml-auto bg-orange-600 hover:bg-orange-700 text-white shadow-orange-500/10 cursor-pointer"
+                                    >
+                                      <RefreshCw className={`w-3 h-3 ${formLoading ? 'animate-spin' : ''}`} />
+                                      <span>Renew Plan</span>
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            });
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Active Contracts Table */}
+                  {(renewalFilter === 'All' || renewalFilter === 'Active') && (
+                    <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                      <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-655">
+                          Active Client Contracts (Ongoing)
+                        </span>
+                      </div>
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50/50 dark:bg-slate-800/20 text-slate-500 font-semibold border-b border-slate-200 dark:border-slate-800 text-[9px] uppercase tracking-wider">
+                            <th className="p-4">Business / Client Name</th>
+                            <th className="p-4">Current Cycle Date</th>
+                            <th className="p-4">Calculated Expiry Date</th>
+                            <th className="p-4">Days Remaining</th>
+                            <th className="p-4">Active Plan Services</th>
+                            <th className="p-4">Status</th>
+                            <th className="p-4 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {(() => {
+                            const list = clientsList
+                              .filter(c => c.active)
+                              .filter(c => getClientPlanStatus(c).status === 'Active')
+                              .filter(c => {
+                                if (!renewalSearch) return true;
+                                const q = renewalSearch.toLowerCase();
+                                return c.businessName.toLowerCase().includes(q) || c.clientId.toLowerCase().includes(q);
+                              });
+
+                            if (list.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan="7" className="p-8 text-center text-slate-400 italic">No active contracts found.</td>
+                                </tr>
+                              );
+                            }
+
+                            return list.map(client => {
+                              const { status, daysLeft, expiryDateStr } = getClientPlanStatus(client);
+                              return (
+                                <tr key={`active-${client.id}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition text-slate-700 dark:text-slate-300">
+                                  <td className="p-4">
+                                    <div className="font-bold text-slate-900 dark:text-white">{client.businessName}</div>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">ID: {client.clientId} | Person: {client.clientName || 'N/A'}</div>
+                                  </td>
+                                  <td className="p-4 font-semibold">{client.joiningDate}</td>
+                                  <td className="p-4 font-semibold">{expiryDateStr || 'N/A'}</td>
+                                  <td className="p-4 font-bold">
+                                    <span className="text-slate-600 dark:text-slate-400">{daysLeft} day(s) left</span>
+                                  </td>
+                                  <td className="p-4">
+                                    <div className="font-bold text-blue-650 dark:text-blue-400">{client.services}</div>
+                                    <div className="text-[9px] text-slate-455 mt-0.5">{client.packageName}</div>
+                                  </td>
+                                  <td className="p-4">
+                                    <span className="inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-955/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/45">
+                                      Active Plan
+                                    </span>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <button
+                                      onClick={() => handleRenewClientPlan(client.id, client.businessName)}
+                                      disabled={formLoading}
+                                      className="py-1.5 px-3 rounded-lg text-[10px] font-bold transition flex items-center gap-1 shadow-sm disabled:opacity-50 ml-auto bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                                    >
+                                      <RefreshCw className={`w-3 h-3 ${formLoading ? 'animate-spin' : ''}`} />
+                                      <span>Renew Plan</span>
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            });
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </div>
           )}
@@ -2672,8 +3327,12 @@ export default function AdminDashboard() {
                           setClientFormPkg(pkgName);
                           const pkgData = SERVICES_PRICING[clientFormServices].find(p => p.name === pkgName);
                           if (pkgData) {
-                            setClientFormAmt(pkgData.price.toString());
+                            const priceStr = pkgData.price.toString();
+                            setClientFormAmt(priceStr);
                             setClientFormReq(pkgData.req);
+                            if (paymentStatus === 'Full') {
+                              setPaidAmount(priceStr);
+                            }
                           }
                         }}
                         className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
@@ -2695,12 +3354,18 @@ export default function AdminDashboard() {
                     )}
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-700 dark:text-slate-350">Package Amount (₹)</label>
+                    <label className="font-bold text-slate-700 dark:text-slate-355">Package Amount (₹)</label>
                     <input
                       type="number"
                       required
                       value={clientFormAmt}
-                      onChange={(e) => setClientFormAmt(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setClientFormAmt(val);
+                        if (paymentStatus === 'Full') {
+                          setPaidAmount(val);
+                        }
+                      }}
                       placeholder="e.g. 5000"
                       className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
                     />
@@ -2759,7 +3424,7 @@ export default function AdminDashboard() {
                         onChange={(e) => setClientFormReady(e.target.checked)}
                         className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
                       />
-                      <span>Account / Page Ready?</span>
+                      <span>Business Page / Sector Ready?</span>
                     </label>
                     <label className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                       <input
@@ -2799,11 +3464,84 @@ export default function AdminDashboard() {
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 dark:text-slate-350">Payment Type</label>
+                    <select
+                      value={paymentStatus}
+                      onChange={(e) => {
+                        const status = e.target.value;
+                        setPaymentStatus(status);
+                        if (status === 'Full') {
+                          setPaidAmount(clientFormAmt);
+                        } else if (status === 'Partial') {
+                          const pkg = parseFloat(clientFormAmt) || 0;
+                          const rec = parseFloat(paidAmount) || 0;
+                          if (rec >= pkg) {
+                            setPaidAmount((pkg / 2).toString());
+                          }
+                        }
+                      }}
+                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
+                    >
+                      <option value="Full">Full Payment</option>
+                      <option value="Partial">Partial Payment</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 dark:text-slate-355">Received Amount (₹)</label>
+                    <input
+                      type="number"
+                      value={paidAmount}
+                      disabled={paymentStatus === 'Full'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setPaidAmount(val);
+                        const rec = parseFloat(val) || 0;
+                        const pkg = parseFloat(clientFormAmt) || 0;
+                        if (rec >= pkg) {
+                          setPaymentStatus('Full');
+                        } else {
+                          setPaymentStatus('Partial');
+                        }
+                      }}
+                      placeholder="e.g. 5000"
+                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none disabled:opacity-60 disabled:bg-slate-100 dark:disabled:bg-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] font-semibold flex justify-between items-center">
+                  <div>
+                    <span className="text-[9px] text-slate-450 uppercase block">Calculated Payment Status</span>
+                    {(() => {
+                      const pkg = parseFloat(clientFormAmt) || 0;
+                      const rec = parseFloat(paidAmount) || 0;
+                      const bal = pkg - rec;
+                      if (rec === 0) return <span className="text-red-655 dark:text-red-400 font-bold">UNPAID</span>;
+                      if (bal > 0) return <span className="text-amber-600 dark:text-amber-400 font-bold">PARTIALLY PAID</span>;
+                      if (bal === 0) return <span className="text-emerald-650 dark:text-emerald-450 font-bold">FULLY PAID</span>;
+                      return <span className="text-blue-600 dark:text-blue-400 font-bold">OVERPAID</span>;
+                    })()}
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[9px] text-slate-450 uppercase block">Pending Balance</span>
+                    {(() => {
+                      const pkg = parseFloat(clientFormAmt) || 0;
+                      const rec = parseFloat(paidAmount) || 0;
+                      const bal = pkg - rec;
+                      if (bal > 0) return <span className="text-red-655 dark:text-red-400 font-extrabold">₹{bal.toLocaleString()}</span>;
+                      if (bal < 0) return <span className="text-blue-600 dark:text-blue-455 font-extrabold">₹{Math.abs(bal).toLocaleString()} (Refund/Credit)</span>;
+                      return <span className="text-emerald-600 dark:text-emerald-455 font-extrabold">₹0 (Clear)</span>;
+                    })()}
+                  </div>
+                </div>
+
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-350">Execution Notes / Payments Details</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-350">Execution Notes / Additional Info</label>
                   <textarea
-                    value={clientFormNotes}
-                    onChange={(e) => setClientFormNotes(e.target.value)}
+                    value={actualNotes}
+                    onChange={(e) => setActualNotes(e.target.value)}
                     placeholder="Notes regarding client onboarding, custom package adjustments..."
                     rows="2"
                     className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
@@ -2856,6 +3594,7 @@ export default function AdminDashboard() {
                     className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none"
                   >
                     <option value="" disabled>Select Staff to Assign</option>
+                    <option value="AUTO">Auto Assign (First-In Round Robin)</option>
                     {employeesList
                       .filter(e => ['swapnil', 'danish'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
                       .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
@@ -2875,6 +3614,7 @@ export default function AdminDashboard() {
                     className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none"
                   >
                     <option value="" disabled>Select Staff to Assign</option>
+                    <option value="AUTO">Auto Assign (First-In Round Robin)</option>
                     {employeesList
                       .filter(e => ['sanmeet'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
                       .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
@@ -2894,6 +3634,7 @@ export default function AdminDashboard() {
                     className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none"
                   >
                     <option value="" disabled>Select Staff to Assign</option>
+                    <option value="AUTO">Auto Assign (First-In Round Robin)</option>
                     {employeesList
                       .filter(e => ['masoom', 'nouman', 'divyansh'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
                       .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
@@ -2912,6 +3653,7 @@ export default function AdminDashboard() {
                   className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none"
                 >
                   <option value="" disabled>Select Staff to Assign</option>
+                  <option value="AUTO">Auto Assign (First-In Round Robin)</option>
                   {employeesList
                     .filter(e => ['pujan', 'preet', 'rama'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
                     .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
@@ -3037,8 +3779,12 @@ export default function AdminDashboard() {
                           setClientFormPkg(pkgName);
                           const pkgData = SERVICES_PRICING[clientFormServices].find(p => p.name === pkgName);
                           if (pkgData) {
-                            setClientFormAmt(pkgData.price.toString());
+                            const priceStr = pkgData.price.toString();
+                            setClientFormAmt(priceStr);
                             setClientFormReq(pkgData.req);
+                            if (paymentStatus === 'Full') {
+                              setPaidAmount(priceStr);
+                            }
                           }
                         }}
                         className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
@@ -3064,7 +3810,13 @@ export default function AdminDashboard() {
                       type="number"
                       required
                       value={clientFormAmt}
-                      onChange={(e) => setClientFormAmt(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setClientFormAmt(val);
+                        if (paymentStatus === 'Full') {
+                          setPaidAmount(val);
+                        }
+                      }}
                       className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
                     />
                   </div>
@@ -3118,7 +3870,7 @@ export default function AdminDashboard() {
                         onChange={(e) => setClientFormReady(e.target.checked)}
                         className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
                       />
-                      <span>Account / Page Ready?</span>
+                      <span>Business Page / Sector Ready?</span>
                     </label>
                     <label className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                       <input
@@ -3157,11 +3909,85 @@ export default function AdminDashboard() {
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 dark:text-slate-355">Payment Type</label>
+                    <select
+                      value={paymentStatus}
+                      onChange={(e) => {
+                        const status = e.target.value;
+                        setPaymentStatus(status);
+                        if (status === 'Full') {
+                          setPaidAmount(clientFormAmt);
+                        } else if (status === 'Partial') {
+                          const pkg = parseFloat(clientFormAmt) || 0;
+                          const rec = parseFloat(paidAmount) || 0;
+                          if (rec >= pkg) {
+                            setPaidAmount((pkg / 2).toString());
+                          }
+                        }
+                      }}
+                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
+                    >
+                      <option value="Full">Full Payment</option>
+                      <option value="Partial">Partial Payment</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 dark:text-slate-355">Received Amount (₹)</label>
+                    <input
+                      type="number"
+                      value={paidAmount}
+                      disabled={paymentStatus === 'Full'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setPaidAmount(val);
+                        const rec = parseFloat(val) || 0;
+                        const pkg = parseFloat(clientFormAmt) || 0;
+                        if (rec >= pkg) {
+                          setPaymentStatus('Full');
+                        } else {
+                          setPaymentStatus('Partial');
+                        }
+                      }}
+                      placeholder="e.g. 5000"
+                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none disabled:opacity-60 disabled:bg-slate-100 dark:disabled:bg-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] font-semibold flex justify-between items-center">
+                  <div>
+                    <span className="text-[9px] text-slate-450 uppercase block">Calculated Payment Status</span>
+                    {(() => {
+                      const pkg = parseFloat(clientFormAmt) || 0;
+                      const rec = parseFloat(paidAmount) || 0;
+                      const bal = pkg - rec;
+                      if (rec === 0) return <span className="text-red-655 dark:text-red-400 font-bold">UNPAID</span>;
+                      if (bal > 0) return <span className="text-amber-600 dark:text-amber-400 font-bold">PARTIALLY PAID</span>;
+                      if (bal === 0) return <span className="text-emerald-650 dark:text-emerald-450 font-bold">FULLY PAID</span>;
+                      return <span className="text-blue-600 dark:text-blue-400 font-bold">OVERPAID</span>;
+                    })()}
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[9px] text-slate-450 uppercase block">Pending Balance</span>
+                    {(() => {
+                      const pkg = parseFloat(clientFormAmt) || 0;
+                      const rec = parseFloat(paidAmount) || 0;
+                      const bal = pkg - rec;
+                      if (bal > 0) return <span className="text-red-655 dark:text-red-400 font-extrabold">₹{bal.toLocaleString()}</span>;
+                      if (bal < 0) return <span className="text-blue-600 dark:text-blue-455 font-extrabold">₹{Math.abs(bal).toLocaleString()} (Refund/Credit)</span>;
+                      return <span className="text-emerald-600 dark:text-emerald-455 font-extrabold">₹0 (Clear)</span>;
+                    })()}
+                  </div>
+                </div>
+
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-355">Execution Notes / Payments Details</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-355">Execution Notes / Additional Info</label>
                   <textarea
-                    value={clientFormNotes}
-                    onChange={(e) => setClientFormNotes(e.target.value)}
+                    value={actualNotes}
+                    onChange={(e) => setActualNotes(e.target.value)}
+                    placeholder="Notes regarding client onboarding, custom package adjustments..."
                     rows="2"
                     className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
                   />
@@ -3270,12 +4096,78 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase">Audit & Execution Notes</span>
-                  <div className="bg-slate-50 dark:bg-slate-850 p-3 rounded-lg border border-slate-200/50 dark:border-slate-800 text-[11px] font-medium leading-relaxed">
-                    {selectedClient.notes || <span className="text-slate-400 italic">No additional notes added.</span>}
-                  </div>
-                </div>
+                {(() => {
+                  let pStatus = 'Full';
+                  let pAmt = selectedClient.packageAmount.toString();
+                  let aNotes = '';
+                  let isJson = false;
+                  try {
+                    if (selectedClient.notes) {
+                      const parsed = JSON.parse(selectedClient.notes);
+                      if (parsed && typeof parsed === 'object') {
+                        pStatus = parsed.paymentStatus || 'Full';
+                        pAmt = parsed.paidAmount !== undefined ? parsed.paidAmount.toString() : selectedClient.packageAmount.toString();
+                        aNotes = parsed.actualNotes || '';
+                        isJson = true;
+                      }
+                    }
+                  } catch (e) {
+                    aNotes = selectedClient.notes || '';
+                  }
+
+                  if (isJson) {
+                    const pkgAmt = selectedClient.packageAmount || 0;
+                    const recAmt = parseFloat(pAmt) || 0;
+                    const pendingBalance = pkgAmt - recAmt;
+
+                    return (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-850 p-3 rounded-lg border border-slate-200/50 dark:border-slate-800 text-[10px] font-semibold">
+                          <div>
+                            <span className="text-[8px] text-slate-400 font-extrabold uppercase block">Status</span>
+                            {(() => {
+                              if (recAmt === 0) return <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold mt-1 bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300">UNPAID</span>;
+                              if (pendingBalance > 0) return <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold mt-1 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">PARTIAL</span>;
+                              if (pendingBalance === 0) return <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold mt-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">FULLY PAID</span>;
+                              return <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold mt-1 bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">OVERPAID</span>;
+                            })()}
+                          </div>
+                          <div>
+                            <span className="text-[8px] text-slate-400 font-extrabold uppercase block">Received</span>
+                            <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-1">₹{recAmt.toLocaleString()}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[8px] text-slate-400 font-extrabold uppercase block">Pending</span>
+                            <p className={`font-extrabold mt-1 ${pendingBalance > 0 ? 'text-red-650 dark:text-red-400' : pendingBalance < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-450'}`}>
+                              {pendingBalance > 0 ? `₹${pendingBalance.toLocaleString()}` : pendingBalance < 0 ? `₹${Math.abs(pendingBalance).toLocaleString()} Cr` : '₹0'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="flex justify-between text-[9px] text-slate-450 px-1 font-bold">
+                            <span>Package Cost: ₹{pkgAmt.toLocaleString()}</span>
+                            <span>Payment Type: {pStatus === 'Full' ? 'Full' : 'Partial'}</span>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[10px] text-slate-400 font-extrabold uppercase">Audit & Execution Notes</span>
+                          <div className="bg-slate-50 dark:bg-slate-850 p-3 rounded-lg border border-slate-200/50 dark:border-slate-800 text-[11px] font-medium leading-relaxed">
+                            {aNotes || <span className="text-slate-400 italic">No execution notes added.</span>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase">Audit & Execution Notes</span>
+                      <div className="bg-slate-50 dark:bg-slate-850 p-3 rounded-lg border border-slate-200/50 dark:border-slate-800 text-[11px] font-medium leading-relaxed">
+                        {selectedClient.notes || <span className="text-slate-400 italic">No additional notes added.</span>}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Right Column: CRM Tasks Deliverables board */}
@@ -3348,21 +4240,41 @@ export default function AdminDashboard() {
                       <select
                         value={clientTaskFormWorkingOn}
                         onChange={(e) => setClientTaskFormWorkingOn(e.target.value)}
-                        className="w-full mt-1 p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded text-slate-900 dark:text-white focus:outline-none"
+                        className="w-full mt-1 p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded text-slate-900 dark:text-white focus:outline-none font-medium"
                       >
-                        <option value="">Select Staff</option>
-                        {employeesList.filter(e => {
-                          if (clientTaskFormAssignTo === 'Graphic Designer') {
-                            return ['swapnil', 'danish'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-                          } else if (clientTaskFormAssignTo === 'Video Editor') {
-                            return ['sanmeet'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-                          } else if (clientTaskFormAssignTo === 'AI Video Lead' || clientTaskFormAssignTo === 'AI Video Editor') {
-                            return ['masoom', 'nouman', 'divyansh'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-                          }
-                          return e.department === clientTaskFormAssignTo;
-                        }).map(e => (
-                          <option key={e.id} value={e.name}>{e.name}</option>
-                        ))}
+                        <option value="">Select Staff / Unassigned</option>
+                        <option value="AUTO">Auto Assign (First-In Round Robin)</option>
+                        <optgroup label="Matching Department">
+                          {usersList.filter(e => (e.role === 'EMPLOYEE' || e.role === 'TL')).filter(e => {
+                            if (clientTaskFormAssignTo === 'Graphic Designer') {
+                              return ['swapnil', 'danish'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
+                            } else if (clientTaskFormAssignTo === 'Video Editor') {
+                              return ['sanmeet'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
+                            } else if (clientTaskFormAssignTo === 'AI Video Lead' || clientTaskFormAssignTo === 'AI Video Editor') {
+                              return ['masoom', 'nouman', 'divyansh'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
+                            }
+                            return e.department === clientTaskFormAssignTo;
+                          }).map(e => (
+                            <option key={e.id} value={e.name}>{e.name} ({e.role})</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="All Other Staff">
+                          {usersList.filter(e => (e.role === 'EMPLOYEE' || e.role === 'TL')).filter(e => {
+                            let isMatched = false;
+                            if (clientTaskFormAssignTo === 'Graphic Designer') {
+                              isMatched = ['swapnil', 'danish'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
+                            } else if (clientTaskFormAssignTo === 'Video Editor') {
+                              isMatched = ['sanmeet'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
+                            } else if (clientTaskFormAssignTo === 'AI Video Lead' || clientTaskFormAssignTo === 'AI Video Editor') {
+                              isMatched = ['masoom', 'nouman', 'divyansh'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
+                            } else {
+                              isMatched = e.department === clientTaskFormAssignTo;
+                            }
+                            return !isMatched;
+                          }).map(e => (
+                            <option key={e.id} value={e.name}>{e.name} ({e.department || 'No Dept'} - {e.role})</option>
+                          ))}
+                        </optgroup>
                       </select>
                     </div>
                     <div>

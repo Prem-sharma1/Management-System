@@ -9,12 +9,19 @@ export async function PUT(request, { params }) {
     
     const cookieStore = await cookies();
     const userIdStr = cookieStore.get('userId')?.value;
-    if (!userIdStr) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    const clientIdStr = cookieStore.get('clientId')?.value;
+    
+    let requester = null;
+    let isClient = false;
+    
+    if (userIdStr) {
+      requester = await prisma.user.findUnique({ where: { id: parseInt(userIdStr) } });
+    } else if (clientIdStr) {
+      requester = await prisma.client.findUnique({ where: { clientId: clientIdStr } });
+      isClient = true;
     }
     
-    const requester = await prisma.user.findUnique({ where: { id: parseInt(userIdStr) } });
-    if (!requester || !['CEO', 'ADMIN', 'TL', 'EMPLOYEE'].includes(requester.role)) {
+    if (!requester || (isClient && !requester.active) || (!isClient && !['CEO', 'ADMIN', 'TL', 'EMPLOYEE'].includes(requester.role))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -23,7 +30,37 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
+    if (isClient && targetTask.clientId !== requester.clientId) {
+      return NextResponse.json({ error: 'Unauthorized access to this task' }, { status: 403 });
+    }
+
     const body = await request.json();
+
+    if (isClient) {
+      const { status, notes } = body;
+      if (status !== 'Revision') {
+        return NextResponse.json({ error: 'Clients can only request revisions' }, { status: 400 });
+      }
+
+      const updatedTask = await prisma.clientTask.update({
+        where: { id },
+        data: {
+          status: 'Revision',
+          notes: notes || targetTask.notes
+        }
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          action: `Client "${requester.businessName}" requested revision for task: ${updatedTask.taskTitle} (${updatedTask.taskId})`,
+          performedByName: requester.clientName || requester.businessName,
+          performedByRole: 'CLIENT'
+        }
+      });
+
+      return NextResponse.json({ task: updatedTask });
+    }
+
     const {
       taskId,
       taskTitle,

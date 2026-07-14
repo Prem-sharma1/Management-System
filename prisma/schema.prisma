@@ -81,6 +81,7 @@ model Client {
   packageAmount  Float
   contact        String?
   email          String?
+  password       String?
   website        String?
   sector         String?
   requirement    String?
@@ -90,6 +91,7 @@ model Client {
   createdAt      DateTime         @default(now())
   ClientDelivery ClientDelivery[]
   ClientTask     ClientTask[]
+  ClientFeedback ClientFeedback[]
 }
 
 model ClientDelivery {
@@ -136,4 +138,17 @@ model Plan {
   billingCycle String?
   features     Json
   createdAt    DateTime @default(now())
+}
+
+model ClientFeedback {
+  id           Int      @id @default(autoincrement())
+  clientId     String
+  businessName String
+  clientName   String?
+  type         String   // "Feedback" or "Concern"
+  rating       Int?     // Optional 1-5 rating
+  message      String
+  status       String   @default("Pending") // "Pending", "Reviewed"
+  createdAt    DateTime @default(now())
+  Client       Client   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
 }

@@ -123,12 +123,23 @@ export async function POST(request) {
 
     // Set cookie
     const cookieStore = await cookies();
-    cookieStore.set('userId', user.id.toString(), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
-      path: '/'
-    });
+    if (user.role === 'CLIENT') {
+      cookieStore.set('clientId', user.department, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 60 * 60 * 24 * 7, // 1 week
+        path: '/'
+      });
+      cookieStore.delete('userId');
+    } else {
+      cookieStore.set('userId', user.id.toString(), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 60 * 60 * 24 * 7, // 1 week
+        path: '/'
+      });
+      cookieStore.delete('clientId');
+    }
 
     // Create audit log
     await prisma.auditLog.create({

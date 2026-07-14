@@ -26,6 +26,8 @@ export default function DashboardGate() {
           router.push('/dashboard/employee');
         } else if (role === 'TL') {
           router.push('/dashboard/tl');
+        } else if (role === 'CLIENT') {
+          router.push('/dashboard/client');
         } else {
           router.push('/');
         }

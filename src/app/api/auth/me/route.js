@@ -8,6 +8,24 @@ export async function GET() {
     const userIdStr = cookieStore.get('userId')?.value;
 
     if (!userIdStr) {
+      const clientIdStr = cookieStore.get('clientId')?.value;
+      if (clientIdStr) {
+        const client = await prisma.client.findUnique({
+          where: { clientId: clientIdStr }
+        });
+        if (client && client.active) {
+          return NextResponse.json({
+            user: {
+              id: client.id,
+              name: client.clientName || client.businessName,
+              email: client.email || '',
+              role: 'CLIENT',
+              clientId: client.clientId,
+              businessName: client.businessName
+            }
+          });
+        }
+      }
       return NextResponse.json({ user: null });
     }
 
