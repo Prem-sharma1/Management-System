@@ -36,6 +36,25 @@ export default function LoginPage() {
 
   const isSpecialRole = email === 'nikhil@aidigital.com' || email === 'admin@workforce.com';
 
+  const [hasWelcomedNikhil, setHasWelcomedNikhil] = useState(false);
+
+  useEffect(() => {
+    const trimmedEmail = email.toLowerCase().trim();
+    if (trimmedEmail === 'nikhil@aidigital.com' && !hasWelcomedNikhil) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance("Welcome back Nikhil Sir! Please enter your email and password.");
+        const voices = window.speechSynthesis.getVoices();
+        const engVoice = voices.find(v => v.lang.startsWith('en-') && (v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('natural')));
+        if (engVoice) utterance.voice = engVoice;
+        window.speechSynthesis.speak(utterance);
+        setHasWelcomedNikhil(true);
+      }
+    } else if (trimmedEmail !== 'nikhil@aidigital.com') {
+      setHasWelcomedNikhil(false);
+    }
+  }, [email, hasWelcomedNikhil]);
+
   // Check if user is already logged in
   useEffect(() => {
     async function checkSession() {
