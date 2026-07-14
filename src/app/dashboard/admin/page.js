@@ -2259,7 +2259,7 @@ export default function AdminDashboard() {
               <button onClick={() => setShowAddUserModal(false)} className="text-slate-400 hover:text-slate-600 transition text-sm">✕</button>
             </div>
             
-            <form onSubmit={handleAddUser}>
+            <form onSubmit={handleAddUser} autoComplete="off">
               <div className="p-6 space-y-4 text-xs">
                 {formError && (
                   <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 text-red-705 rounded-xl flex items-center gap-2">
@@ -2288,6 +2288,7 @@ export default function AdminDashboard() {
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
                       placeholder="e.g. charlie@company.com"
+                      autoComplete="off"
                       className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
                     />
                   </div>
@@ -2302,6 +2303,7 @@ export default function AdminDashboard() {
                       value={formPassword}
                       onChange={(e) => setFormPassword(e.target.value)}
                       placeholder="e.g. EmpPass123"
+                      autoComplete="new-password"
                       className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
                     />
                   </div>
@@ -2366,7 +2368,7 @@ export default function AdminDashboard() {
               <button onClick={() => setShowEditUserModal(false)} className="text-slate-400 hover:text-slate-600 transition text-sm">✕</button>
             </div>
             
-            <form onSubmit={handleEditUser}>
+            <form onSubmit={handleEditUser} autoComplete="off">
               <div className="p-6 space-y-4 text-xs">
                 {formError && (
                   <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 text-red-700 rounded-xl flex items-center gap-2">
@@ -2393,6 +2395,7 @@ export default function AdminDashboard() {
                       required
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
+                      autoComplete="off"
                       className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
                     />
                   </div>
@@ -2406,6 +2409,7 @@ export default function AdminDashboard() {
                       value={formPassword}
                       onChange={(e) => setFormPassword(e.target.value)}
                       placeholder="New password (optional)"
+                      autoComplete="new-password"
                       className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
                     />
                   </div>
