@@ -20,14 +20,14 @@ async function main() {
   
   // Create password hashes
   const salt = await bcrypt.genSalt(10);
-  const ceoHash = await bcrypt.hash("ceo123", salt);
+  const ceoHash = await bcrypt.hash("AiDigitals@246", salt);
   const adminHash = await bcrypt.hash("admin123", salt);
   const empHash = await bcrypt.hash("emp123", salt);
   
   // CEO
   const ceo = await prisma.user.create({
     data: {
-      email: "ceo@workforce.com",
+      email: "nikhil@aidigital.com",
       name: "John Doe",
       password: ceoHash,
       role: "CEO",

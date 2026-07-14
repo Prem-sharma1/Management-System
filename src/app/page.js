@@ -30,7 +30,7 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [department, setDepartment] = useState('Engineering');
 
-  const isSpecialRole = email === 'ceo@workforce.com' || email === 'admin@workforce.com';
+  const isSpecialRole = email === 'nikhil@aidigital.com' || email === 'admin@workforce.com';
 
   // Check if user is already logged in
   useEffect(() => {
@@ -122,13 +122,6 @@ export default function LoginPage() {
       setError('Failed to connect to the server.');
       setLoading(false);
     }
-  };
-
-  const handleQuickLogin = (roleEmail, rolePassword) => {
-    setIsSignUp(false);
-    setEmail(roleEmail);
-    setPassword(rolePassword);
-    setError('');
   };
 
   if (checkingSession) {
@@ -328,44 +321,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {!isSignUp && (
-            <div className="mt-2 p-4 bg-slate-50 rounded-xl border border-slate-200 border-dashed animate-bounce-in" style={{ animationDelay: '400ms' }}>
-              <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                <UserCheck className="w-3.5 h-3.5 text-blue-600" />
-                Quick Demo Logins
-              </h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('ceo@workforce.com', 'ceo123')}
-                  className="py-2 px-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 border border-slate-200 rounded-lg shadow-sm transition"
-                >
-                  1. CEO
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('admin@workforce.com', 'admin123')}
-                  className="py-2 px-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 border border-slate-200 rounded-lg shadow-sm transition"
-                >
-                  2. Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('employee@workforce.com', 'emp123')}
-                  className="py-2 px-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 border border-slate-200 rounded-lg shadow-sm transition"
-                >
-                  3. Employee
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('tl@workforce.com', 'tl123')}
-                  className="py-2 px-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 border border-slate-200 rounded-lg shadow-sm transition"
-                >
-                  4. Team Leader
-                </button>
-              </div>
-            </div>
-          )}
 
         </div>
 
