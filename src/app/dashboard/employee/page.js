@@ -295,11 +295,11 @@ export default function EmployeeDashboard() {
       return;
     }
 
-    const isCompleted = newStatus === 'DONE' || newStatus === 'Completed';
+    const isCompleted = ['DONE', 'Completed', 'Client Review', 'Completion'].includes(newStatus);
     const isExempt = currentUser && ['pujan', 'preet', 'rama'].includes(currentUser.name.toLowerCase());
     
     if (isCompleted && !isExempt && !workSampleFile && (!selectedTaskForStatus?.workSampleUrl)) {
-      setFormError('A work sample file is required to mark this task as completed.');
+      setFormError('A work sample file is required to submit work for client review / completion.');
       return;
     }
 
@@ -432,8 +432,19 @@ export default function EmployeeDashboard() {
     return convertDbDateToIso(ct.date) === formats.isoFormat;
   });
 
+  const isWeeklyReportStaff = currentUser && ['pujan', 'preet', 'rama'].includes(currentUser.name.toLowerCase());
+
   const myDepartmentClientTasks = allClientTasks.filter(t => {
-    return t.workingOn ? t.workingOn === currentUser?.name : t.assignTo === currentUser?.department;
+    if (t.workingOn === currentUser?.name) return true;
+    
+    if (isWeeklyReportStaff && t.status === 'Client Review') {
+      const changedTime = t.statusChangedAt ? new Date(t.statusChangedAt).getTime() : new Date(t.createdAt).getTime();
+      const timeDiffHours = (new Date().getTime() - changedTime) / (1000 * 60 * 60);
+      if (timeDiffHours >= 24) return true;
+    }
+    
+    if (!t.workingOn && t.assignTo === currentUser?.department) return true;
+    return false;
   });
 
   const filteredDeptClientTasks = myDepartmentClientTasks.filter(ct => {
@@ -443,7 +454,7 @@ export default function EmployeeDashboard() {
 
   const todaysTasksCount = [
     ...employeeTasksList.filter(t => t.status !== 'DONE' && t.dueDate === todayIso),
-    ...employeeMyClientTasks.filter(ct => ct.status !== 'Completed' && ct.status !== 'Done' && convertDbDateToIso(ct.date) === todayIso)
+    ...employeeMyClientTasks.filter(ct => ct.status !== 'Completion' && convertDbDateToIso(ct.date) === todayIso)
   ].length;
 
   return (
@@ -715,13 +726,17 @@ export default function EmployeeDashboard() {
                           
                           <div className="shrink-0 flex items-center gap-2">
                             <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider
-                              ${item.status === 'Completed' || item.status === 'DONE' 
+                              ${item.status === 'Completion' || item.status === 'DONE' 
                                 ? 'bg-emerald-100 text-emerald-850 dark:bg-emerald-950/40 dark:text-emerald-400' 
-                                : item.status === 'Working On It' || item.status === 'Working' 
-                                ? 'bg-orange-100 text-orange-850 dark:bg-orange-950/40 dark:text-orange-400' 
-                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'}`}
+                                : item.status === 'Processing' 
+                                ? 'bg-blue-100 text-blue-850 dark:bg-blue-950/40 dark:text-blue-400' 
+                                : item.status === 'Client Review'
+                                ? 'bg-amber-100 text-amber-850 dark:bg-amber-950/40 dark:text-amber-400'
+                                : item.status === 'Revision'
+                                ? 'bg-red-100 text-red-850 dark:bg-red-955/40 dark:text-red-400'
+                                : 'bg-slate-100 text-slate-755 dark:bg-slate-800 dark:text-slate-400'}`}
                             >
-                              {item.status === 'DONE' || item.status === 'Completed' ? 'Done' : item.status}
+                              {item.status === 'DONE' || item.status === 'Completion' ? 'Done' : item.status}
                             </span>
                             <button 
                               onClick={() => {
@@ -995,7 +1010,7 @@ export default function EmployeeDashboard() {
                               <Building className="w-3 h-3 inline-block mr-1 text-slate-400" /> Client: <span className="font-bold">{ct.businessName}</span> | Post Type: {ct.postType || 'N/A'}
                             </p>
                             <p className="text-[10px] text-slate-400 font-medium mt-1">
-                              Date: {ct.date} | Status: <span className={`font-bold ${ct.status === 'Completed' || ct.status === 'DONE' ? 'text-emerald-500' : (ct.status === 'Overdue' || ct.status === 'OVERDUE') ? 'text-red-500' : 'text-blue-500'}`}>{ct.status}</span>
+                              Date: {ct.date} | Status: <span className={`font-bold ${['Completed', 'DONE', 'Completion'].includes(ct.status) ? 'text-emerald-500' : ['Overdue', 'OVERDUE'].includes(ct.status) ? 'text-red-500' : ['Pending', 'PENDING'].includes(ct.status) ? 'text-yellow-500' : 'text-blue-500'}`}>{ct.status}</span>
                             </p>
                             {ct.reason && (
                               <p className="text-[10px] text-red-500 font-medium italic mt-1.5 bg-red-50 dark:bg-red-950/20 p-1.5 rounded-md border border-red-100 dark:border-red-900/30">Reason: {ct.reason}</p>
@@ -1003,12 +1018,12 @@ export default function EmployeeDashboard() {
                           </div>
                           
                           <div className="shrink-0 flex items-center gap-2">
-                             {ct.status !== 'Completed' && (
+                             {ct.status !== 'Completion' && (
                                <button onClick={() => openStatusModal(ct, 'CLIENT')} className="py-1 px-3 border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-400 rounded-lg text-[9px] font-bold hover:bg-blue-50 dark:hover:bg-blue-950/20 transition flex items-center gap-1 shrink-0">
                                  <Play className="w-2.5 h-2.5" /> Update Status
                                </button>
                              )}
-                             {ct.status === 'Completed' && (
+                             {ct.status === 'Completion' && (
                                <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 text-[9px] font-bold rounded-lg uppercase tracking-wider">
                                  Completed
                                </span>
@@ -1194,6 +1209,18 @@ export default function EmployeeDashboard() {
                                     {task.priority || 'Normal'}
                                   </span>
                                   <span className="text-[10px] text-slate-400 font-normal ml-1">({task.taskId})</span>
+                                  {(() => {
+                                    const changedTime = task.statusChangedAt ? new Date(task.statusChangedAt).getTime() : new Date(task.createdAt).getTime();
+                                    const isEscalated = task.status === 'Client Review' && ((new Date().getTime() - changedTime) / (1000 * 60 * 60) >= 24);
+                                    if (isEscalated) {
+                                      return (
+                                        <span className="ml-2 inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400 animate-pulse">
+                                          Over 24h - Ready to Post
+                                        </span>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                 </p>
                                 <p className="text-xs text-slate-500">
                                   Client: <span className="font-semibold text-slate-700 dark:text-slate-300">{task.businessName}</span> | 
@@ -1248,8 +1275,12 @@ export default function EmployeeDashboard() {
                                   }}
                                 >
                                   <option value="Not Started">Not Started</option>
-                                  <option value="In Progress">In Progress</option>
-                                  <option value="Completed">Completed</option>
+                                  <option value="Processing">Processing</option>
+                                  <option value="Client Review">Client Review</option>
+                                  <option value="Revision">Revision</option>
+                                  <option value="Completion">Completion</option>
+                                  <option value="Pending">Pending</option>
+                                  <option value="Overdue">Overdue</option>
                                 </select>
                                 <textarea
                                   className="text-xs p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 w-48 resize-none"

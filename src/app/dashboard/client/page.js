@@ -174,6 +174,28 @@ export default function ClientDashboard() {
       setActionLoading(false);
     }
   };
+  const handleApproveTask = async (taskToApprove) => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/client-tasks/${taskToApprove.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'Completion'
+        })
+      });
+      if (res.ok) {
+        fetchClientData();
+      } else {
+        alert('Failed to approve task.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error approving task.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   // Date Parsing helper
   const parseDbDate = (dStr) => {
@@ -572,10 +594,13 @@ export default function ClientDashboard() {
                       </tr>
                     ) : (
                       filteredTasks.map((task) => {
-                        const isDone = ['Done', 'Completed', 'Completed (Done)'].includes(task.status);
+                        const isDone = ['Done', 'Completed', 'Completed (Done)', 'Completion'].includes(task.status);
                         const isRev = task.status === 'Revision';
-                        const isIP = task.status === 'In Progress';
-                        
+                        const isProcessing = task.status === 'Processing';
+                        const isClientReview = task.status === 'Client Review';
+                        const isPending = task.status === 'Pending';
+                        const isOverdue = task.status === 'Overdue';
+
                         return (
                           <tr key={task.id} className="hover:bg-slate-955/10 transition text-slate-300">
                             
@@ -587,6 +612,16 @@ export default function ClientDashboard() {
                             {/* Title */}
                             <td className="p-4 font-bold text-white">
                               {task.taskTitle}
+                              {task.workSampleUrl && (
+                                <a 
+                                  href={task.workSampleUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="block text-[10px] text-blue-400 hover:underline mt-1 font-bold"
+                                >
+                                  🔗 View Content Draft
+                                </a>
+                              )}
                             </td>
 
                             {/* Category */}
@@ -616,7 +651,10 @@ export default function ClientDashboard() {
                               <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider ${
                                 isDone ? 'bg-emerald-950 text-emerald-400 border border-emerald-900/50' :
                                 isRev ? 'bg-red-955 text-red-400 border border-red-900/50' :
-                                isIP ? 'bg-blue-950 text-blue-400 border border-blue-900/50' :
+                                isProcessing ? 'bg-blue-950 text-blue-400 border border-blue-900/50' :
+                                isClientReview ? 'bg-amber-955/40 text-amber-400 border border-amber-900/40' :
+                                isPending ? 'bg-orange-950 text-orange-400 border border-orange-900/50' :
+                                isOverdue ? 'bg-rose-950 text-rose-400 border border-rose-900/50' :
                                 'bg-slate-900 text-slate-400 border border-slate-800'
                               }`}>
                                 {isDone ? (
@@ -629,38 +667,65 @@ export default function ClientDashboard() {
                                     <AlertCircle className="w-3 h-3 text-red-400" />
                                     <span>Revision</span>
                                   </>
-                                ) : isIP ? (
+                                ) : isProcessing ? (
                                   <>
                                     <Clock className="w-3 h-3 text-blue-400 animate-pulse" />
-                                    <span>In Progress</span>
+                                    <span>Processing</span>
+                                  </>
+                                ) : isClientReview ? (
+                                  <>
+                                    <Info className="w-3 h-3 text-amber-400 animate-pulse" />
+                                    <span>Client Review</span>
+                                  </>
+                                ) : isPending ? (
+                                  <>
+                                    <Clock className="w-3 h-3 text-orange-400" />
+                                    <span>Pending</span>
+                                  </>
+                                ) : isOverdue ? (
+                                  <>
+                                    <AlertCircle className="w-3 h-3 text-rose-450" />
+                                    <span>Overdue</span>
                                   </>
                                 ) : (
                                   <>
                                     <Clock className="w-3 h-3 text-slate-400" />
-                                    <span>Scheduled</span>
+                                    <span>Not Started</span>
                                   </>
                                 )}
                               </span>
                             </td>
 
-                            {/* Revision request action */}
+                            {/* Actions */}
                             <td className="p-4 text-right pr-6 whitespace-nowrap">
-                              {!isDone && (
-                                <button
-                                  onClick={() => {
-                                    setRevisionTask(task);
-                                    setShowRevisionModal(true);
-                                  }}
-                                  className="py-1 px-2.5 rounded-lg text-[9px] font-bold transition flex items-center gap-1.5 shadow-sm ml-auto bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer"
-                                >
-                                  <MessageSquare className="w-3 h-3" />
-                                  <span>Request Revision</span>
-                                </button>
+                              {isClientReview && (
+                                <div className="flex gap-2 justify-end">
+                                  <button
+                                    onClick={() => handleApproveTask(task)}
+                                    className="py-1 px-2.5 rounded-lg text-[9px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer transition shadow-sm"
+                                  >
+                                    Approve & Complete
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setRevisionTask(task);
+                                      setShowRevisionModal(true);
+                                    }}
+                                    className="py-1 px-2.5 rounded-lg text-[9px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-350 border border-slate-700 cursor-pointer transition shadow-sm"
+                                  >
+                                    Request Revision
+                                  </button>
+                                </div>
                               )}
                               {isDone && (
                                 <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 justify-end">
                                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                                   Ready
+                                </span>
+                              )}
+                              {!isClientReview && !isDone && (
+                                <span className="text-[10px] text-slate-500 font-medium italic">
+                                  In Production
                                 </span>
                               )}
                             </td>

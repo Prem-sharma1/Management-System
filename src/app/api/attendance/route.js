@@ -108,13 +108,34 @@ export async function POST(request) {
         status = 'LATE';
       }
 
+      let finalLocation = location;
+      
+      // Server-side IP Geolocation fallback if client-side geolocation was blocked or unavailable
+      if (!finalLocation || finalLocation.includes('Blocked') || finalLocation.includes('not supported')) {
+        try {
+          const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || '';
+          
+          if (clientIp && clientIp !== '127.0.0.1' && clientIp !== '::1') {
+            const geoRes = await fetch(`http://ip-api.com/json/${clientIp}?fields=status,country,regionName,city,lat,lon`);
+            if (geoRes.ok) {
+              const geoData = await geoRes.json();
+              if (geoData && geoData.status === 'success') {
+                finalLocation = `${geoData.city}, ${geoData.regionName}, ${geoData.country} (IP Map: https://www.google.com/maps?q=${geoData.lat},${geoData.lon})`;
+              }
+            }
+          }
+        } catch (ipErr) {
+          console.warn('Server-side IP location resolution failed:', ipErr);
+        }
+      }
+
       const created = await prisma.attendance.create({
         data: {
           userId: requester.id,
           clockIn: now,
           status,
           date: todayStr,
-          location: location || null
+          location: finalLocation || 'Location Blocked/Unavailable'
         }
       });
 

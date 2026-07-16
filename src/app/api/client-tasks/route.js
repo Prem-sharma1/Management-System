@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { cookies } from 'next/headers';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
     const cookieStore = await cookies();
@@ -20,7 +22,14 @@ export async function GET(request) {
       return d1 - d2;
     });
 
-    return NextResponse.json({ tasks });
+    return NextResponse.json(
+      { tasks },
+      {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0, must-revalidate'
+        }
+      }
+    );
   } catch (error) {
     console.error('Global client tasks GET error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -28,7 +28,11 @@ export async function PUT(request, { params }) {
     }
 
     const body = await request.json();
-    const { name, email, password, role, department, salary, status, avatar } = body;
+    const { 
+      name, email, password, role, department, salary, status, avatar,
+      address, dob, exp, designation, mobile, lastSalary, dateOfJoining,
+      passportPhoto, aadharCard, panCard, marksheet10, marksheet12, graduation, otherDoc
+    } = body;
 
     const targetUser = await prisma.user.findUnique({ where: { id } });
     if (!targetUser) {
@@ -41,7 +45,7 @@ export async function PUT(request, { params }) {
 
     if (isSelf && !isPowerUser) {
       const updateData = {};
-      if (avatar) updateData.avatar = avatar;
+      if (avatar !== undefined) updateData.avatar = avatar;
       if (password) {
         const salt = await bcrypt.genSalt(10);
         updateData.password = await bcrypt.hash(password, salt);
@@ -56,11 +60,25 @@ export async function PUT(request, { params }) {
     }
 
     const data = {};
-    if (name) data.name = name;
-    if (email) data.email = email;
-    if (department) data.department = department;
-    if (avatar) data.avatar = avatar;
-    if (status) data.status = status;
+    if (name !== undefined) data.name = name;
+    if (email !== undefined) data.email = email;
+    if (department !== undefined) data.department = department;
+    if (avatar !== undefined) data.avatar = avatar;
+    if (status !== undefined) data.status = status;
+    if (address !== undefined) data.address = address;
+    if (dob !== undefined) data.dob = dob;
+    if (exp !== undefined) data.exp = exp;
+    if (designation !== undefined) data.designation = designation;
+    if (mobile !== undefined) data.mobile = mobile;
+    if (lastSalary !== undefined) data.lastSalary = parseFloat(lastSalary) || 0;
+    if (dateOfJoining !== undefined) data.dateOfJoining = dateOfJoining;
+    if (passportPhoto !== undefined) data.passportPhoto = passportPhoto;
+    if (aadharCard !== undefined) data.aadharCard = aadharCard;
+    if (panCard !== undefined) data.panCard = panCard;
+    if (marksheet10 !== undefined) data.marksheet10 = marksheet10;
+    if (marksheet12 !== undefined) data.marksheet12 = marksheet12;
+    if (graduation !== undefined) data.graduation = graduation;
+    if (otherDoc !== undefined) data.otherDoc = otherDoc;
     
     if (salary !== undefined) {
       if (requester.role === 'CEO') {

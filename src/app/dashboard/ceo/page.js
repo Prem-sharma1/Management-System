@@ -2455,8 +2455,12 @@ export default function CeoDashboard() {
                         className="w-full mt-1 p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded text-slate-900 dark:text-white focus:outline-none"
                       >
                         <option value="Not Started">Not Started</option>
-                        <option value="Working On It">Working On It</option>
-                        <option value="Complete Task">Complete Task</option>
+                        <option value="Processing">Processing</option>
+                        <option value="Client Review">Client Review</option>
+                        <option value="Revision">Revision</option>
+                        <option value="Completion">Completion</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Overdue">Overdue</option>
                       </select>
                     </div>
                   </div>
@@ -2489,7 +2493,7 @@ export default function CeoDashboard() {
                       <button
                         type="submit"
                         disabled={formLoading}
-                        className="w-full py-2 bg-blue-850 hover:bg-blue-900 text-white rounded font-bold transition disabled:opacity-50"
+                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold transition disabled:opacity-50"
                       >
                         {clientTaskEditMode ? 'Save' : 'Add Task'}
                       </button>

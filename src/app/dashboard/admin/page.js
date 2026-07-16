@@ -96,6 +96,7 @@ export default function AdminDashboard() {
   // Modal States
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [showViewUserModal, setShowViewUserModal] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -107,6 +108,24 @@ export default function AdminDashboard() {
   const [formDept, setFormDept] = useState('Engineering');
   const [formAvatar, setFormAvatar] = useState('👤');
   const [formStatus, setFormStatus] = useState('ACTIVE');
+  
+  // Form Fields - User Extra
+  const [formAddress, setFormAddress] = useState('');
+  const [formDob, setFormDob] = useState('');
+  const [formExp, setFormExp] = useState('');
+  const [formDesignation, setFormDesignation] = useState('');
+  const [formMobile, setFormMobile] = useState('');
+  const [formLastSalary, setFormLastSalary] = useState('');
+  const [formDateOfJoining, setFormDateOfJoining] = useState('');
+
+  // Form Fields - User Documents
+  const [passportPhoto, setPassportPhoto] = useState('');
+  const [aadharCard, setAadharCard] = useState('');
+  const [panCard, setPanCard] = useState('');
+  const [marksheet10, setMarksheet10] = useState('');
+  const [marksheet12, setMarksheet12] = useState('');
+  const [graduation, setGraduation] = useState('');
+  const [otherDoc, setOtherDoc] = useState('');
 
   // Form Fields - Task
   const [taskTitle, setTaskTitle] = useState('');
@@ -145,6 +164,16 @@ export default function AdminDashboard() {
   const [showDeliverableAssignmentModal, setShowDeliverableAssignmentModal] = useState(false);
   const [pendingClientSave, setPendingClientSave] = useState(null); // 'ADD' or 'EDIT'
   const [assignedStaff, setAssignedStaff] = useState({ c: 'AUTO', r: 'AUTO', a: 'AUTO', sm: 'AUTO' });
+  const [generateOptions, setGenerateOptions] = useState({
+    onboarding: true,
+    creatives: true,
+    reels: true,
+    aiVideos: true,
+    weeklyReports: true,
+  });
+  const allSelected = Object.values(generateOptions).every(Boolean);
+  const toggleAll = (checked) => setGenerateOptions({ onboarding: checked, creatives: checked, reels: checked, aiVideos: checked, weeklyReports: checked });
+  const toggleOption = (key, checked) => setGenerateOptions(prev => ({ ...prev, [key]: checked }));
 
   // Client Tasks states
   const [selectedClientTasks, setSelectedClientTasks] = useState([]);
@@ -230,7 +259,7 @@ export default function AdminDashboard() {
 
     const checkRecentClockIns = async () => {
       try {
-        const res = await fetch(`/api/attendance/recent?since=${lastCheckTime}`);
+        const res = await fetch(`/api/attendance/recent?since=${encodeURIComponent(lastCheckTime)}`);
         if (!res.ok) return;
         
         const data = await res.json();
@@ -249,7 +278,12 @@ export default function AdminDashboard() {
           refreshData();
         }
       } catch (err) {
-        console.error('Polling error:', err);
+        // Avoid triggering the Next.js Dev overlay for transient network fetch errors
+        if (err instanceof TypeError && err.message === 'Failed to fetch') {
+          console.warn('Polling network offline or server restarting:', err);
+        } else {
+          console.error('Polling error:', err);
+        }
       }
     };
 
@@ -574,20 +608,30 @@ export default function AdminDashboard() {
           { title: 'Ads Run', day: 6, staff: smStaff, type: 'Ads' }
         ];
 
-        onboardingTasks.forEach(ot => {
-          if (ot.staff) {
-            tasksToCreate.push({
-              taskTitle: ot.title,
-              assignTo: ot.staff.assignTo,
-              workingOn: ot.staff.workingOn,
-              postType: ot.type,
-              date: getFormattedDate(ot.day)
-            });
-          }
-        });
+        if (generateOptions.onboarding) {
+          onboardingTasks.forEach(ot => {
+            if (ot.staff) {
+              tasksToCreate.push({
+                taskTitle: ot.title,
+                assignTo: ot.staff.assignTo,
+                workingOn: ot.staff.workingOn,
+                postType: ot.type,
+                date: getFormattedDate(ot.day)
+              });
+            }
+          });
+        }
 
         balanced.forEach((item, index) => {
           const offset = 7 + index * 1;
+          const isCreative = item[0] === 'SM Graphic';
+          const isReel = item[0] === 'SM Reels';
+          const isAIVideo = item[0] === 'SM AI Videos';
+
+          if (isCreative && !generateOptions.creatives) return;
+          if (isReel && !generateOptions.reels) return;
+          if (isAIVideo && !generateOptions.aiVideos) return;
+
           if (item[2]) {
             tasksToCreate.push({
               taskTitle: `${item[0]} ${item[1]}`,
@@ -599,15 +643,17 @@ export default function AdminDashboard() {
           }
         });
 
-        [7, 14, 21, 28].forEach((offset, index) => {
-          tasksToCreate.push({
-            taskTitle: `Weekly Report ${index + 1}`,
-            assignTo: 'Ads Campaign Manager',
-            workingOn: smStaff ? smStaff.workingOn : '',
-            postType: 'Report',
-            date: getFormattedDate(offset)
+        if (generateOptions.weeklyReports) {
+          [7, 14, 21, 28].forEach((offset, index) => {
+            tasksToCreate.push({
+              taskTitle: `Weekly Report ${index + 1}`,
+              assignTo: 'Ads Campaign Manager',
+              workingOn: smStaff ? smStaff.workingOn : '',
+              postType: 'Report',
+              date: getFormattedDate(offset)
+            });
           });
-        });
+        }
       }
 
       if (tasksToCreate.length > 0) {
@@ -861,6 +907,31 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleFileUpload = async (e, setter) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    setFormLoading(true);
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setter(data.fileUrl);
+        showToast('File uploaded successfully!');
+      } else {
+        alert(data.error || 'Upload failed');
+      }
+    } catch (err) {
+      alert('Upload failed');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -878,6 +949,20 @@ export default function AdminDashboard() {
     setFormAvatar('👤');
     setFormStatus('ACTIVE');
     setFormError('');
+    setFormAddress('');
+    setFormDob('');
+    setFormExp('');
+    setFormDesignation('');
+    setFormMobile('');
+    setFormLastSalary('');
+    setFormDateOfJoining('');
+    setPassportPhoto('');
+    setAadharCard('');
+    setPanCard('');
+    setMarksheet10('');
+    setMarksheet12('');
+    setGraduation('');
+    setOtherDoc('');
   };
 
   const openAddUserModal = () => {
@@ -893,6 +978,20 @@ export default function AdminDashboard() {
     setFormDept(user.department);
     setFormAvatar(user.avatar || '👤');
     setFormStatus(user.status);
+    setFormAddress(user.address || '');
+    setFormDob(user.dob || '');
+    setFormExp(user.exp || '');
+    setFormDesignation(user.designation || '');
+    setFormMobile(user.mobile || '');
+    setFormLastSalary(user.lastSalary || '');
+    setFormDateOfJoining(user.dateOfJoining || '');
+    setPassportPhoto(user.passportPhoto || '');
+    setAadharCard(user.aadharCard || '');
+    setPanCard(user.panCard || '');
+    setMarksheet10(user.marksheet10 || '');
+    setMarksheet12(user.marksheet12 || '');
+    setGraduation(user.graduation || '');
+    setOtherDoc(user.otherDoc || '');
     setFormError('');
     setShowEditUserModal(true);
   };
@@ -917,7 +1016,21 @@ export default function AdminDashboard() {
           role: 'EMPLOYEE', // Admins can ONLY create employees
           department: formDept,
           salary: 0, // Admin cannot set salary
-          avatar: formAvatar
+          avatar: formAvatar,
+          address: formAddress,
+          dob: formDob,
+          exp: formExp,
+          designation: formDesignation,
+          mobile: formMobile,
+          lastSalary: formLastSalary,
+          dateOfJoining: formDateOfJoining,
+          passportPhoto,
+          aadharCard,
+          panCard,
+          marksheet10,
+          marksheet12,
+          graduation,
+          otherDoc
         })
       });
 
@@ -958,7 +1071,21 @@ export default function AdminDashboard() {
           password: formPassword || undefined,
           department: formDept,
           avatar: formAvatar,
-          status: formStatus
+          status: formStatus,
+          address: formAddress,
+          dob: formDob,
+          exp: formExp,
+          designation: formDesignation,
+          mobile: formMobile,
+          lastSalary: formLastSalary,
+          dateOfJoining: formDateOfJoining,
+          passportPhoto,
+          aadharCard,
+          panCard,
+          marksheet10,
+          marksheet12,
+          graduation,
+          otherDoc
         })
       });
 
@@ -1227,7 +1354,7 @@ export default function AdminDashboard() {
               }`}
             >
               <CheckSquare className="w-4 h-4" />
-              CRM Deliverables
+              Task Manager
             </button>
 
             <button
@@ -1570,7 +1697,7 @@ export default function AdminDashboard() {
 
                 <button
                   onClick={openAddUserModal}
-                  className="bg-blue-850 hover:bg-blue-900 text-white py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/10 shrink-0 transition"
+                  className="bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/10 shrink-0 transition"
                 >
                   <Plus className="w-4 h-4" />
                   Onboard Employee
@@ -1599,7 +1726,12 @@ export default function AdminDashboard() {
                         <tr key={user.id} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition">
                           <td className="p-4 font-bold flex items-center gap-2">
                             <span className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-850 border border-slate-200/50 dark:border-slate-700 flex items-center justify-center text-sm">{user.avatar || '👤'}</span>
-                            <span className="text-slate-900 dark:text-white">{user.name}</span>
+                            <button 
+                              onClick={() => { setSelectedUser(user); setShowViewUserModal(true); }} 
+                              className="text-blue-600 dark:text-blue-400 font-extrabold hover:underline text-left text-xs"
+                            >
+                              {user.name}
+                            </button>
                           </td>
                           <td className="p-4 text-slate-500">{user.email}</td>
                           <td className="p-4 text-slate-500 font-semibold">{user.department}</td>
@@ -2905,17 +3037,84 @@ export default function AdminDashboard() {
         </div>
       </main>
 
+      {/* --- VIEW USER MODAL --- */}
+      {showViewUserModal && selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden animate-scale-up max-h-[90vh] flex flex-col">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900 shrink-0">
+              <h3 className="font-extrabold text-sm text-slate-950 dark:text-white flex items-center gap-2">
+                <span>{selectedUser.avatar || '👤'}</span>
+                {selectedUser.name}'s Profile
+              </h3>
+              <button onClick={() => setShowViewUserModal(false)} className="text-slate-400 hover:text-slate-600 transition text-sm">✕</button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 space-y-6 text-xs">
+              
+              <div>
+                <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">Basic & Account Info</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div><span className="text-slate-400 font-bold">Email:</span> <p className="font-semibold text-slate-900 dark:text-white">{selectedUser.email}</p></div>
+                  <div><span className="text-slate-400 font-bold">Mobile:</span> <p className="font-semibold text-slate-900 dark:text-white">{selectedUser.mobile || 'N/A'}</p></div>
+                  <div><span className="text-slate-400 font-bold">DOB:</span> <p className="font-semibold text-slate-900 dark:text-white">{selectedUser.dob || 'N/A'}</p></div>
+                  <div className="col-span-full"><span className="text-slate-400 font-bold">Address:</span> <p className="font-semibold text-slate-900 dark:text-white">{selectedUser.address || 'N/A'}</p></div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">Employment Details</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div><span className="text-slate-400 font-bold">Department:</span> <p className="font-semibold text-slate-900 dark:text-white">{selectedUser.department}</p></div>
+                  <div><span className="text-slate-400 font-bold">Designation:</span> <p className="font-semibold text-slate-900 dark:text-white">{selectedUser.designation || 'N/A'}</p></div>
+                  <div><span className="text-slate-400 font-bold">Status:</span> <p className="font-semibold text-slate-900 dark:text-white">{selectedUser.status}</p></div>
+                  <div><span className="text-slate-400 font-bold">Experience:</span> <p className="font-semibold text-slate-900 dark:text-white">{selectedUser.exp || 'N/A'}</p></div>
+                  <div><span className="text-slate-400 font-bold">Last Salary:</span> <p className="font-semibold text-slate-900 dark:text-white">₹{selectedUser.lastSalary || 0}</p></div>
+                  <div><span className="text-slate-400 font-bold">Date of Joining:</span> <p className="font-semibold text-slate-900 dark:text-white">{selectedUser.dateOfJoining || 'N/A'}</p></div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">Documents</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { label: 'Passport Photo', url: selectedUser.passportPhoto },
+                    { label: 'Aadhar Card', url: selectedUser.aadharCard },
+                    { label: 'PAN Card', url: selectedUser.panCard },
+                    { label: '10th Marksheet', url: selectedUser.marksheet10 },
+                    { label: '12th Marksheet', url: selectedUser.marksheet12 },
+                    { label: 'Graduation / Degree', url: selectedUser.graduation },
+                    { label: 'Other Document', url: selectedUser.otherDoc },
+                  ].map((doc, idx) => (
+                    <div key={idx} className="flex justify-between items-center border border-slate-200 dark:border-slate-800 p-3 rounded-lg">
+                      <span className="font-bold text-slate-700 dark:text-slate-300">{doc.label}</span>
+                      {doc.url ? (
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-800/40 dark:text-blue-400 px-3 py-1.5 rounded text-[10px] font-bold transition">
+                          View Document
+                        </a>
+                      ) : (
+                        <span className="text-slate-400 italic text-[10px]">Not provided</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* --- ADD USER MODAL --- */}
       {showAddUserModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-scale-up">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden animate-scale-up max-h-[90vh] flex flex-col">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900 shrink-0">
               <h3 className="font-extrabold text-sm text-slate-950 dark:text-white">Onboard Employee</h3>
               <button onClick={() => setShowAddUserModal(false)} className="text-slate-400 hover:text-slate-600 transition text-sm">✕</button>
             </div>
             
-            <form onSubmit={handleAddUser} autoComplete="off">
-              <div className="p-6 space-y-4 text-xs">
+            <form onSubmit={handleAddUser} autoComplete="off" className="overflow-y-auto flex-1">
+              <div className="p-6 space-y-6 text-xs">
                 {formError && (
                   <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 text-red-705 rounded-xl flex items-center gap-2">
                     <AlertCircle className="w-4.5 h-4.5 shrink-0" />
@@ -2923,71 +3122,110 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
-                      placeholder="e.g. Charlie Brown"
-                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
-                    />
+                <div>
+                  <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">Basic & Account Info</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Name *</label>
+                      <input type="text" required value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Charlie Brown" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Email Address *</label>
+                      <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)} placeholder="e.g. charlie@company.com" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Password *</label>
+                      <input type="password" required value={formPassword} onChange={(e) => setFormPassword(e.target.value)} placeholder="e.g. EmpPass123" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Mobile No</label>
+                      <input type="text" value={formMobile} onChange={(e) => setFormMobile(e.target.value)} placeholder="e.g. +91 9876543210" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Date of Birth</label>
+                      <input type="date" value={formDob} onChange={(e) => setFormDob(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Profile Emoji</label>
+                      <input type="text" value={formAvatar} onChange={(e) => setFormAvatar(e.target.value)} placeholder="e.g. 👨‍💻" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white text-center focus:outline-none" />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Email Address</label>
-                    <input
-                      type="email"
-                      required
-                      value={formEmail}
-                      onChange={(e) => setFormEmail(e.target.value)}
-                      placeholder="e.g. charlie@company.com"
-                      autoComplete="off"
-                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Password</label>
-                    <input
-                      type="password"
-                      required
-                      value={formPassword}
-                      onChange={(e) => setFormPassword(e.target.value)}
-                      placeholder="e.g. EmpPass123"
-                      autoComplete="new-password"
-                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Department</label>
-                    <select
-                      value={formDept}
-                      onChange={(e) => setFormDept(e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
-                    >
-                      <option value="Engineering">Engineering</option>
-                      <option value="HR">HR</option>
-                      <option value="Sales">Sales</option>
-                      <option value="Marketing">Marketing</option>
-                      <option value="Design">Design</option>
-                    </select>
+                  <div className="space-y-1 mt-4">
+                    <label className="font-bold text-slate-700 dark:text-slate-300">Address</label>
+                    <textarea value={formAddress} onChange={(e) => setFormAddress(e.target.value)} placeholder="Full address..." rows="2" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"></textarea>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Profile Emoji Avatar</label>
-                    <input
-                      type="text"
-                      value={formAvatar}
-                      onChange={(e) => setFormAvatar(e.target.value)}
-                      placeholder="e.g. 👨‍💻"
-                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white text-center focus:outline-none"
-                    />
+                <div>
+                  <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">Employment Details</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Department</label>
+                      <select value={formDept} onChange={(e) => setFormDept(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none">
+                        <option value="Engineering">Engineering</option>
+                        <option value="HR">HR</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Design">Design</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Designation</label>
+                      <input type="text" value={formDesignation} onChange={(e) => setFormDesignation(e.target.value)} placeholder="e.g. Frontend Dev" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Experience</label>
+                      <input type="text" value={formExp} onChange={(e) => setFormExp(e.target.value)} placeholder="e.g. 3 Years" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Last Salary</label>
+                      <input type="number" value={formLastSalary} onChange={(e) => setFormLastSalary(e.target.value)} placeholder="e.g. 50000" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Date of Joining</label>
+                      <input type="date" value={formDateOfJoining} onChange={(e) => setFormDateOfJoining(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">Documents (Upload)</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Passport Size Photo</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setPassportPhoto)} className="w-full text-slate-500" />
+                      {passportPhoto && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Aadhar Card</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setAadharCard)} className="w-full text-slate-500" />
+                      {aadharCard && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">PAN Card</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setPanCard)} className="w-full text-slate-500" />
+                      {panCard && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">10th Marksheet</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setMarksheet10)} className="w-full text-slate-500" />
+                      {marksheet10 && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">12th Marksheet</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setMarksheet12)} className="w-full text-slate-500" />
+                      {marksheet12 && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Graduation / Degree</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setGraduation)} className="w-full text-slate-500" />
+                      {graduation && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Other Docs (Rent Agreement etc.)</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setOtherDoc)} className="w-full text-slate-500" />
+                      {otherDoc && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
                   </div>
                 </div>
 
@@ -3017,93 +3255,134 @@ export default function AdminDashboard() {
       {/* --- EDIT USER MODAL --- */}
       {showEditUserModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-scale-up">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden animate-scale-up max-h-[90vh] flex flex-col">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900 shrink-0">
               <h3 className="font-extrabold text-sm text-slate-950 dark:text-white">Modify Employee Records</h3>
               <button onClick={() => setShowEditUserModal(false)} className="text-slate-400 hover:text-slate-600 transition text-sm">✕</button>
             </div>
             
-            <form onSubmit={handleEditUser} autoComplete="off">
-              <div className="p-6 space-y-4 text-xs">
+            <form onSubmit={handleEditUser} autoComplete="off" className="overflow-y-auto flex-1">
+              <div className="p-6 space-y-6 text-xs">
                 {formError && (
-                  <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 text-red-700 rounded-xl flex items-center gap-2">
+                  <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 text-red-705 rounded-xl flex items-center gap-2">
                     <AlertCircle className="w-4.5 h-4.5 shrink-0" />
                     <span>{formError}</span>
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
-                    />
+                <div>
+                  <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">Basic & Account Info</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Name *</label>
+                      <input type="text" required value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Charlie Brown" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Email Address *</label>
+                      <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)} placeholder="e.g. charlie@company.com" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Update Password</label>
+                      <input type="password" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} placeholder="(Leave blank to keep)" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" autoComplete="new-password" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Mobile No</label>
+                      <input type="text" value={formMobile} onChange={(e) => setFormMobile(e.target.value)} placeholder="e.g. +91 9876543210" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Date of Birth</label>
+                      <input type="date" value={formDob} onChange={(e) => setFormDob(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1 flex gap-2">
+                      <div className="flex-1">
+                        <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Status</label>
+                        <select value={formStatus} onChange={(e) => setFormStatus(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none">
+                          <option value="ACTIVE">ACTIVE</option>
+                          <option value="INACTIVE">INACTIVE</option>
+                        </select>
+                      </div>
+                      <div className="w-16">
+                        <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Emoji</label>
+                        <input type="text" value={formAvatar} onChange={(e) => setFormAvatar(e.target.value)} placeholder="👨‍💻" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white text-center focus:outline-none" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Email Address</label>
-                    <input
-                      type="email"
-                      required
-                      value={formEmail}
-                      onChange={(e) => setFormEmail(e.target.value)}
-                      autoComplete="off"
-                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Update Password (Leave blank to keep)</label>
-                    <input
-                      type="password"
-                      value={formPassword}
-                      onChange={(e) => setFormPassword(e.target.value)}
-                      placeholder="New password (optional)"
-                      autoComplete="new-password"
-                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Department</label>
-                    <select
-                      value={formDept}
-                      onChange={(e) => setFormDept(e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
-                    >
-                      <option value="Engineering">Engineering</option>
-                      <option value="HR">HR</option>
-                      <option value="Sales">Sales</option>
-                      <option value="Marketing">Marketing</option>
-                      <option value="Design">Design</option>
-                    </select>
+                  <div className="space-y-1 mt-4">
+                    <label className="font-bold text-slate-700 dark:text-slate-300">Address</label>
+                    <textarea value={formAddress} onChange={(e) => setFormAddress(e.target.value)} placeholder="Full address..." rows="2" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"></textarea>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Account Status</label>
-                    <select
-                      value={formStatus}
-                      onChange={(e) => setFormStatus(e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
-                    >
-                      <option value="ACTIVE">ACTIVE</option>
-                      <option value="INACTIVE">INACTIVE</option>
-                    </select>
+                <div>
+                  <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">Employment Details</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Department</label>
+                      <select value={formDept} onChange={(e) => setFormDept(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none">
+                        <option value="Engineering">Engineering</option>
+                        <option value="HR">HR</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Design">Design</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Designation</label>
+                      <input type="text" value={formDesignation} onChange={(e) => setFormDesignation(e.target.value)} placeholder="e.g. Frontend Dev" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Experience</label>
+                      <input type="text" value={formExp} onChange={(e) => setFormExp(e.target.value)} placeholder="e.g. 3 Years" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Last Salary</label>
+                      <input type="number" value={formLastSalary} onChange={(e) => setFormLastSalary(e.target.value)} placeholder="e.g. 50000" className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Date of Joining</label>
+                      <input type="date" value={formDateOfJoining} onChange={(e) => setFormDateOfJoining(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Profile Emoji Avatar</label>
-                    <input
-                      type="text"
-                      value={formAvatar}
-                      onChange={(e) => setFormAvatar(e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white text-center focus:outline-none"
-                    />
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">Documents (Upload / Update)</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Passport Size Photo</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setPassportPhoto)} className="w-full text-slate-500" />
+                      {passportPhoto && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Aadhar Card</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setAadharCard)} className="w-full text-slate-500" />
+                      {aadharCard && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">PAN Card</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setPanCard)} className="w-full text-slate-500" />
+                      {panCard && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">10th Marksheet</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setMarksheet10)} className="w-full text-slate-500" />
+                      {marksheet10 && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">12th Marksheet</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setMarksheet12)} className="w-full text-slate-500" />
+                      {marksheet12 && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Graduation / Degree</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setGraduation)} className="w-full text-slate-500" />
+                      {graduation && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Other Docs (Rent Agreement etc.)</label>
+                      <input type="file" onChange={(e) => handleFileUpload(e, setOtherDoc)} className="w-full text-slate-500" />
+                      {otherDoc && <span className="text-green-600 font-bold block mt-1">✓ Uploaded</span>}
+                    </div>
                   </div>
                 </div>
 
@@ -3573,95 +3852,155 @@ export default function AdminDashboard() {
       {/* --- SMART DELIVERABLE ASSIGNMENT MODAL --- */}
       {showDeliverableAssignmentModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in text-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-scale-up">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-scale-up max-h-[90vh] flex flex-col">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 shrink-0">
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <Users className="w-4 h-4 text-blue-600" /> Auto-Assign Deliverables
               </h3>
               <p className="text-[10px] text-slate-500 mt-1">Assign these required deliverables to your creators.</p>
             </div>
             
-            <div className="p-6 space-y-5">
-              {parseInt(reqBuilder.c) > 0 && (
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 flex flex-col gap-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Graphic Creatives ({reqBuilder.c})</span>
-                    <span className="text-[9px] font-extrabold uppercase bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded">Graphic Designer</span>
+            <div className="p-4 space-y-3 overflow-y-auto flex-1">
+
+              {/* Content Type Checkboxes */}
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-extrabold text-blue-800 dark:text-blue-300 uppercase tracking-wider">Select Content to Generate</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={e => toggleAll(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-[11px] font-black text-blue-700 dark:text-blue-400">All Content</span>
+                  </label>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { key: 'onboarding',    label: 'Onboarding Tasks',  icon: '🚀', desc: 'Access, setup & ads run tasks' },
+                    { key: 'creatives',     label: 'Creatives (C)',     icon: '🎨', desc: `${reqBuilder.c} graphic posts` },
+                    { key: 'reels',         label: 'Reels / Shorts (R)',icon: '🎬', desc: `${reqBuilder.r} video reels` },
+                    { key: 'aiVideos',      label: 'AI Videos (AI)',    icon: '🤖', desc: `${reqBuilder.a} AI videos` },
+                    { key: 'weeklyReports', label: 'Weekly Reports',    icon: '📊', desc: '4 weekly report tasks' },
+                  ].map(opt => (
+                    <label
+                      key={opt.key}
+                      className={`flex items-start gap-1.5 p-2 rounded-lg border cursor-pointer transition ${
+                        generateOptions[opt.key]
+                          ? 'bg-white dark:bg-slate-800 border-blue-300 dark:border-blue-700 shadow-sm'
+                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 opacity-60'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={generateOptions[opt.key]}
+                        onChange={e => toggleOption(opt.key, e.target.checked)}
+                        className="w-3 h-3 rounded mt-0.5 border-slate-300 text-blue-600 focus:ring-blue-500 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-1">
+                          <span>{opt.icon}</span> {opt.label}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Staff Assignments — compact grid */}
+              <div className="space-y-2">
+              {parseInt(reqBuilder.c) > 0 && generateOptions.creatives && (
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Graphic Creatives ({reqBuilder.c})</span>
+                      <span className="text-[8px] font-extrabold uppercase bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded">Graphic Designer</span>
+                    </div>
+                    <select 
+                      value={assignedStaff.c} 
+                      onChange={e => setAssignedStaff({...assignedStaff, c: e.target.value})}
+                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px]"
+                    >
+                      <option value="" disabled>Select Staff to Assign</option>
+                      <option value="AUTO">Auto Assign (First-In Round Robin)</option>
+                      {employeesList
+                        .filter(e => ['swapnil', 'danish'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
+                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
+                    </select>
                   </div>
-                  <select 
-                    value={assignedStaff.c} 
-                    onChange={e => setAssignedStaff({...assignedStaff, c: e.target.value})}
-                    className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none"
-                  >
-                    <option value="" disabled>Select Staff to Assign</option>
-                    <option value="AUTO">Auto Assign (First-In Round Robin)</option>
-                    {employeesList
-                      .filter(e => ['swapnil', 'danish'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
-                      .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
-                  </select>
                 </div>
               )}
               
-              {parseInt(reqBuilder.r) > 0 && (
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 flex flex-col gap-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Reels / Shorts ({reqBuilder.r})</span>
-                    <span className="text-[9px] font-extrabold uppercase bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-400 px-2 py-0.5 rounded">Video Editor</span>
+              {parseInt(reqBuilder.r) > 0 && generateOptions.reels && (
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Reels / Shorts ({reqBuilder.r})</span>
+                      <span className="text-[8px] font-extrabold uppercase bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-400 px-1.5 py-0.5 rounded">Video Editor</span>
+                    </div>
+                    <select 
+                      value={assignedStaff.r} 
+                      onChange={e => setAssignedStaff({...assignedStaff, r: e.target.value})}
+                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px]"
+                    >
+                      <option value="" disabled>Select Staff to Assign</option>
+                      <option value="AUTO">Auto Assign (First-In Round Robin)</option>
+                      {employeesList
+                        .filter(e => ['sanmeet'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
+                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
+                    </select>
                   </div>
-                  <select 
-                    value={assignedStaff.r} 
-                    onChange={e => setAssignedStaff({...assignedStaff, r: e.target.value})}
-                    className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none"
-                  >
-                    <option value="" disabled>Select Staff to Assign</option>
-                    <option value="AUTO">Auto Assign (First-In Round Robin)</option>
-                    {employeesList
-                      .filter(e => ['sanmeet'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
-                      .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
-                  </select>
                 </div>
               )}
 
-              {parseInt(reqBuilder.a) > 0 && (
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 flex flex-col gap-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-800 dark:text-slate-200">AI Videos ({reqBuilder.a})</span>
-                    <span className="text-[9px] font-extrabold uppercase bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded">AI Lead</span>
+              {parseInt(reqBuilder.a) > 0 && generateOptions.aiVideos && (
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">AI Videos ({reqBuilder.a})</span>
+                      <span className="text-[8px] font-extrabold uppercase bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400 px-1.5 py-0.5 rounded">AI Lead</span>
+                    </div>
+                    <select 
+                      value={assignedStaff.a} 
+                      onChange={e => setAssignedStaff({...assignedStaff, a: e.target.value})}
+                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px]"
+                    >
+                      <option value="" disabled>Select Staff to Assign</option>
+                      <option value="AUTO">Auto Assign (First-In Round Robin)</option>
+                      {employeesList
+                        .filter(e => ['masoom', 'nouman', 'divyansh'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
+                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
+                    </select>
                   </div>
-                  <select 
-                    value={assignedStaff.a} 
-                    onChange={e => setAssignedStaff({...assignedStaff, a: e.target.value})}
-                    className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none"
-                  >
-                    <option value="" disabled>Select Staff to Assign</option>
-                    <option value="AUTO">Auto Assign (First-In Round Robin)</option>
-                    {employeesList
-                      .filter(e => ['masoom', 'nouman', 'divyansh'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
-                      .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
-                  </select>
                 </div>
               )}
 
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-slate-800 dark:text-slate-200">Weekly Reports (4)</span>
-                  <span className="text-[9px] font-extrabold uppercase bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded">Social Media Exec</span>
+              {generateOptions.weeklyReports && (
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Weekly Reports (4)</span>
+                      <span className="text-[8px] font-extrabold uppercase bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded">Social Media Exec</span>
+                    </div>
+                    <select 
+                      value={assignedStaff.sm} 
+                      onChange={e => setAssignedStaff({...assignedStaff, sm: e.target.value})}
+                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px]"
+                    >
+                      <option value="" disabled>Select Staff to Assign</option>
+                      <option value="AUTO">Auto Assign (First-In Round Robin)</option>
+                      {employeesList
+                        .filter(e => ['pujan', 'preet', 'rama'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
+                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
+                    </select>
+                  </div>
                 </div>
-                <select 
-                  value={assignedStaff.sm} 
-                  onChange={e => setAssignedStaff({...assignedStaff, sm: e.target.value})}
-                  className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none"
-                >
-                  <option value="" disabled>Select Staff to Assign</option>
-                  <option value="AUTO">Auto Assign (First-In Round Robin)</option>
-                  {employeesList
-                    .filter(e => ['pujan', 'preet', 'rama'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
-                    .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
-                </select>
+              )}
               </div>
             </div>
 
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end gap-2">
+            <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -3992,6 +4331,7 @@ export default function AdminDashboard() {
                     className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
                   />
                 </div>
+
               </div>
 
               <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end gap-2">
@@ -4297,8 +4637,12 @@ export default function AdminDashboard() {
                         className="w-full mt-1 p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded text-slate-900 dark:text-white focus:outline-none"
                       >
                         <option value="Not Started">Not Started</option>
-                        <option value="Working On It">Working On It</option>
-                        <option value="Complete Task">Complete Task</option>
+                        <option value="Processing">Processing</option>
+                        <option value="Client Review">Client Review</option>
+                        <option value="Revision">Revision</option>
+                        <option value="Completion">Completion</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Overdue">Overdue</option>
                       </select>
                     </div>
                   </div>
@@ -4331,7 +4675,7 @@ export default function AdminDashboard() {
                       <button
                         type="submit"
                         disabled={formLoading}
-                        className="w-full py-2 bg-blue-850 hover:bg-blue-900 text-white rounded font-bold transition disabled:opacity-50"
+                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold transition disabled:opacity-50"
                       >
                         {clientTaskEditMode ? 'Save' : 'Add Task'}
                       </button>

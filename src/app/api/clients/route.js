@@ -9,6 +9,8 @@ async function getRequester(cookieStore) {
   return await prisma.user.findUnique({ where: { id: parseInt(userIdStr) } });
 }
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const cookieStore = await cookies();
@@ -22,7 +24,14 @@ export async function GET() {
       orderBy: { id: 'desc' }
     });
 
-    return NextResponse.json({ clients });
+    return NextResponse.json(
+      { clients },
+      {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0, must-revalidate'
+        }
+      }
+    );
   } catch (error) {
     console.error('Clients GET error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

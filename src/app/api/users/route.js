@@ -1,3 +1,4 @@
+// Trigger hot reload
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { cookies } from 'next/headers';
@@ -28,6 +29,20 @@ export async function GET() {
         salary: true,
         status: true,
         avatar: true,
+        address: true,
+        dob: true,
+        exp: true,
+        designation: true,
+        mobile: true,
+        lastSalary: true,
+        dateOfJoining: true,
+        passportPhoto: true,
+        aadharCard: true,
+        panCard: true,
+        marksheet10: true,
+        marksheet12: true,
+        graduation: true,
+        otherDoc: true,
         createdAt: true
       },
       orderBy: { id: 'desc' }
@@ -49,7 +64,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { name, email, password, role, department, salary, avatar } = await request.json();
+    const { 
+      name, email, password, role, department, salary, avatar,
+      address, dob, exp, designation, mobile, lastSalary, dateOfJoining,
+      passportPhoto, aadharCard, panCard, marksheet10, marksheet12, graduation, otherDoc
+    } = await request.json();
 
     if (!name || !email || !password || !role || !department) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -76,7 +95,21 @@ export async function POST(request) {
         department,
         salary: parseFloat(salary) || 0,
         avatar: avatar || '👤',
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        address,
+        dob,
+        exp,
+        designation,
+        mobile,
+        lastSalary: parseFloat(lastSalary) || 0,
+        dateOfJoining,
+        passportPhoto,
+        aadharCard,
+        panCard,
+        marksheet10,
+        marksheet12,
+        graduation,
+        otherDoc
       }
     });
 

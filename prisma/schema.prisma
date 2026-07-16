@@ -16,6 +16,20 @@ model User {
   salary        Float          @default(0.0)
   status        String         @default("ACTIVE")
   avatar        String?
+  address       String?
+  dob           String?
+  exp           String?
+  designation   String?
+  mobile        String?
+  lastSalary    Float?         @default(0.0)
+  dateOfJoining String?
+  passportPhoto String?
+  aadharCard    String?
+  panCard       String?
+  marksheet10   String?
+  marksheet12   String?
+  graduation    String?
+  otherDoc      String?
   createdAt     DateTime       @default(now())
   attendance    Attendance[]
   leaveRequests LeaveRequest[]
@@ -126,8 +140,9 @@ model ClientTask {
   createdAt     DateTime @default(now())
   priority      String   @default("Normal")
   reason        String?
-  workSampleUrl String?
-  Client        Client   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  workSampleUrl   String?
+  statusChangedAt DateTime?
+  Client          Client   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
 }
 
 model Plan {

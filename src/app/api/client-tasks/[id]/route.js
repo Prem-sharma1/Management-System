@@ -38,21 +38,22 @@ export async function PUT(request, { params }) {
 
     if (isClient) {
       const { status, notes } = body;
-      if (status !== 'Revision') {
-        return NextResponse.json({ error: 'Clients can only request revisions' }, { status: 400 });
+      if (status !== 'Revision' && status !== 'Completion') {
+        return NextResponse.json({ error: 'Clients can only approve (Completion) or request revisions (Revision)' }, { status: 400 });
       }
 
       const updatedTask = await prisma.clientTask.update({
         where: { id },
         data: {
-          status: 'Revision',
-          notes: notes || targetTask.notes
+          status: status,
+          notes: notes !== undefined ? notes : targetTask.notes,
+          statusChangedAt: new Date()
         }
       });
 
       await prisma.auditLog.create({
         data: {
-          action: `Client "${requester.businessName}" requested revision for task: ${updatedTask.taskTitle} (${updatedTask.taskId})`,
+          action: `Client "${requester.businessName}" updated task status to "${status}": ${updatedTask.taskTitle} (${updatedTask.taskId})`,
           performedByName: requester.clientName || requester.businessName,
           performedByRole: 'CLIENT'
         }
@@ -80,7 +81,12 @@ export async function PUT(request, { params }) {
     if (date) data.date = date;
     if (assignTo !== undefined) data.assignTo = assignTo;
     if (workingOn !== undefined) data.workingOn = workingOn;
-    if (status) data.status = status;
+    if (status) {
+      data.status = status;
+      if (status !== targetTask.status) {
+        data.statusChangedAt = new Date();
+      }
+    }
     if (postType !== undefined) data.postType = postType;
     if (notes !== undefined) data.notes = notes;
     if (reason !== undefined) data.reason = reason;

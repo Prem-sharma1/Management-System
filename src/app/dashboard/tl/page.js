@@ -226,7 +226,32 @@ export default function TLDashboard() {
   // Clock operations
   const handleClockToggle = async () => {
     try {
-      const res = await fetch('/api/attendance', { method: 'POST' });
+      let locationLink = null;
+      
+      // If it's a clock-in (todayLog doesn't exist or clockOut exists), try to get location
+      if (!todayLog || todayLog.clockOut) {
+        if (navigator.geolocation) {
+          try {
+            const position = await new Promise((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+            });
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            locationLink = `https://www.google.com/maps?q=${lat},${lng}`;
+          } catch (geoErr) {
+            console.warn('Geolocation failed or blocked', geoErr);
+            locationLink = 'Location Blocked/Unavailable';
+          }
+        } else {
+          locationLink = 'Geolocation not supported by browser';
+        }
+      }
+
+      const res = await fetch('/api/attendance', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location: locationLink })
+      });
       const data = await res.json();
 
       if (!res.ok) {
@@ -820,14 +845,18 @@ export default function TLDashboard() {
                                     refreshData();
                                   }}
                                   className={`text-xs font-bold px-3 py-1.5 rounded-lg border outline-none
-                                    ${task.status === 'Complete Task' ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400'
-                                    : task.status === 'In Progress' ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
+                                    ${['Completed', 'DONE', 'Completion', 'Complete Task'].includes(task.status) ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400'
+                                    : ['Processing', 'In Progress'].includes(task.status) ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
                                     : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'}
                                   `}
                                 >
                                   <option value="Not Started">Not Started</option>
-                                  <option value="In Progress">In Progress</option>
-                                  <option value="Complete Task">Complete Task</option>
+                                  <option value="Processing">Processing</option>
+                                  <option value="Client Review">Client Review</option>
+                                  <option value="Revision">Revision</option>
+                                  <option value="Completion">Completion</option>
+                                  <option value="Pending">Pending</option>
+                                  <option value="Overdue">Overdue</option>
                                 </select>
                               </div>
                             </div>
@@ -880,14 +909,20 @@ export default function TLDashboard() {
                                     refreshData();
                                   }}
                                   className={`text-xs font-bold px-3 py-1.5 rounded-lg border outline-none
-                                    ${delivery.status === 'Completed' ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400'
-                                    : delivery.status === 'In Progress' ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
+                                    ${['Completed', 'DONE', 'Completion', 'Delivered'].includes(delivery.status) ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400'
+                                    : ['Processing', 'In Progress'].includes(delivery.status) ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
                                     : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'}
                                   `}
                                 >
-                                  <option value="Not Started">Not Started</option>
+                                  <option value="Pending">Pending</option>
                                   <option value="In Progress">In Progress</option>
-                                  <option value="Completed">Completed</option>
+                                  <option value="Delivered">Delivered</option>
+                                  <option value="Not Started">Not Started</option>
+                                  <option value="Processing">Processing</option>
+                                  <option value="Client Review">Client Review</option>
+                                  <option value="Revision">Revision</option>
+                                  <option value="Completion">Completion</option>
+                                  <option value="Overdue">Overdue</option>
                                 </select>
                               </div>
                             </div>
