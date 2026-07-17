@@ -17,7 +17,7 @@ export async function POST(request) {
     const cookieStore = await cookies();
     const requester = await getRequester(cookieStore);
 
-    if (!requester || (requester.role !== 'CEO' && requester.role !== 'ADMIN' && requester.role !== 'TL')) {
+    if (!requester) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

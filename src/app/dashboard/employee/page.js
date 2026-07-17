@@ -437,10 +437,13 @@ export default function EmployeeDashboard() {
   const myDepartmentClientTasks = allClientTasks.filter(t => {
     if (t.workingOn === currentUser?.name) return true;
     
-    if (isWeeklyReportStaff && t.status === 'Client Review') {
-      const changedTime = t.statusChangedAt ? new Date(t.statusChangedAt).getTime() : new Date(t.createdAt).getTime();
-      const timeDiffHours = (new Date().getTime() - changedTime) / (1000 * 60 * 60);
-      if (timeDiffHours >= 24) return true;
+    if (isWeeklyReportStaff) {
+      if (t.status === 'Completion') return true;
+      if (t.status === 'Client Review') {
+        const changedTime = t.statusChangedAt ? new Date(t.statusChangedAt).getTime() : new Date(t.createdAt).getTime();
+        const timeDiffMinutes = (new Date().getTime() - changedTime) / (1000 * 60);
+        if (timeDiffMinutes >= 10) return true;
+      }
     }
     
     if (!t.workingOn && t.assignTo === currentUser?.department) return true;
@@ -1210,17 +1213,26 @@ export default function EmployeeDashboard() {
                                   </span>
                                   <span className="text-[10px] text-slate-400 font-normal ml-1">({task.taskId})</span>
                                   {(() => {
-                                    const changedTime = task.statusChangedAt ? new Date(task.statusChangedAt).getTime() : new Date(task.createdAt).getTime();
-                                    const isEscalated = task.status === 'Client Review' && ((new Date().getTime() - changedTime) / (1000 * 60 * 60) >= 24);
-                                    if (isEscalated) {
-                                      return (
-                                        <span className="ml-2 inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400 animate-pulse">
-                                          Over 24h - Ready to Post
-                                        </span>
-                                      );
-                                    }
-                                    return null;
-                                  })()}
+                                      const changedTime = task.statusChangedAt ? new Date(task.statusChangedAt).getTime() : new Date(task.createdAt).getTime();
+                                      const timeDiffMinutes = (new Date().getTime() - changedTime) / (1000 * 60);
+                                      const isApproved = task.status === 'Completion';
+                                      const isAutoApproved = task.status === 'Client Review' && timeDiffMinutes >= 10;
+                                      
+                                      if (isApproved) {
+                                        return (
+                                          <span className="ml-2 inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
+                                            Approved - Ready to Post
+                                          </span>
+                                        );
+                                      } else if (isAutoApproved) {
+                                        return (
+                                          <span className="ml-2 inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-amber-100 text-amber-855 dark:bg-amber-955/40 dark:text-amber-400 animate-pulse">
+                                            Auto-Approved (10m) - Ready to Post
+                                          </span>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
                                 </p>
                                 <p className="text-xs text-slate-500">
                                   Client: <span className="font-semibold text-slate-700 dark:text-slate-300">{task.businessName}</span> | 
@@ -1421,7 +1433,10 @@ export default function EmployeeDashboard() {
                     ) : (
                        <>
                          <option value="Not Started">Not Started</option>
-                         <option value="Completed">Completed</option>
+                         <option value="Processing">Processing</option>
+                         <option value="Client Review">Client Review</option>
+                         <option value="Revision">Revision</option>
+                         <option value="Completion">Completion</option>
                          <option value="Pending">Pending (Blocked)</option>
                          <option value="Overdue">Overdue</option>
                        </>
@@ -1443,10 +1458,10 @@ export default function EmployeeDashboard() {
                   </div>
                 )}
 
-                {(newStatus === 'DONE' || newStatus === 'Completed') && currentUser && !['pujan', 'preet', 'rama'].includes(currentUser.name.toLowerCase()) && (
+                {['DONE', 'Completed', 'Client Review', 'Completion'].includes(newStatus) && currentUser && !['pujan', 'preet', 'rama'].includes(currentUser.name.toLowerCase()) && (
                   <div className="space-y-1 mt-2">
                     <label className="font-bold text-blue-600 dark:text-blue-400">Upload Work Sample <span className="text-red-500">*</span></label>
-                    <p className="text-[10px] text-slate-500 mb-1">Creative team members must attach today's work sample to complete the task.</p>
+                    <p className="text-[10px] text-slate-500 mb-1">Creative team members must attach today's work sample to submit for client review / completion.</p>
                     <input
                       type="file"
                       required={!selectedTaskForStatus?.workSampleUrl}
