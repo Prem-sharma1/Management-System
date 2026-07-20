@@ -248,14 +248,28 @@ export default function AdminDashboard() {
     setTimeout(() => setToast({ message: '', type: '' }), 4000);
   };
 
+  const fetchJson = async (url, options = {}) => {
+    try {
+      const res = await fetch(url, options);
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        return { ok: res.ok, status: res.status, data };
+      }
+      return { ok: res.ok, status: res.status, data: {} };
+    } catch (err) {
+      console.warn(`Fetch error for ${url}:`, err);
+      return { ok: false, status: 500, data: {} };
+    }
+  };
+
   // Auth check
   useEffect(() => {
     async function initDashboard() {
       try {
-        const res = await fetch('/api/auth/me');
-        const data = await res.json();
+        const { ok, data } = await fetchJson('/api/auth/me');
 
-        if (!res.ok || !data.user || data.user.role !== 'ADMIN') {
+        if (!ok || !data.user || data.user.role !== 'ADMIN') {
           router.push('/');
           return;
         }
@@ -277,24 +291,20 @@ export default function AdminDashboard() {
 
     const checkRecentClockIns = async () => {
       try {
-        const res = await fetch(`/api/attendance/recent?since=${encodeURIComponent(lastCheckTime)}`);
-        if (!res.ok) return;
+        const { ok, data } = await fetchJson(`/api/attendance/recent?since=${encodeURIComponent(lastCheckTime)}`);
+        if (!ok || !data.logs || data.logs.length === 0) return;
         
-        const data = await res.json();
+        // Update lastCheckTime to the most recent log's createdAt
+        const latestLog = data.logs[data.logs.length - 1];
+        lastCheckTime = latestLog.createdAt;
         
-        if (data.logs && data.logs.length > 0) {
-          // Update lastCheckTime to the most recent log's createdAt
-          const latestLog = data.logs[data.logs.length - 1];
-          lastCheckTime = latestLog.createdAt;
-          
-          // Show toast for each new clock-in
-          data.logs.forEach(log => {
-            showToast(`🔔 ${log.user?.name || 'An employee'} just clocked in!`);
-          });
-          
-          // Refresh the attendance table silently
-          refreshData();
-        }
+        // Show toast for each new clock-in
+        data.logs.forEach(log => {
+          showToast(`🔔 ${log.user?.name || 'An employee'} just clocked in!`);
+        });
+        
+        // Refresh the attendance table silently
+        refreshData();
       } catch (err) {
         // Avoid triggering the Next.js Dev overlay for transient network fetch errors
         if (err instanceof TypeError && err.message === 'Failed to fetch') {
@@ -312,52 +322,44 @@ export default function AdminDashboard() {
   const refreshData = async () => {
     try {
       // Fetch users
-      const usersRes = await fetch('/api/users');
-      const usersData = await usersRes.json();
-      const fetchedUsers = usersData.users || [];
+      const usersRes = await fetchJson('/api/users');
+      const fetchedUsers = usersRes.data.users || [];
       setUsersList(fetchedUsers);
 
       // Fetch tasks
-      const tasksRes = await fetch('/api/tasks');
-      const tasksData = await tasksRes.json();
-      const fetchedTasks = tasksData.tasks || [];
+      const tasksRes = await fetchJson('/api/tasks');
+      const fetchedTasks = tasksRes.data.tasks || [];
       setTasksList(fetchedTasks);
 
       // Fetch leaves
-      const leavesRes = await fetch('/api/leaves');
-      const leavesData = await leavesRes.json();
-      const fetchedLeaves = leavesData.leaves || [];
+      const leavesRes = await fetchJson('/api/leaves');
+      const fetchedLeaves = leavesRes.data.leaves || [];
       setLeavesList(fetchedLeaves);
 
       // Fetch attendance
-      const attRes = await fetch('/api/attendance');
-      const attData = await attRes.json();
-      const fetchedAttendance = attData.logs || [];
+      const attRes = await fetchJson('/api/attendance');
+      const fetchedAttendance = attRes.data.logs || [];
       setAttendanceLogs(fetchedAttendance);
 
       // Fetch clients
-      const clientsRes = await fetch('/api/clients');
-      const clientsData = await clientsRes.json();
-      const fetchedClients = clientsData.clients || [];
+      const clientsRes = await fetchJson('/api/clients');
+      const fetchedClients = clientsRes.data.clients || [];
       setClientsList(fetchedClients);
       // Update active client IDs set based on client.active flag
       const activeIds = fetchedClients.filter(c => c.active).map(c => c.clientId);
       setActiveClientIds(new Set(activeIds));
 
       // Fetch global client tasks
-      const ctRes = await fetch('/api/client-tasks');
-      const ctData = await ctRes.json();
-      setAllClientTasks(ctData.tasks || []);
+      const ctRes = await fetchJson('/api/client-tasks');
+      setAllClientTasks(ctRes.data.tasks || []);
 
       // Fetch global client deliveries
-      const cdRes = await fetch('/api/client-deliveries');
-      const cdData = await cdRes.json();
-      setAllClientDeliveries(cdData.deliveries || []);
+      const cdRes = await fetchJson('/api/client-deliveries');
+      setAllClientDeliveries(cdRes.data.deliveries || []);
 
       // Fetch client feedbacks/concerns
-      const fbRes = await fetch('/api/client/feedback');
-      const fbData = await fbRes.json();
-      setFeedbacksList(fbData.feedbacks || []);
+      const fbRes = await fetchJson('/api/client/feedback');
+      setFeedbacksList(fbRes.data.feedbacks || []);
 
       // Calculate Metrics
       const totalStaff = fetchedUsers.filter(u => u.role === 'EMPLOYEE').length;
@@ -497,11 +499,6 @@ export default function AdminDashboard() {
 
   const handleEditClient = async (e) => {
     e.preventDefault();
-    if (parseInt(reqBuilder.c) > 0 || parseInt(reqBuilder.r) > 0 || parseInt(reqBuilder.a) > 0) {
-      setPendingClientSave('EDIT');
-      setShowDeliverableAssignmentModal(true);
-      return;
-    }
     await executeSaveClient('EDIT');
   };
 
@@ -547,8 +544,10 @@ export default function AdminDashboard() {
       else setShowAddClientModal(false);
       
       await refreshData();
+      return true;
     } catch (err) {
       setFormError(err.message);
+      return false;
     } finally {
       setFormLoading(false);
     }
@@ -559,8 +558,12 @@ export default function AdminDashboard() {
       setFormLoading(true);
 
       // First, save the client so the clientId exists in the database
+      const saveSuccess = await executeSaveClient(pendingClientSave);
       setShowDeliverableAssignmentModal(false);
-      await executeSaveClient(pendingClientSave);
+
+      if (!saveSuccess) {
+        return;
+      }
 
       // Then, create the tasks via the bulk API
       const tasksToCreate = [];
@@ -573,30 +576,40 @@ export default function AdminDashboard() {
 
       const resolveStaff = (staffId, defaultDept) => {
         if (staffId === 'AUTO') {
+          const deptEmployee = employeesList.find(e => e.department === defaultDept && e.status === 'ACTIVE');
+          if (deptEmployee) {
+            return { assignTo: defaultDept, workingOn: deptEmployee.name };
+          }
           return { assignTo: defaultDept, workingOn: 'AUTO' };
         }
         const staff = employeesList.find(e => e.id.toString() === staffId);
-        return staff ? { assignTo: staff.department, workingOn: staff.name } : { assignTo: 'Unknown', workingOn: '' };
+        return staff ? { assignTo: staff.department, workingOn: staff.name } : { assignTo: defaultDept, workingOn: '' };
       };
 
-      const cStaff = assignedStaff.c ? resolveStaff(assignedStaff.c, 'Graphic Designer') : null;
-      const rStaff = assignedStaff.r ? resolveStaff(assignedStaff.r, 'Video Editor') : null;
-      const aStaff = assignedStaff.a ? resolveStaff(assignedStaff.a, 'Ai Video Editor') : null;
-      const smStaff = assignedStaff.sm ? resolveStaff(assignedStaff.sm, 'Digital Marketing Executive') : null;
+      const cStaff = resolveStaff(assignedStaff.c || 'AUTO', 'Graphic Designer');
+      const rStaff = resolveStaff(assignedStaff.r || 'AUTO', 'Video Editor');
+      const aStaff = resolveStaff(assignedStaff.a || 'AUTO', 'Ai Video Editor');
+      const smStaff = resolveStaff(assignedStaff.sm || 'AUTO', 'Digital Marketing Executive');
+      const scriptStaff = { assignTo: 'AI Video Lead', workingOn: 'Harshit' };
 
-      for (let i = 1; i <= cCount; i++) items.push(['SM Graphic', i, cStaff, 'Graphic']);
-      for (let i = 1; i <= rCount; i++) items.push(['SM Reels', i, rStaff, 'Reel']);
-      for (let i = 1; i <= aCount; i++) items.push(['SM AI Videos', i, aStaff, 'AI Video']);
+      const onboardingActive = clientFormServices !== 'AI Video Plans' && generateOptions.onboarding;
+
+      const startGraphicIndex = onboardingActive ? 2 : 1;
+      const startAIVideoIndex = onboardingActive ? 2 : 1;
+
+      for (let i = startGraphicIndex; i <= cCount; i++) items.push(['Graphic', i, cStaff, 'Graphic']);
+      for (let i = 1; i <= rCount; i++) items.push(['Reel', i, rStaff, 'Reel']);
+      for (let i = startAIVideoIndex; i <= aCount; i++) items.push(['AI Video', i, aStaff, 'AI Video']);
 
       const pools = {
-        'SM Graphic': items.filter(x => x[0] === 'SM Graphic'),
-        'SM Reels': items.filter(x => x[0] === 'SM Reels'),
-        'SM AI Videos': items.filter(x => x[0] === 'SM AI Videos')
+        'Graphic': items.filter(x => x[0] === 'Graphic'),
+        'Reel': items.filter(x => x[0] === 'Reel'),
+        'AI Video': items.filter(x => x[0] === 'AI Video')
       };
 
       const balanced = [];
-      while (pools['SM Graphic'].length || pools['SM Reels'].length || pools['SM AI Videos'].length) {
-        ['SM Graphic', 'SM Reels', 'SM Graphic', 'SM AI Videos'].forEach(k => {
+      while (pools['Graphic'].length || pools['Reel'].length || pools['AI Video'].length) {
+        ['Graphic', 'Reel', 'Graphic', 'AI Video'].forEach(k => {
           if (pools[k].length) balanced.push(pools[k].shift());
         });
       }
@@ -604,13 +617,23 @@ export default function AdminDashboard() {
       const joiningDate = new Date(clientFormDate || new Date());
       const getFormattedDate = (offsetDays) => {
         const d = new Date(joiningDate);
-        d.setDate(d.getDate() + offsetDays);
+        if (d.getDay() === 0) {
+          d.setDate(d.getDate() + 1);
+        }
+        
+        let count = 0;
+        while (count < offsetDays) {
+          d.setDate(d.getDate() + 1);
+          if (d.getDay() !== 0) {
+            count++;
+          }
+        }
+        
+        if (d.getDay() === 0) {
+          d.setDate(d.getDate() + 1);
+        }
+        
         return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
-      };
-
-      const getOrdinal = (n) => {
-        const s = ["th", "st", "nd", "rd"], v = n % 100;
-        return n + (s[(v - 20) % 10] || s[v] || s[0]);
       };
 
       if (clientFormServices === 'AI Video Plans') {
@@ -618,14 +641,14 @@ export default function AdminDashboard() {
         for (let i = 1; i <= count; i++) {
           const base = 1 + (i - 1) * 4;
           tasksToCreate.push({
-            taskTitle: `${getOrdinal(i)} AI Video Script`,
+            taskTitle: `AI Video Script ${i}`,
             assignTo: 'AI Video Lead',
             workingOn: 'Harshit',
             postType: 'Script',
             date: getFormattedDate(base)
           });
           tasksToCreate.push({
-            taskTitle: `${getOrdinal(i)} AI Video`,
+            taskTitle: `AI Video ${i}`,
             assignTo: 'AI Video Editor',
             workingOn: aStaff ? aStaff.workingOn : '',
             postType: 'AI Video',
@@ -639,19 +662,19 @@ export default function AdminDashboard() {
         if (pageCreationRequired) {
           onboardingTasks.push(
             { title: 'Create Accounts', day: 0, staff: smStaff, type: 'Onboarding' },
-            { title: 'Ads Graphic', day: 1, staff: cStaff, type: 'Graphic' },
+            { title: 'Graphic 1', day: 1, staff: cStaff, type: 'Graphic' },
             { title: 'Create Page', day: 2, staff: smStaff, type: 'Onboarding' },
-            { title: 'Prepare 1st Ads AI Video Script', day: 3, staff: aStaff, type: 'Script' },
-            { title: 'Work on 1st Ads AI Video', day: 4, staff: aStaff, type: 'AI Video' },
+            { title: 'AI Video Script 1', day: 3, staff: scriptStaff, type: 'Script' },
+            { title: 'AI Video 1', day: 4, staff: aStaff, type: 'AI Video' },
             { title: 'Ads Run', day: 5, staff: smStaff, type: 'Ads' }
           );
           startOffset = 6;
         } else {
           onboardingTasks.push(
             { title: 'Client Login / Access Collection', day: 0, staff: smStaff, type: 'Onboarding' },
-            { title: 'Ads Graphic', day: 1, staff: cStaff, type: 'Graphic' },
-            { title: 'Prepare 1st Ads AI Video Script', day: 1, staff: aStaff, type: 'Script' },
-            { title: 'Work on 1st Ads AI Video', day: 2, staff: aStaff, type: 'AI Video' },
+            { title: 'Graphic 1', day: 1, staff: cStaff, type: 'Graphic' },
+            { title: 'AI Video Script 1', day: 1, staff: scriptStaff, type: 'Script' },
+            { title: 'AI Video 1', day: 2, staff: aStaff, type: 'AI Video' },
             { title: 'Ads Run', day: 2, staff: smStaff, type: 'Ads' }
           );
           startOffset = 3;
@@ -671,27 +694,41 @@ export default function AdminDashboard() {
           });
         }
 
-        balanced.forEach((item, index) => {
-          const offset = startOffset + index * 1;
-          const isCreative = item[0] === 'SM Graphic';
-          const isReel = item[0] === 'SM Reels';
-          const isAIVideo = item[0] === 'SM AI Videos';
+        const pkgLower = (clientFormPkg || '').toLowerCase();
+        let contractDays = 30;
+        if (pkgLower.includes('3-month') || pkgLower.includes('3 month') || pkgLower.includes('3m')) {
+          contractDays = 90;
+        } else if (pkgLower.includes('6-month') || pkgLower.includes('6 month') || pkgLower.includes('6m')) {
+          contractDays = 180;
+        } else if (pkgLower.includes('yearly') || pkgLower.includes('1-year') || pkgLower.includes('annual')) {
+          contractDays = 365;
+        }
 
-          if (isCreative && !generateOptions.creatives) return;
+        const totalDeliverables = balanced.length;
+        const availableDays = Math.max(1, contractDays - startOffset - 2);
+        const stepDays = totalDeliverables > 0 ? Math.max(2, Math.floor(availableDays / totalDeliverables)) : 2;
+
+        balanced.forEach((item, index) => {
+          const offset = startOffset + index * stepDays;
+          const isGraphic = item[0] === 'Graphic';
+          const isReel = item[0] === 'Reel';
+          const isAIVideo = item[0] === 'AI Video';
+
+          if (isGraphic && !generateOptions.creatives) return;
           if (isReel && !generateOptions.reels) return;
           if (isAIVideo && !generateOptions.aiVideos) return;
 
           if (item[2]) {
             if (isAIVideo) {
               tasksToCreate.push({
-                taskTitle: `${getOrdinal(item[1])} AI Video Script`,
+                taskTitle: `AI Video Script ${item[1]}`,
                 assignTo: 'AI Video Lead',
                 workingOn: 'Harshit',
                 postType: 'Script',
                 date: getFormattedDate(offset)
               });
               tasksToCreate.push({
-                taskTitle: `${getOrdinal(item[1])} AI Video`,
+                taskTitle: `AI Video ${item[1]}`,
                 assignTo: item[2].assignTo,
                 workingOn: item[2].workingOn,
                 postType: item[3],
@@ -710,11 +747,22 @@ export default function AdminDashboard() {
         });
 
         if (generateOptions.weeklyReports) {
-          [7, 14, 21, 28].forEach((offset, index) => {
+          const pkgLower = (clientFormPkg || '').toLowerCase();
+          let reportWeeks = 4;
+          if (pkgLower.includes('3-month') || pkgLower.includes('3 month') || pkgLower.includes('3m')) {
+            reportWeeks = 12;
+          } else if (pkgLower.includes('6-month') || pkgLower.includes('6 month') || pkgLower.includes('6m')) {
+            reportWeeks = 24;
+          } else if (pkgLower.includes('yearly') || pkgLower.includes('1-year') || pkgLower.includes('annual')) {
+            reportWeeks = 52;
+          }
+
+          const reportOffsets = Array.from({ length: reportWeeks }, (_, i) => (i + 1) * 7);
+          reportOffsets.forEach((offset, index) => {
             tasksToCreate.push({
               taskTitle: `Weekly Report ${index + 1}`,
-              assignTo: 'Ads Campaign Manager',
-              workingOn: smStaff ? smStaff.workingOn : '',
+              assignTo: smStaff.assignTo,
+              workingOn: smStaff.workingOn,
               postType: 'Report',
               date: getFormattedDate(offset)
             });
@@ -733,8 +781,17 @@ export default function AdminDashboard() {
           })
         });
 
+        const contentType = tasksRes.headers.get('content-type') || '';
+        let tasksData = {};
+        if (contentType.includes('application/json')) {
+          tasksData = await tasksRes.json();
+        }
+
         if (!tasksRes.ok) {
-          console.error("Failed to generate tasks");
+          showToast(tasksData.error || "Failed to generate tasks", "error");
+          console.error("Failed to generate tasks:", tasksData.error || tasksRes.statusText);
+        } else {
+          showToast(`Generated ${tasksData.count || tasksToCreate.length} deliverable tasks!`);
         }
       }
       

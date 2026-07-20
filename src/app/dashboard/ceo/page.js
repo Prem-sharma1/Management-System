@@ -129,14 +129,28 @@ export default function CeoDashboard() {
     setTimeout(() => setToast({ message: '', type: '' }), 4000);
   };
 
+  const fetchJson = async (url, options = {}) => {
+    try {
+      const res = await fetch(url, options);
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        return { ok: res.ok, status: res.status, data };
+      }
+      return { ok: res.ok, status: res.status, data: {} };
+    } catch (err) {
+      console.warn(`Fetch error for ${url}:`, err);
+      return { ok: false, status: 500, data: {} };
+    }
+  };
+
   // Auth fetch
   useEffect(() => {
     async function initDashboard() {
       try {
-        const res = await fetch('/api/auth/me');
-        const data = await res.json();
+        const { ok, data } = await fetchJson('/api/auth/me');
 
-        if (!res.ok || !data.user || data.user.role !== 'CEO') {
+        if (!ok || !data.user || data.user.role !== 'CEO') {
           router.push('/');
           return;
         }
@@ -155,36 +169,32 @@ export default function CeoDashboard() {
   const refreshData = async () => {
     try {
       // Fetch users
-      const usersRes = await fetch('/api/users');
-      const usersData = await usersRes.json();
-      const fetchedUsers = usersData.users || [];
+      const usersRes = await fetchJson('/api/users');
+      const fetchedUsers = usersRes.data.users || [];
       setUsersList(fetchedUsers);
 
       // Fetch audit logs
-      const auditRes = await fetch('/api/audit-logs');
-      const auditData = await auditRes.json();
+      const auditRes = await fetchJson('/api/audit-logs');
+      const auditData = auditRes.data;
       setAuditLogs(auditData.logs || []);
 
       // Fetch tasks to calculate performance metrics
-      const tasksRes = await fetch('/api/tasks');
-      const tasksData = await tasksRes.json();
-      const fetchedTasks = tasksData.tasks || [];
+      const tasksRes = await fetchJson('/api/tasks');
+      const fetchedTasks = tasksRes.data.tasks || [];
       setTasksList(fetchedTasks);
 
       // Fetch clients
-      const clientsRes = await fetch('/api/clients');
-      const clientsData = await clientsRes.json();
-      setClientsList(clientsData.clients || []);
+      const clientsRes = await fetchJson('/api/clients');
+      const fetchedClients = clientsRes.data.clients || [];
+      setClientsList(fetchedClients);
 
       // Fetch global client tasks
-      const ctRes = await fetch('/api/client-tasks');
-      const ctData = await ctRes.json();
-      setAllClientTasks(ctData.tasks || []);
+      const ctRes = await fetchJson('/api/client-tasks');
+      setAllClientTasks(ctRes.data.tasks || []);
 
       // Fetch global client deliveries
-      const cdRes = await fetch('/api/client-deliveries');
-      const cdData = await cdRes.json();
-      setAllClientDeliveries(cdData.deliveries || []);
+      const cdRes = await fetchJson('/api/client-deliveries');
+      setAllClientDeliveries(cdRes.data.deliveries || []);
 
       // Calculate Metrics
       const totalEmp = fetchedUsers.filter(u => u.role === 'EMPLOYEE').length;

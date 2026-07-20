@@ -33,6 +33,15 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Verify client exists before attaching task deliverables
+    const clientRecord = await prisma.client.findUnique({
+      where: { clientId }
+    });
+
+    if (!clientRecord) {
+      return NextResponse.json({ error: `Client with ID "${clientId}" was not found in the database.` }, { status: 404 });
+    }
+
     // Fetch all active employees
     const activeEmployees = await prisma.user.findMany({
       where: {
@@ -107,30 +116,47 @@ export async function POST(request) {
         }
       }
 
-      const randomSuffix = Math.floor(100 + Math.random() * 900);
-      const taskId = `AID-T-${randomSuffix}-${i}`;
-
-      const created = await prisma.clientTask.create({
-        data: {
-          taskId: taskId,
+      // Check if task already exists for this client on this date to prevent duplicates
+      const existingTask = await prisma.clientTask.findFirst({
+        where: {
           clientId: clientId,
-          businessName: businessName,
           taskTitle: task.taskTitle,
-          date: task.date || dateStr,
-          assignTo: task.assignTo,
-          workingOn: assignedEmployeeName,
-          status: assignedEmployeeName ? 'Assigned' : 'Not Started',
-          priority: 'Normal',
-          postType: task.postType || ''
+          date: task.date || dateStr
         }
       });
-      createdTasks.push(created);
+
+      if (existingTask) {
+        continue;
+      }
+
+      const uniqueSuffix = `${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const taskId = `AID-T-${uniqueSuffix}-${i}`;
+
+      try {
+        const created = await prisma.clientTask.create({
+          data: {
+            taskId: taskId,
+            clientId: clientId,
+            businessName: businessName || '',
+            taskTitle: task.taskTitle || 'Deliverable Task',
+            date: task.date || dateStr,
+            assignTo: task.assignTo || '',
+            workingOn: assignedEmployeeName || '',
+            status: assignedEmployeeName ? 'Assigned' : 'Not Started',
+            priority: 'Normal',
+            postType: task.postType || ''
+          }
+        });
+        createdTasks.push(created);
+      } catch (insertErr) {
+        console.error(`Failed to insert task ${taskId}:`, insertErr);
+      }
     }
 
     return NextResponse.json({ success: true, count: createdTasks.length }, { status: 201 });
 
   } catch (error) {
     console.error('Error generating deliverables:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Internal Server Error' }, { status: 500 });
   }
 }

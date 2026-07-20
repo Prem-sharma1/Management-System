@@ -131,7 +131,22 @@ export async function POST(request, { params }) {
 
     const getFormattedDate = (offsetDays) => {
       const d = new Date(newStart);
-      d.setDate(d.getDate() + offsetDays);
+      if (d.getDay() === 0) {
+        d.setDate(d.getDate() + 1);
+      }
+      
+      let count = 0;
+      while (count < offsetDays) {
+        d.setDate(d.getDate() + 1);
+        if (d.getDay() !== 0) {
+          count++;
+        }
+      }
+      
+      if (d.getDay() === 0) {
+        d.setDate(d.getDate() + 1);
+      }
+      
       return formatDateToDb(d);
     };
 
@@ -202,8 +217,25 @@ export async function POST(request, { params }) {
         });
       }
 
+      const pkgLower = (packageName || client.packageName || '').toLowerCase();
+      let contractDays = 30;
+      let reportWeeks = 4;
+      if (pkgLower.includes('3-month') || pkgLower.includes('3 month') || pkgLower.includes('3m')) {
+        contractDays = 90;
+        reportWeeks = 12;
+      } else if (pkgLower.includes('6-month') || pkgLower.includes('6 month') || pkgLower.includes('6m')) {
+        contractDays = 180;
+        reportWeeks = 24;
+      } else if (pkgLower.includes('yearly') || pkgLower.includes('1-year') || pkgLower.includes('annual')) {
+        contractDays = 365;
+        reportWeeks = 52;
+      }
+
+      const totalDeliverables = balanced.length;
+      const stepDays = totalDeliverables > 0 ? Math.max(2, Math.floor((contractDays - 2) / totalDeliverables)) : 2;
+
       balanced.forEach((item, index) => {
-        const offset = 0 + index * 1; // start from day 0 since no onboarding tasks
+        const offset = index * stepDays;
         if (item.type === 'AI Video') {
           tasksToCreate.push({
             taskTitle: `${getOrdinal(item.num)} AI Video Script`,
@@ -227,11 +259,12 @@ export async function POST(request, { params }) {
         }
       });
 
-      // Weekly Reports on days 7, 14, 21
-      [7, 14, 21].forEach((offset, index) => {
+      // Weekly Reports
+      const reportOffsets = Array.from({ length: reportWeeks }, (_, i) => (i + 1) * 7);
+      reportOffsets.forEach((offset, index) => {
         tasksToCreate.push({
           taskTitle: `Weekly Report ${index + 1}`,
-          assignTo: 'Ads Campaign Manager',
+          assignTo: 'Digital Marketing Executive',
           postType: 'Report',
           offset: offset
         });
@@ -288,26 +321,30 @@ export async function POST(request, { params }) {
         }
       }
 
-      const randomSuffix = Math.floor(100 + Math.random() * 900);
-      const taskId = `AID-T-${randomSuffix}-${i}`;
+      const uniqueSuffix = `${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const taskId = `AID-T-${uniqueSuffix}-${i}`;
 
       let finalTitle = task.taskTitle;
 
-      const created = await prisma.clientTask.create({
-        data: {
-          taskId: taskId,
-          clientId: client.clientId,
-          businessName: client.businessName,
-          taskTitle: finalTitle,
-          date: getFormattedDate(task.offset),
-          assignTo: task.assignTo,
-          workingOn: assignedEmployeeName,
-          status: assignedEmployeeName ? 'Assigned' : 'Not Started',
-          priority: 'Normal',
-          postType: task.postType || ''
-        }
-      });
-      createdTasks.push(created);
+      try {
+        const created = await prisma.clientTask.create({
+          data: {
+            taskId: taskId,
+            clientId: client.clientId,
+            businessName: client.businessName,
+            taskTitle: finalTitle,
+            date: getFormattedDate(task.offset),
+            assignTo: task.assignTo,
+            workingOn: assignedEmployeeName,
+            status: assignedEmployeeName ? 'Assigned' : 'Not Started',
+            priority: 'Normal',
+            postType: task.postType || ''
+          }
+        });
+        createdTasks.push(created);
+      } catch (insertErr) {
+        console.error(`Failed to insert renewal task ${taskId}:`, insertErr);
+      }
     }
 
     // 4. Update client's joining date
