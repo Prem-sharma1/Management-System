@@ -48,6 +48,11 @@ export default function TLDashboard() {
 
   // Modal State
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedTaskForStatus, setSelectedTaskForStatus] = useState(null);
+  const [newStatus, setNewStatus] = useState('');
+  const [statusReason, setStatusReason] = useState('');
+  const [workSampleFile, setWorkSampleFile] = useState(null);
 
   // Leave Form Fields
   const [startDate, setStartDate] = useState('');
@@ -153,9 +158,12 @@ export default function TLDashboard() {
       const usersData = await usersRes.json();
       const fetchedUsers = usersData.users || [];
       
-      // Filter users to only include employees in the TL's department
-      const baseDept = currentUser?.department?.replace(' Lead', '') || '';
-      const employees = fetchedUsers.filter(u => u.role === 'EMPLOYEE' && (baseDept === '' || u.department.startsWith(baseDept)));
+      // Harshit's team members are strictly Divyansh, Nouman, and Masoom
+      const teamMemberNames = ['divyansh', 'nouman', 'masoom'];
+      const employees = fetchedUsers.filter(u =>
+        u.role === 'EMPLOYEE' &&
+        teamMemberNames.some(name => u.name.toLowerCase().includes(name))
+      );
       
       setUsersList(employees);
       setEmployeesList(employees);
@@ -351,9 +359,127 @@ export default function TLDashboard() {
       setTaskDueDate('');
       
       await refreshData();
-      setActiveTab('team-overview');
+      setActiveTab('tasks');
     } catch (err) {
       setFormError(err.message);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleDirectScriptFileUpload = async (taskId, file, isClientTask = false) => {
+    if (!file) return;
+    try {
+      showToast('Uploading script PDF...', 'info');
+      setFormLoading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok) throw new Error(uploadData.error || 'Failed to upload PDF file');
+
+      const fileUrl = uploadData.fileUrl;
+
+      if (isClientTask) {
+        const res = await fetch(`/api/client-tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workSampleUrl: fileUrl, status: 'Completion' })
+        });
+        if (!res.ok) throw new Error('Failed to update script PDF');
+      } else {
+        const res = await fetch(`/api/tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ description: fileUrl })
+        });
+        if (!res.ok) throw new Error('Failed to update script PDF');
+      }
+
+      showToast('Script PDF uploaded and assigned successfully!');
+      await refreshData();
+    } catch (err) {
+      showToast(err.message || 'Upload failed', 'error');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const openStatusModal = (task, type = 'INTERNAL') => {
+    setSelectedTaskForStatus({ ...task, type });
+    setNewStatus(task.status);
+    setStatusReason(task.reason || '');
+    setWorkSampleFile(null);
+    setShowStatusModal(true);
+  };
+
+  const handleUpdateStatusSubmit = async (e) => {
+    e.preventDefault();
+    if (!newStatus) return;
+    if ((newStatus === 'PENDING' || newStatus === 'OVERDUE' || newStatus === 'Pending' || newStatus === 'Overdue') && !statusReason) {
+      setFormError('Reason is required for pending or overdue tasks.');
+      return;
+    }
+
+    const isCompleted = ['DONE', 'Completed', 'Client Review', 'Completion'].includes(newStatus);
+    
+    setFormError('');
+    setFormLoading(true);
+
+    try {
+      let finalWorkSampleUrl = selectedTaskForStatus?.workSampleUrl || undefined;
+
+      if (workSampleFile) {
+        const formData = new FormData();
+        formData.append('file', workSampleFile);
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          finalWorkSampleUrl = uploadData.fileUrl;
+        } else {
+          setFormError('Failed to upload work sample.');
+          setFormLoading(false);
+          return;
+        }
+      }
+
+      if (selectedTaskForStatus.type === 'INTERNAL') {
+        const res = await fetch(`/api/tasks/${selectedTaskForStatus.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus, reason: statusReason, workSampleUrl: finalWorkSampleUrl })
+        });
+        if (res.ok) {
+          showToast('Task updated.');
+          setShowStatusModal(false);
+          await refreshData();
+        } else {
+          setFormError('Failed to update task.');
+        }
+      } else {
+        const res = await fetch(`/api/client-tasks/${selectedTaskForStatus.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus, reason: statusReason, workSampleUrl: finalWorkSampleUrl })
+        });
+        if (res.ok) {
+          showToast('Client task updated.');
+          setShowStatusModal(false);
+          await refreshData();
+        } else {
+          setFormError('Failed to update client task.');
+        }
+      }
+    } catch (err) {
+      setFormError('Connection error.');
     } finally {
       setFormLoading(false);
     }
@@ -523,17 +649,7 @@ export default function TLDashboard() {
             
             <p className="px-4 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 mt-6">Team Leader</p>
             
-            <button
-              onClick={() => setActiveTab('team-overview')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
-                activeTab === 'team-overview'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Activity className="w-4 h-4" />
-              Team Overview
-            </button>
+
 
             <button
               onClick={() => setActiveTab('assign-task')}
@@ -720,72 +836,271 @@ export default function TLDashboard() {
 
             </div>
           )}
-
-          {/* TAB 2: MY TASKS (Personal) */}
+          {/* TAB 2: MY TASKS (Personal & Team Overview merged) */}
           {activeTab === 'tasks' && (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-fade-in">
-              <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Assigned Duties checklist</h4>
-                <p className="text-xs text-slate-400 mt-1">Review task details and report updates by clicking status transitions.</p>
+            <div className="space-y-8 animate-fade-in">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Assigned Duties checklist</h4>
+                  <p className="text-xs text-slate-400 mt-1">Review task details and report updates by clicking status transitions.</p>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  {myTasksList.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-6">No tasks assigned yet.</p>
+                  ) : (
+                    myTasksList.map((task) => (
+                      <div 
+                        key={task.id} 
+                        className={`p-4 border rounded-xl flex items-center justify-between transition duration-300
+                          ${task.status === 'DONE' 
+                            ? 'border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/40 opacity-75' 
+                            : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800 hover:-translate-y-1 cursor-default'}`}
+                      >
+                        <div className="space-y-1 pr-6 overflow-hidden">
+                          <p className={`text-xs font-bold leading-tight ${task.status === 'DONE' ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                            {task.title}
+                          </p>
+                          {task.description && (task.description.startsWith('http') || task.description.startsWith('/uploads/')) ? (
+                            <a 
+                              href={task.description} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md"
+                            >
+                              <FileDown className="w-3.5 h-3.5" /> View Script PDF
+                            </a>
+                          ) : (
+                            <p className="text-[10px] text-slate-455 truncate mt-1">{task.description}</p>
+                          )}
+                          <p className="text-[9px] text-slate-400 font-medium mt-1.5">Assigned by: {task.createdBy?.name || 'Admin'} ({task.createdBy?.role || ''}) | Due: {task.dueDate || 'No Limit'}</p>
+                        </div>
+
+                        <div className="shrink-0 flex items-center gap-2">
+                          {task.status === 'TODO' && (
+                            <button 
+                              onClick={() => handleToggleTaskStatus(task.id, 'TODO')}
+                              className="py-1 px-3 border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-400 rounded-lg text-[9px] font-bold hover:bg-blue-50 dark:hover:bg-blue-950/20 transition flex items-center gap-1"
+                            >
+                              <Play className="w-2.5 h-2.5" /> Start Work
+                            </button>
+                          )}
+                          {task.status === 'IN_PROGRESS' && (
+                            <button 
+                              onClick={() => handleToggleTaskStatus(task.id, 'IN_PROGRESS')}
+                              className="py-1 px-3 border border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400 rounded-lg text-[9px] font-bold hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition flex items-center gap-1"
+                            >
+                              <Check className="w-3 h-3" /> Mark Completed
+                            </button>
+                          )}
+                          {task.status === 'DONE' && (
+                            <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 text-[9px] font-bold rounded-lg uppercase tracking-wider">
+                              Completed
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
 
-              <div className="p-6 space-y-4">
-                {myTasksList.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-6">No tasks assigned yet.</p>
-                ) : (
-                  myTasksList.map((task) => (
-                    <div 
-                      key={task.id} 
-                      className={`p-4 border rounded-xl flex items-center justify-between transition duration-300
-                        ${task.status === 'DONE' 
-                          ? 'border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/40 opacity-75' 
-                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800 hover:-translate-y-1 cursor-default'}`}
-                    >
-                      <div className="space-y-1 pr-6 overflow-hidden">
-                        <p className={`text-xs font-bold leading-tight ${task.status === 'DONE' ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
-                          {task.title}
-                        </p>
-                        {task.description && (task.description.startsWith('http') || task.description.startsWith('/uploads/')) ? (
-                          <a 
-                            href={task.description} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md"
-                          >
-                            <FileDown className="w-3.5 h-3.5" /> View Script PDF
-                          </a>
-                        ) : (
-                          <p className="text-[10px] text-slate-450 truncate mt-1">{task.description}</p>
-                        )}
-                        <p className="text-[9px] text-slate-400 font-medium mt-1.5">Assigned by: {task.createdBy?.name || 'Admin'} ({task.createdBy?.role || ''}) | Due: {task.dueDate || 'No Limit'}</p>
-                      </div>
-
-                      <div className="shrink-0 flex items-center gap-2">
-                        {task.status === 'TODO' && (
-                          <button 
-                            onClick={() => handleToggleTaskStatus(task.id, 'TODO')}
-                            className="py-1 px-3 border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-400 rounded-lg text-[9px] font-bold hover:bg-blue-50 dark:hover:bg-blue-950/20 transition flex items-center gap-1"
-                          >
-                            <Play className="w-2.5 h-2.5" /> Start Work
-                          </button>
-                        )}
-                        {task.status === 'IN_PROGRESS' && (
-                          <button 
-                            onClick={() => handleToggleTaskStatus(task.id, 'IN_PROGRESS')}
-                            className="py-1 px-3 border border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400 rounded-lg text-[9px] font-bold hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition flex items-center gap-1"
-                          >
-                            <Check className="w-3 h-3" /> Mark Completed
-                          </button>
-                        )}
-                        {task.status === 'DONE' && (
-                          <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 text-[9px] font-bold rounded-lg uppercase tracking-wider">
-                            Completed
-                          </span>
-                        )}
-                      </div>
+              {/* Merged Team Overview Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+                {/* Team Members Card */}
+                <div className="relative bg-white dark:bg-slate-900 p-5 xl:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 group">
+                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-blue-50 dark:bg-blue-900/20 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-24 h-24 bg-blue-50/80 dark:bg-blue-900/40 rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
+                  
+                  <div className="space-y-1 relative z-10 min-w-0 pr-2">
+                    <div className="text-[10px] xl:text-xs text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Team Members</div>
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <h3 className="text-2xl xl:text-3xl font-black text-slate-900 dark:text-white truncate">{metrics.teamMembers}</h3>
+                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Employees</span>
                     </div>
-                  ))
-                )}
+                  </div>
+                  <div className="shrink-0 relative z-10 w-10 h-10 xl:w-12 xl:h-12 rounded-xl bg-white/90 dark:bg-slate-800 backdrop-blur-sm shadow-md border border-white dark:border-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                    <Users className="w-5 h-5 xl:w-6 xl:h-6" />
+                  </div>
+                </div>
+
+                {/* Active Scripts Card */}
+                <div className="relative bg-white dark:bg-slate-900 p-5 xl:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 group">
+                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 dark:bg-purple-900/20 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-24 h-24 bg-purple-50/80 dark:bg-purple-900/40 rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
+                  
+                  <div className="space-y-1 relative z-10 min-w-0 pr-2">
+                    <div className="text-[10px] xl:text-xs text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Active Scripts</div>
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <h3 className="text-2xl xl:text-3xl font-black text-slate-900 dark:text-white truncate">{metrics.activeTasks}</h3>
+                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Pending</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0 relative z-10 w-10 h-10 xl:w-12 xl:h-12 rounded-xl bg-white/90 dark:bg-slate-800 backdrop-blur-sm shadow-md border border-white dark:border-slate-700 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                    <CheckSquare className="w-5 h-5 xl:w-6 xl:h-6" />
+                  </div>
+                </div>
+
+                {/* Completed Scripts Card */}
+                <div className="relative bg-white dark:bg-slate-900 p-5 xl:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 group">
+                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-emerald-50 dark:bg-emerald-900/20 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-24 h-24 bg-emerald-50/80 dark:bg-emerald-900/40 rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
+                  
+                  <div className="space-y-1 relative z-10 min-w-0 pr-2">
+                    <div className="text-[10px] xl:text-xs text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Completed Scripts</div>
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <h3 className="text-2xl xl:text-3xl font-black text-slate-900 dark:text-white truncate">{metrics.completedTasks}</h3>
+                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Done</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0 relative z-10 w-10 h-10 xl:w-12 xl:h-12 rounded-xl bg-white/90 dark:bg-slate-800 backdrop-blur-sm shadow-md border border-white dark:border-slate-700 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle className="w-5 h-5 xl:w-6 xl:h-6" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Merged Assigned Scripts Tracking Table */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <h4 className="text-base font-extrabold text-slate-900 dark:text-white">Assigned Scripts Tracking</h4>
+                  <button 
+                    onClick={() => setActiveTab('assign-task')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg text-xs font-bold transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Assign New
+                  </button>
+                </div>
+                
+                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                        <th className="py-3 px-4 text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-1/3">Task & Script</th>
+                        <th className="py-3 px-4 text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Assignee</th>
+                        <th className="py-3 px-4 text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Due Date</th>
+                        <th className="py-3 px-4 text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {(() => {
+                        const clientScriptTasks = allClientTasks
+                          .filter(t => t.postType === 'Script' || t.taskTitle?.toLowerCase().includes('script'))
+                          .map(t => {
+                            const videoTask = allClientTasks.find(v => v.clientId === t.clientId && v.taskTitle === t.taskTitle.replace(' Script', ''));
+                            return {
+                              id: t.id,
+                              isClientTask: true,
+                              title: `${t.taskTitle} (${t.businessName})`,
+                              pdfUrl: t.workSampleUrl || null,
+                              assignedToName: videoTask?.workingOn || t.workingOn || 'AI Video Editor',
+                              assignedToAvatar: '👤',
+                              dueDate: t.date || '-',
+                              status: t.status === 'Completion' ? 'DONE' : t.status === 'In Progress' ? 'IN_PROGRESS' : 'TODO',
+                              rawTask: t
+                            };
+                          });
+
+                        const internalScriptTasks = tlTasksList.map(t => ({
+                          id: t.id,
+                          isClientTask: false,
+                          title: t.title,
+                          pdfUrl: (t.description && (t.description.startsWith('http') || t.description.startsWith('/uploads/'))) ? t.description : null,
+                          assignedToName: t.assignedTo?.name || 'Unknown',
+                          assignedToAvatar: t.assignedTo?.avatar || '👤',
+                          dueDate: t.dueDate || '-',
+                          status: t.status,
+                          rawTask: t
+                        }));
+
+                        const allScripts = [...internalScriptTasks, ...clientScriptTasks];
+
+                        if (allScripts.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan="4" className="py-8 text-center text-slate-500 font-semibold text-sm">
+                                No scripts assigned yet.
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return allScripts.map(item => (
+                          <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                            <td className="py-3 px-4">
+                              <div className="font-bold text-sm text-slate-900 dark:text-white">{item.title}</div>
+                              <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                {item.pdfUrl && (
+                                  <a 
+                                    href={item.pdfUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-md"
+                                  >
+                                    <FileDown className="w-3 h-3" /> View Script PDF
+                                  </a>
+                                )}
+                                <label className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 rounded-lg cursor-pointer transition shadow-xs border border-indigo-200 dark:border-indigo-800">
+                                  <Plus className="w-3.5 h-3.5" /> {item.pdfUrl ? 'Change Script PDF' : 'Upload Script PDF'}
+                                  <input 
+                                    type="file" 
+                                    accept="application/pdf" 
+                                    className="hidden" 
+                                    onChange={(e) => {
+                                      if (e.target.files && e.target.files[0]) {
+                                        handleDirectScriptFileUpload(item.id, e.target.files[0], item.isClientTask);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs">
+                                  {item.assignedToAvatar}
+                                </div>
+                                <span className="font-semibold text-sm text-slate-700 dark:text-slate-300">
+                                  {item.assignedToName}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 font-medium text-sm text-slate-600 dark:text-slate-400">
+                              {item.dueDate}
+                            </td>
+                            <td className="py-3 px-4">
+                              <select 
+                                value={item.status}
+                                onChange={(e) => {
+                                  if (item.isClientTask) {
+                                    fetch(`/api/client-tasks/${item.id}`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ status: e.target.value === 'DONE' ? 'Completion' : e.target.value === 'IN_PROGRESS' ? 'In Progress' : 'Not Started' })
+                                    }).then(() => refreshData());
+                                  } else {
+                                    handleTLStatusChange(item.id, e.target.value);
+                                  }
+                                }}
+                                className={`text-xs font-bold px-2 py-1 rounded-md outline-none border cursor-pointer ${
+                                  item.status === 'DONE' 
+                                    ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' 
+                                    : item.status === 'IN_PROGRESS'
+                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                }`}
+                              >
+                                <option value="TODO">TODO</option>
+                                <option value="IN_PROGRESS">IN PROGRESS</option>
+                                <option value="DONE">DONE</option>
+                              </select>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -805,11 +1120,21 @@ export default function TLDashboard() {
                 <div>
                   <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Client Tasks</h5>
                   <div className="space-y-4">
-                    {allClientTasks.filter(t => t.workingOn ? t.workingOn === currentUser?.name : t.assignTo === currentUser?.department).length === 0 ? (
+                    {allClientTasks.filter(t => {
+                      const baseDept = currentUser?.department?.replace(' Lead', '')?.toLowerCase() || '';
+                      const assignToDept = t.assignTo?.toLowerCase() || '';
+                      const isDeptMatch = baseDept && assignToDept.startsWith(baseDept);
+                      return t.workingOn === currentUser?.name || isDeptMatch || employeesList.some(e => e.name === t.workingOn);
+                    }).length === 0 ? (
                       <p className="text-xs text-slate-400 text-center py-6">No client tasks found for you.</p>
                     ) : (
                       allClientTasks
-                        .filter(t => t.workingOn ? t.workingOn === currentUser?.name : t.assignTo === currentUser?.department)
+                        .filter(t => {
+                          const baseDept = currentUser?.department?.replace(' Lead', '')?.toLowerCase() || '';
+                          const assignToDept = t.assignTo?.toLowerCase() || '';
+                          const isDeptMatch = baseDept && assignToDept.startsWith(baseDept);
+                          return t.workingOn === currentUser?.name || isDeptMatch || employeesList.some(e => e.name === t.workingOn);
+                        })
                         .map((task) => (
                           <div key={task.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/20">
                             <div className="flex flex-col md:flex-row justify-between gap-4">
@@ -832,32 +1157,49 @@ export default function TLDashboard() {
                                     }}
                                   />
                                 </p>
+                                {/* Display script link for AI Video tasks */}
+                                {task.postType === 'AI Video' && (() => {
+                                  const scriptTitle = `${task.taskTitle} Script`;
+                                  const scriptTask = allClientTasks.find(t => t.clientId === task.clientId && t.taskTitle === scriptTitle);
+                                  if (scriptTask && scriptTask.workSampleUrl) {
+                                    return (
+                                      <a 
+                                        href={scriptTask.workSampleUrl} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md"
+                                      >
+                                        <FileText className="w-3 h-3" /> View Script from Harshit
+                                      </a>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                                {/* Display own work sample if uploaded */}
+                                {task.workSampleUrl && (
+                                  <div className="mt-1">
+                                    <a 
+                                      href={task.workSampleUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-md"
+                                    >
+                                      <FileDown className="w-3 h-3" /> View Work Sample
+                                    </a>
+                                  </div>
+                                )}
                               </div>
-                              <div className="flex items-center gap-3">
-                                <select
-                                  value={task.status}
-                                  onChange={async (e) => {
-                                    await fetch(`/api/client-tasks/${task.id}`, {
-                                      method: 'PUT',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ status: e.target.value })
-                                    });
-                                    refreshData();
-                                  }}
-                                  className={`text-xs font-bold px-3 py-1.5 rounded-lg border outline-none
-                                    ${['Completed', 'DONE', 'Completion', 'Complete Task'].includes(task.status) ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400'
-                                    : ['Processing', 'In Progress'].includes(task.status) ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
-                                    : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'}
-                                  `}
-                                >
-                                  <option value="Not Started">Not Started</option>
-                                  <option value="Processing">Processing</option>
-                                  <option value="Client Review">Client Review</option>
-                                  <option value="Revision">Revision</option>
-                                  <option value="Completion">Completion</option>
-                                  <option value="Pending">Pending</option>
-                                  <option value="Overdue">Overdue</option>
-                                </select>
+                              <div className="flex items-center gap-2">
+                                {task.status !== 'Completion' && (
+                                  <button onClick={() => openStatusModal(task, 'CLIENT')} className="py-1 px-3 border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-400 rounded-lg text-[9px] font-bold hover:bg-blue-50 dark:hover:bg-blue-950/20 transition flex items-center gap-1 shrink-0">
+                                    <Play className="w-2.5 h-2.5" /> Update Status
+                                  </button>
+                                )}
+                                {task.status === 'Completion' && (
+                                  <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 text-[9px] font-bold rounded-lg uppercase tracking-wider">
+                                    Completed
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -870,11 +1212,21 @@ export default function TLDashboard() {
                 <div>
                   <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4 border-t border-slate-200 dark:border-slate-800 pt-6">Client Deliveries</h5>
                   <div className="space-y-4">
-                    {allClientDeliveries.filter(d => d.workingOn ? d.workingOn === currentUser?.name : d.assignTo === currentUser?.department).length === 0 ? (
+                    {allClientDeliveries.filter(d => {
+                      const baseDept = currentUser?.department?.replace(' Lead', '')?.toLowerCase() || '';
+                      const assignToDept = d.assignTo?.toLowerCase() || '';
+                      const isDeptMatch = baseDept && assignToDept.startsWith(baseDept);
+                      return d.workingOn === currentUser?.name || isDeptMatch || employeesList.some(e => e.name === d.workingOn);
+                    }).length === 0 ? (
                       <p className="text-xs text-slate-400 text-center py-6">No client deliveries found for you.</p>
                     ) : (
                       allClientDeliveries
-                        .filter(d => d.workingOn ? d.workingOn === currentUser?.name : d.assignTo === currentUser?.department)
+                        .filter(d => {
+                          const baseDept = currentUser?.department?.replace(' Lead', '')?.toLowerCase() || '';
+                          const assignToDept = d.assignTo?.toLowerCase() || '';
+                          const isDeptMatch = baseDept && assignToDept.startsWith(baseDept);
+                          return d.workingOn === currentUser?.name || isDeptMatch || employeesList.some(e => e.name === d.workingOn);
+                        })
                         .map((delivery) => (
                           <div key={delivery.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/20">
                             <div className="flex flex-col md:flex-row justify-between gap-4">
@@ -1057,148 +1409,7 @@ export default function TLDashboard() {
             </div>
           )}
 
-          {/* TL SPECIFIC: TEAM OVERVIEW */}
-          {activeTab === 'team-overview' && (
-            <div className="space-y-8 animate-fade-in">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                {/* Team Members Card */}
-                <div className="relative bg-white dark:bg-slate-900 p-5 xl:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 animate-slide-up group" style={{ animationDelay: '100ms' }}>
-                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-blue-50 dark:bg-blue-900/20 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-24 h-24 bg-blue-50/80 dark:bg-blue-900/40 rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  
-                  <div className="space-y-1 relative z-10 min-w-0 pr-2">
-                    <div className="text-[10px] xl:text-xs text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Team Members</div>
-                    <div className="flex items-baseline gap-1.5 flex-wrap">
-                      <h3 className="text-2xl xl:text-3xl font-black text-slate-900 dark:text-white truncate">{metrics.teamMembers}</h3>
-                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Employees</span>
-                    </div>
-                  </div>
-                  <div className="shrink-0 relative z-10 w-10 h-10 xl:w-12 xl:h-12 rounded-xl bg-white/90 dark:bg-slate-800 backdrop-blur-sm shadow-md border border-white dark:border-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                    <Users className="w-5 h-5 xl:w-6 xl:h-6" />
-                  </div>
-                </div>
 
-                {/* Assigned Tasks Card */}
-                <div className="relative bg-white dark:bg-slate-900 p-5 xl:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 animate-slide-up group" style={{ animationDelay: '200ms' }}>
-                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 dark:bg-purple-900/20 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-24 h-24 bg-purple-50/80 dark:bg-purple-900/40 rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  
-                  <div className="space-y-1 relative z-10 min-w-0 pr-2">
-                    <div className="text-[10px] xl:text-xs text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Active Scripts</div>
-                    <div className="flex items-baseline gap-1.5 flex-wrap">
-                      <h3 className="text-2xl xl:text-3xl font-black text-slate-900 dark:text-white truncate">{metrics.activeTasks}</h3>
-                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Pending</span>
-                    </div>
-                  </div>
-                  <div className="shrink-0 relative z-10 w-10 h-10 xl:w-12 xl:h-12 rounded-xl bg-white/90 dark:bg-slate-800 backdrop-blur-sm shadow-md border border-white dark:border-slate-700 flex items-center justify-center text-purple-600 dark:text-purple-400">
-                    <CheckSquare className="w-5 h-5 xl:w-6 xl:h-6" />
-                  </div>
-                </div>
-
-                {/* Completed Scripts Card */}
-                <div className="relative bg-white dark:bg-slate-900 p-5 xl:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 animate-slide-up group" style={{ animationDelay: '300ms' }}>
-                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-emerald-50 dark:bg-emerald-900/20 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-24 h-24 bg-emerald-50/80 dark:bg-emerald-900/40 rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  
-                  <div className="space-y-1 relative z-10 min-w-0 pr-2">
-                    <div className="text-[10px] xl:text-xs text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Completed Scripts</div>
-                    <div className="flex items-baseline gap-1.5 flex-wrap">
-                      <h3 className="text-2xl xl:text-3xl font-black text-slate-900 dark:text-white truncate">{metrics.completedTasks}</h3>
-                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Done</span>
-                    </div>
-                  </div>
-                  <div className="shrink-0 relative z-10 w-10 h-10 xl:w-12 xl:h-12 rounded-xl bg-white/90 dark:bg-slate-800 backdrop-blur-sm shadow-md border border-white dark:border-slate-700 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle className="w-5 h-5 xl:w-6 xl:h-6" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Tasks Tracking Table */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm animate-slide-up" style={{ animationDelay: '400ms' }}>
-                <div className="flex items-center justify-between mb-6">
-                  <h4 className="text-base font-extrabold text-slate-900 dark:text-white">Assigned Scripts Tracking</h4>
-                  <button 
-                    onClick={() => setActiveTab('assign-task')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg text-xs font-bold transition"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Assign New
-                  </button>
-                </div>
-                
-                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                  <table className="w-full text-left border-collapse min-w-[800px]">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                        <th className="py-3 px-4 text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest w-1/3">Task & Script</th>
-                        <th className="py-3 px-4 text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Assignee</th>
-                        <th className="py-3 px-4 text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Due Date</th>
-                        <th className="py-3 px-4 text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {tlTasksList.length === 0 ? (
-                        <tr>
-                          <td colSpan="4" className="py-8 text-center text-slate-500 font-semibold text-sm">
-                            No scripts assigned yet.
-                          </td>
-                        </tr>
-                      ) : (
-                        tlTasksList.map(task => (
-                          <tr key={task.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
-                            <td className="py-3 px-4">
-                              <div className="font-bold text-sm text-slate-900 dark:text-white">{task.title}</div>
-                              {task.description && (
-                                <a 
-                                  href={task.description} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer" 
-                                  className="inline-flex items-center gap-1 mt-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                                >
-                                  <FileDown className="w-3 h-3" /> View Script PDF
-                                </a>
-                              )}
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs">
-                                  {task.assignedTo?.avatar || '👤'}
-                                </div>
-                                <span className="font-semibold text-sm text-slate-700 dark:text-slate-300">
-                                  {task.assignedTo?.name || 'Unknown'}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 font-medium text-sm text-slate-600 dark:text-slate-400">
-                              {task.dueDate || '-'}
-                            </td>
-                            <td className="py-3 px-4">
-                              <select 
-                                value={task.status}
-                                onChange={(e) => handleTLStatusChange(task.id, e.target.value)}
-                                className={`text-xs font-bold px-2 py-1 rounded-md outline-none border cursor-pointer ${
-                                  task.status === 'DONE' 
-                                    ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' 
-                                    : task.status === 'IN_PROGRESS'
-                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
-                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                                }`}
-                              >
-                                <option value="TODO">TODO</option>
-                                <option value="IN_PROGRESS">IN PROGRESS</option>
-                                <option value="DONE">DONE</option>
-                              </select>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* TL SPECIFIC: ASSIGN TASK */}
           {activeTab === 'assign-task' && (
@@ -1369,6 +1580,105 @@ export default function TLDashboard() {
                       className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition shadow-md shadow-blue-600/20 disabled:opacity-50"
                     >
                       {formLoading ? 'Submitting...' : 'Submit Request'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* --- STATUS UPDATE MODAL --- */}
+          {showStatusModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-fade-in animate-duration-200">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-scale-up animate-duration-200">
+                <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900">
+                  <h3 className="font-extrabold text-sm text-slate-950 dark:text-white">Update Task Status</h3>
+                  <button onClick={() => setShowStatusModal(false)} className="text-slate-400 hover:text-slate-600 transition text-sm">✕</button>
+                </div>
+                
+                <form onSubmit={handleUpdateStatusSubmit}>
+                  <div className="p-6 space-y-4 text-xs">
+                    {formError && (
+                      <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 text-red-700 rounded-xl flex items-center gap-2">
+                        <AlertCircle className="w-4.5 h-4.5 shrink-0" />
+                        <span>{formError}</span>
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">New Status</label>
+                      <select
+                        required
+                        value={newStatus}
+                        onChange={(e) => setNewStatus(e.target.value)}
+                        className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none uppercase tracking-wider font-bold"
+                      >
+                        {selectedTaskForStatus?.type === 'INTERNAL' ? (
+                           <>
+                             <option value="TODO">To Do</option>
+                             <option value="DONE">Done / Completed</option>
+                             <option value="PENDING">Pending (Blocked)</option>
+                             <option value="OVERDUE">Overdue</option>
+                           </>
+                        ) : (
+                           <>
+                             <option value="Not Started">Not Started</option>
+                             <option value="Processing">Processing</option>
+                             <option value="Client Review">Client Review</option>
+                             <option value="Revision">Revision</option>
+                             <option value="Completion">Completion</option>
+                             <option value="Pending">Pending (Blocked)</option>
+                             <option value="Overdue">Overdue</option>
+                           </>
+                        )}
+                      </select>
+                    </div>
+
+                    {(newStatus === 'PENDING' || newStatus === 'OVERDUE' || newStatus === 'Pending' || newStatus === 'Overdue') && (
+                      <div className="space-y-1">
+                        <label className="font-bold text-red-600 dark:text-red-400">Reason for Delay <span className="text-red-500">*</span></label>
+                        <textarea
+                          value={statusReason}
+                          required
+                          onChange={(e) => setStatusReason(e.target.value)}
+                          placeholder="Explain why this task is pending or overdue..."
+                          rows="3"
+                          className="w-full p-2.5 border border-red-200 dark:border-red-900/50 bg-red-50/30 dark:bg-red-950/10 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-red-500 transition"
+                        />
+                      </div>
+                    )}
+
+                    {['DONE', 'Completed', 'Client Review', 'Completion'].includes(newStatus) && (
+                      <div className="space-y-1 mt-2">
+                        <label className="font-bold text-blue-600 dark:text-blue-400">Upload Work Sample <span className="text-red-500">*</span></label>
+                        <p className="text-[10px] text-slate-500 mb-1">Creative team members must attach today's work sample to submit for client review / completion.</p>
+                        <input
+                          type="file"
+                          required={!selectedTaskForStatus?.workSampleUrl}
+                          onChange={(e) => setWorkSampleFile(e.target.files[0])}
+                          className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+                        {selectedTaskForStatus?.workSampleUrl && (
+                          <p className="text-[9px] text-emerald-600 font-bold mt-1">✓ Work sample already uploaded.</p>
+                        )}
+                      </div>
+                    )}
+
+                  </div>
+                  <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowStatusModal(false)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={formLoading}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-xs font-bold flex items-center justify-center min-w-[120px] transition disabled:opacity-70"
+                    >
+                      {formLoading ? 'Submitting...' : 'Update Status'}
                     </button>
                   </div>
                 </form>

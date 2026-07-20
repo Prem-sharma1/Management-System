@@ -66,6 +66,21 @@ const SERVICES_PRICING = {
   "Other / Custom": []
 };
 
+const parseReqStringToCounts = (reqStr) => {
+  let c = 5, r = 3, a = 2; // defaults
+  if (!reqStr) return { c, r, a };
+
+  const cMatch = reqStr.match(/Creative\s*-\s*(\d+)/i) || reqStr.match(/(\d+)\s*Creative/i);
+  const rMatch = reqStr.match(/Reel[s\/Shorts]*\s*-\s*(\d+)/i) || reqStr.match(/(\d+)\s*Reel/i);
+  const aMatch = reqStr.match(/AI\s*Video[s]?\s*-\s*(\d+)/i) || reqStr.match(/(\d+)\s*AI\s*Video/i);
+
+  if (cMatch) c = parseInt(cMatch[1]);
+  if (rMatch) r = parseInt(rMatch[1]);
+  if (aMatch) a = parseInt(aMatch[1]);
+
+  return { c, r, a };
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
@@ -92,6 +107,8 @@ export default function AdminDashboard() {
     pendingLeaves: 0,
     presentToday: 0
   });
+  // Track IDs of clients that are active (status true)
+  const [activeClientIds, setActiveClientIds] = useState(new Set());
 
   // Modal States
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -153,7 +170,7 @@ export default function AdminDashboard() {
   const [clientFormSector, setClientFormSector] = useState('');
   const [clientFormReq, setClientFormReq] = useState('');
   const [reqBuilder, setReqBuilder] = useState({ c: 7, r: 5, a: 3 });
-  const [clientFormReady, setClientFormReady] = useState(true);
+  const [pageCreationRequired, setPageCreationRequired] = useState(false);
   const [clientFormActive, setClientFormActive] = useState(true);
   const [clientFormNotes, setClientFormNotes] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('Full');
@@ -322,6 +339,9 @@ export default function AdminDashboard() {
       const clientsData = await clientsRes.json();
       const fetchedClients = clientsData.clients || [];
       setClientsList(fetchedClients);
+      // Update active client IDs set based on client.active flag
+      const activeIds = fetchedClients.filter(c => c.active).map(c => c.clientId);
+      setActiveClientIds(new Set(activeIds));
 
       // Fetch global client tasks
       const ctRes = await fetch('/api/client-tasks');
@@ -402,7 +422,8 @@ export default function AdminDashboard() {
       setClientFormWebsite(client.website || '');
       setClientFormSector(client.sector || '');
       setClientFormReq(client.requirement || '');
-      setClientFormReady(client.accountReady);
+      setReqBuilder(parseReqStringToCounts(client.requirement || ''));
+      setPageCreationRequired(!client.accountReady);
       setClientFormActive(client.active);
       setClientFormNotes(client.notes || '');
       
@@ -449,7 +470,8 @@ export default function AdminDashboard() {
       setClientFormWebsite('');
       setClientFormSector('');
       setClientFormReq('');
-      setClientFormReady(true);
+      setReqBuilder({ c: 5, r: 3, a: 2 });
+      setPageCreationRequired(false);
       setClientFormActive(true);
       setClientFormNotes('');
       setPaymentStatus('Full');
@@ -498,7 +520,7 @@ export default function AdminDashboard() {
         website: clientFormWebsite,
         sector: clientFormSector,
         requirement: clientFormReq,
-        accountReady: clientFormReady,
+        accountReady: !pageCreationRequired,
         active: clientFormActive,
         notes: JSON.stringify({
           paymentStatus,
@@ -540,9 +562,10 @@ export default function AdminDashboard() {
       const tasksToCreate = [];
       const items = [];
       
-      const cCount = parseInt(reqBuilder.c);
-      const rCount = parseInt(reqBuilder.r);
-      const aCount = parseInt(reqBuilder.a);
+      const parsedCounts = parseReqStringToCounts(clientFormReq || '');
+      const cCount = parsedCounts.c;
+      const rCount = parsedCounts.r;
+      const aCount = parsedCounts.a;
 
       const resolveStaff = (staffId, defaultDept) => {
         if (staffId === 'AUTO') {
@@ -590,23 +613,45 @@ export default function AdminDashboard() {
         const count = aCount || 5;
         for (let i = 1; i <= count; i++) {
           const base = 1 + (i - 1) * 4;
-          
-          tasksToCreate.push({ taskTitle: `Prepare ${getOrdinal(i)} AI Video Script`, assignTo: 'AI Video Lead', workingOn: aStaff ? aStaff.workingOn : '', postType: 'Script', date: getFormattedDate(base) });
-          tasksToCreate.push({ taskTitle: `Get Client Approval on ${getOrdinal(i)} Script`, assignTo: 'AI Video Lead', workingOn: aStaff ? aStaff.workingOn : '', postType: 'Script', date: getFormattedDate(base) });
-          tasksToCreate.push({ taskTitle: `Work on ${getOrdinal(i)} AI Video`, assignTo: 'AI Video Editor', workingOn: aStaff ? aStaff.workingOn : '', postType: 'AI Video', date: getFormattedDate(base + 1) });
-          tasksToCreate.push({ taskTitle: `Share ${getOrdinal(i)} AI Video with client and get changes`, assignTo: 'AI Video Lead', workingOn: aStaff ? aStaff.workingOn : '', postType: 'AI Video', date: getFormattedDate(base + 2) });
-          tasksToCreate.push({ taskTitle: `Posting ${getOrdinal(i)} AI Video on Social Media Platforms`, assignTo: 'Social Media Executive', workingOn: smStaff ? smStaff.workingOn : '', postType: 'AI Video', date: getFormattedDate(base + 3) });
+          tasksToCreate.push({
+            taskTitle: `${getOrdinal(i)} AI Video Script`,
+            assignTo: 'AI Video Lead',
+            workingOn: 'Harshit',
+            postType: 'Script',
+            date: getFormattedDate(base)
+          });
+          tasksToCreate.push({
+            taskTitle: `${getOrdinal(i)} AI Video`,
+            assignTo: 'AI Video Editor',
+            workingOn: aStaff ? aStaff.workingOn : '',
+            postType: 'AI Video',
+            date: getFormattedDate(base + 1)
+          });
         }
       } else {
-        const onboardingTasks = [
-          { title: 'Client Login / Access Collection', day: 0, staff: smStaff, type: 'Onboarding' },
-          { title: 'Create Accounts', day: 1, staff: smStaff, type: 'Onboarding' },
-          { title: 'Ads Graphic', day: 2, staff: cStaff, type: 'Graphic' },
-          { title: 'Prepare 1st Ads AI Video Script', day: 3, staff: aStaff, type: 'Script' },
-          { title: 'Work on 1st Ads AI Video', day: 4, staff: aStaff, type: 'AI Video' },
-          { title: 'Create Page', day: 5, staff: smStaff, type: 'Onboarding' },
-          { title: 'Ads Run', day: 6, staff: smStaff, type: 'Ads' }
-        ];
+        const onboardingTasks = [];
+        let startOffset = 7;
+
+        if (pageCreationRequired) {
+          onboardingTasks.push(
+            { title: 'Create Accounts', day: 0, staff: smStaff, type: 'Onboarding' },
+            { title: 'Ads Graphic', day: 1, staff: cStaff, type: 'Graphic' },
+            { title: 'Create Page', day: 2, staff: smStaff, type: 'Onboarding' },
+            { title: 'Prepare 1st Ads AI Video Script', day: 3, staff: aStaff, type: 'Script' },
+            { title: 'Work on 1st Ads AI Video', day: 4, staff: aStaff, type: 'AI Video' },
+            { title: 'Ads Run', day: 5, staff: smStaff, type: 'Ads' }
+          );
+          startOffset = 6;
+        } else {
+          onboardingTasks.push(
+            { title: 'Client Login / Access Collection', day: 0, staff: smStaff, type: 'Onboarding' },
+            { title: 'Ads Graphic', day: 1, staff: cStaff, type: 'Graphic' },
+            { title: 'Prepare 1st Ads AI Video Script', day: 1, staff: aStaff, type: 'Script' },
+            { title: 'Work on 1st Ads AI Video', day: 2, staff: aStaff, type: 'AI Video' },
+            { title: 'Ads Run', day: 2, staff: smStaff, type: 'Ads' }
+          );
+          startOffset = 3;
+        }
 
         if (generateOptions.onboarding) {
           onboardingTasks.forEach(ot => {
@@ -623,7 +668,7 @@ export default function AdminDashboard() {
         }
 
         balanced.forEach((item, index) => {
-          const offset = 7 + index * 1;
+          const offset = startOffset + index * 1;
           const isCreative = item[0] === 'SM Graphic';
           const isReel = item[0] === 'SM Reels';
           const isAIVideo = item[0] === 'SM AI Videos';
@@ -633,13 +678,30 @@ export default function AdminDashboard() {
           if (isAIVideo && !generateOptions.aiVideos) return;
 
           if (item[2]) {
-            tasksToCreate.push({
-              taskTitle: `${item[0]} ${item[1]}`,
-              assignTo: item[2].assignTo,
-              workingOn: item[2].workingOn,
-              postType: item[3],
-              date: getFormattedDate(offset)
-            });
+            if (isAIVideo) {
+              tasksToCreate.push({
+                taskTitle: `${getOrdinal(item[1])} AI Video Script`,
+                assignTo: 'AI Video Lead',
+                workingOn: 'Harshit',
+                postType: 'Script',
+                date: getFormattedDate(offset)
+              });
+              tasksToCreate.push({
+                taskTitle: `${getOrdinal(item[1])} AI Video`,
+                assignTo: item[2].assignTo,
+                workingOn: item[2].workingOn,
+                postType: item[3],
+                date: getFormattedDate(offset + 1)
+              });
+            } else {
+              tasksToCreate.push({
+                taskTitle: `${item[0]} ${item[1]}`,
+                assignTo: item[2].assignTo,
+                workingOn: item[2].workingOn,
+                postType: item[3],
+                date: getFormattedDate(offset)
+              });
+            }
           }
         });
 
@@ -1607,10 +1669,10 @@ export default function AdminDashboard() {
                   </div>
                   
                   <div className="space-y-4">
-                    {tasksList.length === 0 ? (
+                    {tasksList.filter(task => activeClientIds.has(task.clientId)).length === 0 ? (
                       <p className="text-sm text-slate-400">No active tasks found.</p>
                     ) : (
-                      tasksList.slice(0, 4).map((task) => (
+                      tasksList.filter(task => activeClientIds.has(task.clientId)).slice(0, 4).map((task) => (
                         <div key={task.id} className="p-4 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl flex items-center justify-between transition">
                           <div className="space-y-1 overflow-hidden pr-4">
                             <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{task.title}</p>
@@ -3609,6 +3671,7 @@ export default function AdminDashboard() {
                             const priceStr = pkgData.price.toString();
                             setClientFormAmt(priceStr);
                             setClientFormReq(pkgData.req);
+                            setReqBuilder(parseReqStringToCounts(pkgData.req));
                             if (paymentStatus === 'Full') {
                               setPaidAmount(priceStr);
                             }
@@ -4121,6 +4184,7 @@ export default function AdminDashboard() {
                             const priceStr = pkgData.price.toString();
                             setClientFormAmt(priceStr);
                             setClientFormReq(pkgData.req);
+                            setReqBuilder(parseReqStringToCounts(pkgData.req));
                             if (paymentStatus === 'Full') {
                               setPaidAmount(priceStr);
                             }
@@ -4202,15 +4266,17 @@ export default function AdminDashboard() {
                     />
                   </div>
                   <div className="flex gap-6 items-center pt-5">
-                    <label className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={clientFormReady}
-                        onChange={(e) => setClientFormReady(e.target.checked)}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
-                      />
-                      <span>Business Page / Sector Ready?</span>
-                    </label>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-355">Page Creation Required?</label>
+                      <select
+                        value={pageCreationRequired ? "Yes" : "No"}
+                        onChange={(e) => setPageCreationRequired(e.target.value === "Yes")}
+                        className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
+                      >
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
                     <label className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                       <input
                         type="checkbox"

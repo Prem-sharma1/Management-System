@@ -1015,6 +1015,37 @@ export default function EmployeeDashboard() {
                             <p className="text-[10px] text-slate-400 font-medium mt-1">
                               Date: {ct.date} | Status: <span className={`font-bold ${['Completed', 'DONE', 'Completion'].includes(ct.status) ? 'text-emerald-500' : ['Overdue', 'OVERDUE'].includes(ct.status) ? 'text-red-500' : ['Pending', 'PENDING'].includes(ct.status) ? 'text-yellow-500' : 'text-blue-500'}`}>{ct.status}</span>
                             </p>
+                            {/* Display script link for AI Video tasks */}
+                            {ct.postType === 'AI Video' && (() => {
+                              const scriptTitle = `${ct.taskTitle} Script`;
+                              const scriptTask = allClientTasks.find(t => t.clientId === ct.clientId && t.taskTitle === scriptTitle);
+                              if (scriptTask && scriptTask.workSampleUrl) {
+                                return (
+                                  <a 
+                                    href={scriptTask.workSampleUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md w-fit"
+                                  >
+                                    <FileText className="w-3.5 h-3.5" /> View Script from Harshit
+                                  </a>
+                                );
+                              }
+                              return null;
+                            })()}
+                            {/* Display own work sample if uploaded */}
+                            {ct.workSampleUrl && (
+                              <div className="mt-1.5">
+                                <a 
+                                  href={ct.workSampleUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-md w-fit"
+                                >
+                                  <FileDown className="w-3.5 h-3.5" /> View Work Sample
+                                </a>
+                              </div>
+                            )}
                             {ct.reason && (
                               <p className="text-[10px] text-red-500 font-medium italic mt-1.5 bg-red-50 dark:bg-red-950/20 p-1.5 rounded-md border border-red-100 dark:border-red-900/30">Reason: {ct.reason}</p>
                             )}

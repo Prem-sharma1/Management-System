@@ -37,14 +37,14 @@ const getMonthYearStr = (dateStr) => {
   return '';
 };
 
-// Parse counts from client requirement text (e.g. "Daily Activity: 5 Creatives, 3 Reels, 2 Ai Videos")
+// Parse counts from client requirement text (e.g. "Daily Activity: 5 Creatives, 3 Reels, 2 Ai Videos" or "Meta Ads, Creative - 5, AI Video - 2, Reels/Shorts - 3")
 const parseRequirementCounts = (reqStr) => {
   let c = 5, r = 3, a = 2; // defaults
   if (!reqStr) return { c, r, a };
   
-  const cMatch = reqStr.match(/(\d+)\s+Creative/i);
-  const rMatch = reqStr.match(/(\d+)\s+Reel/i);
-  const aMatch = reqStr.match(/(\d+)\s+Ai\s+Video/i);
+  const cMatch = reqStr.match(/Creative\s*-\s*(\d+)/i) || reqStr.match(/(\d+)\s*Creative/i);
+  const rMatch = reqStr.match(/Reel[s\/Shorts]*\s*-\s*(\d+)/i) || reqStr.match(/(\d+)\s*Reel/i);
+  const aMatch = reqStr.match(/AI\s*Video[s]?\s*-\s*(\d+)/i) || reqStr.match(/(\d+)\s*AI\s*Video/i);
   
   if (cMatch) c = parseInt(cMatch[1]);
   if (rMatch) r = parseInt(rMatch[1]);
@@ -150,7 +150,9 @@ export async function POST(request, { params }) {
           return ['swapnil', 'danish'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
         } else if (dept === 'Video Editor') {
           return ['sanmeet'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-        } else if (dept === 'Ai Video Editor' || dept === 'AI Video Lead') {
+        } else if (dept === 'AI Video Lead') {
+          return ['harshit'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
+        } else if (dept === 'Ai Video Editor') {
           return ['masoom', 'nouman', 'divyansh'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
         }
         return e.department === dept;
@@ -165,25 +167,32 @@ export async function POST(request, { params }) {
       const count = aCount || 5;
       for (let i = 1; i <= count; i++) {
         const base = 1 + (i - 1) * 4;
-        tasksToCreate.push({ taskTitle: `Prepare ${getOrdinal(i)} AI Video Script`, assignTo: 'AI Video Lead', postType: 'Script', offset: base });
-        tasksToCreate.push({ taskTitle: `Get Client Approval on ${getOrdinal(i)} Script`, assignTo: 'AI Video Lead', postType: 'Script', offset: base });
-        tasksToCreate.push({ taskTitle: `Work on ${getOrdinal(i)} AI Video`, assignTo: 'Ai Video Editor', postType: 'AI Video', offset: base + 1 });
-        tasksToCreate.push({ taskTitle: `Share ${getOrdinal(i)} AI Video with client and get changes`, assignTo: 'AI Video Lead', postType: 'AI Video', offset: base + 2 });
-        tasksToCreate.push({ taskTitle: `Posting ${getOrdinal(i)} AI Video on Social Media Platforms`, assignTo: 'Digital Marketing Executive', postType: 'AI Video', offset: base + 3 });
+        tasksToCreate.push({
+          taskTitle: `${getOrdinal(i)} AI Video Script`,
+          assignTo: 'AI Video Lead',
+          postType: 'Script',
+          offset: base
+        });
+        tasksToCreate.push({
+          taskTitle: `${getOrdinal(i)} AI Video`,
+          assignTo: 'Ai Video Editor',
+          postType: 'AI Video',
+          offset: base + 1
+        });
       }
     } else {
       // Standard plans: create SM Graphic, SM Reels, SM AI Videos, Weekly Reports
       // Excludes Setup/Onboarding tasks!
       const items = [];
-      for (let i = 1; i <= cCount; i++) items.push({ title: 'SM Graphic', num: i, assignTo: 'Graphic Designer', type: 'Graphic' });
-      for (let i = 1; i <= rCount; i++) items.push({ title: 'SM Reels', num: i, assignTo: 'Video Editor', type: 'Reel' });
-      for (let i = 1; i <= aCount; i++) items.push({ title: 'SM AI Videos', num: i, assignTo: 'Ai Video Editor', type: 'AI Video' });
+      for (let i = 1; i <= cCount; i++) items.push({ title: `SM Graphic ${i}`, category: 'SM Graphic', num: i, assignTo: 'Graphic Designer', type: 'Graphic' });
+      for (let i = 1; i <= rCount; i++) items.push({ title: `SM Reels ${i}`, category: 'SM Reels', num: i, assignTo: 'Video Editor', type: 'Reel' });
+      for (let i = 1; i <= aCount; i++) items.push({ title: `${getOrdinal(i)} AI Video`, category: 'SM AI Videos', num: i, assignTo: 'Ai Video Editor', type: 'AI Video' });
 
       // Rotate/balance items distribution
       const pools = {
-        'SM Graphic': items.filter(x => x.title === 'SM Graphic'),
-        'SM Reels': items.filter(x => x.title === 'SM Reels'),
-        'SM AI Videos': items.filter(x => x.title === 'SM AI Videos')
+        'SM Graphic': items.filter(x => x.category === 'SM Graphic'),
+        'SM Reels': items.filter(x => x.category === 'SM Reels'),
+        'SM AI Videos': items.filter(x => x.category === 'SM AI Videos')
       };
 
       const balanced = [];
@@ -195,12 +204,27 @@ export async function POST(request, { params }) {
 
       balanced.forEach((item, index) => {
         const offset = 0 + index * 1; // start from day 0 since no onboarding tasks
-        tasksToCreate.push({
-          taskTitle: item.title,
-          assignTo: item.assignTo,
-          postType: item.type,
-          offset: offset
-        });
+        if (item.type === 'AI Video') {
+          tasksToCreate.push({
+            taskTitle: `${getOrdinal(item.num)} AI Video Script`,
+            assignTo: 'AI Video Lead',
+            postType: 'Script',
+            offset: offset
+          });
+          tasksToCreate.push({
+            taskTitle: item.title,
+            assignTo: item.assignTo,
+            postType: item.type,
+            offset: offset + 1
+          });
+        } else {
+          tasksToCreate.push({
+            taskTitle: item.title,
+            assignTo: item.assignTo,
+            postType: item.type,
+            offset: offset
+          });
+        }
       });
 
       // Weekly Reports on days 7, 14, 21
@@ -268,15 +292,6 @@ export async function POST(request, { params }) {
       const taskId = `AID-T-${randomSuffix}-${i}`;
 
       let finalTitle = task.taskTitle;
-      if (task.postType && ['Graphic', 'Reel', 'AI Video'].includes(task.postType)) {
-        const empKey = `${assignedEmployeeName || 'Unassigned'}-${task.postType}`;
-        if (!employeeCounters[empKey]) {
-          employeeCounters[empKey] = 1;
-        }
-        const currentNum = employeeCounters[empKey]++;
-        const prefix = task.postType === 'Graphic' ? 'SM Graphic' : task.postType === 'Reel' ? 'SM Reels' : 'SM AI Videos';
-        finalTitle = `${prefix} ${currentNum}`;
-      }
 
       const created = await prisma.clientTask.create({
         data: {
