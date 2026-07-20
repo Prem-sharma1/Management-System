@@ -170,6 +170,7 @@ export default function AdminDashboard() {
   const [clientFormSector, setClientFormSector] = useState('');
   const [clientFormReq, setClientFormReq] = useState('');
   const [reqBuilder, setReqBuilder] = useState({ c: 7, r: 5, a: 3 });
+  const [clientFormReady, setClientFormReady] = useState(true);
   const [pageCreationRequired, setPageCreationRequired] = useState(false);
   const [clientFormActive, setClientFormActive] = useState(true);
   const [clientFormNotes, setClientFormNotes] = useState('');
@@ -423,7 +424,9 @@ export default function AdminDashboard() {
       setClientFormSector(client.sector || '');
       setClientFormReq(client.requirement || '');
       setReqBuilder(parseReqStringToCounts(client.requirement || ''));
-      setPageCreationRequired(!client.accountReady);
+      const isAccountReady = client.accountReady !== false;
+      setClientFormReady(isAccountReady);
+      setPageCreationRequired(!isAccountReady);
       setClientFormActive(client.active);
       setClientFormNotes(client.notes || '');
       
@@ -471,6 +474,7 @@ export default function AdminDashboard() {
       setClientFormSector('');
       setClientFormReq('');
       setReqBuilder({ c: 5, r: 3, a: 2 });
+      setClientFormReady(true);
       setPageCreationRequired(false);
       setClientFormActive(true);
       setClientFormNotes('');
@@ -520,7 +524,7 @@ export default function AdminDashboard() {
         website: clientFormWebsite,
         sector: clientFormSector,
         requirement: clientFormReq,
-        accountReady: !pageCreationRequired,
+        accountReady: clientFormReady,
         active: clientFormActive,
         notes: JSON.stringify({
           paymentStatus,
@@ -3759,15 +3763,21 @@ export default function AdminDashboard() {
                     />
                   </div>
                   <div className="flex gap-6 items-center pt-5">
-                    <label className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={clientFormReady}
-                        onChange={(e) => setClientFormReady(e.target.checked)}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
-                      />
-                      <span>Business Page / Sector Ready?</span>
-                    </label>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-355">Page Creation Required?</label>
+                      <select
+                        value={pageCreationRequired ? "Yes" : "No"}
+                        onChange={(e) => {
+                          const isReq = e.target.value === "Yes";
+                          setPageCreationRequired(isReq);
+                          setClientFormReady(!isReq);
+                        }}
+                        className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
+                      >
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
                     <label className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                       <input
                         type="checkbox"
@@ -4270,7 +4280,11 @@ export default function AdminDashboard() {
                       <label className="font-bold text-slate-700 dark:text-slate-355">Page Creation Required?</label>
                       <select
                         value={pageCreationRequired ? "Yes" : "No"}
-                        onChange={(e) => setPageCreationRequired(e.target.value === "Yes")}
+                        onChange={(e) => {
+                          const isReq = e.target.value === "Yes";
+                          setPageCreationRequired(isReq);
+                          setClientFormReady(!isReq);
+                        }}
                         className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
                       >
                         <option value="Yes">Yes</option>

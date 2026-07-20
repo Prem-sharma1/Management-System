@@ -2220,15 +2220,17 @@ export default function CeoDashboard() {
                     />
                   </div>
                   <div className="flex gap-6 items-center pt-5">
-                    <label className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={clientFormReady}
-                        onChange={(e) => setClientFormReady(e.target.checked)}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
-                      />
-                      <span>Account / Page Ready?</span>
-                    </label>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-355">Page Creation Required?</label>
+                      <select
+                        value={!clientFormReady ? "Yes" : "No"}
+                        onChange={(e) => setClientFormReady(e.target.value !== "Yes")}
+                        className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
+                      >
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
                     <label className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                       <input
                         type="checkbox"
