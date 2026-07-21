@@ -181,16 +181,17 @@ export default function AdminDashboard() {
   // Deliverable Assignment States
   const [showDeliverableAssignmentModal, setShowDeliverableAssignmentModal] = useState(false);
   const [pendingClientSave, setPendingClientSave] = useState(null); // 'ADD' or 'EDIT'
-  const [assignedStaff, setAssignedStaff] = useState({ c: 'AUTO', r: 'AUTO', a: 'AUTO', sm: 'AUTO' });
+  const [assignedStaff, setAssignedStaff] = useState({ c: 'AUTO', r: 'AUTO', a: 'AUTO', sm: 'AUTO', poster: 'AUTO' });
   const [generateOptions, setGenerateOptions] = useState({
     onboarding: true,
     creatives: true,
     reels: true,
     aiVideos: true,
     weeklyReports: true,
+    postingTasks: true,
   });
   const allSelected = Object.values(generateOptions).every(Boolean);
-  const toggleAll = (checked) => setGenerateOptions({ onboarding: checked, creatives: checked, reels: checked, aiVideos: checked, weeklyReports: checked });
+  const toggleAll = (checked) => setGenerateOptions({ onboarding: checked, creatives: checked, reels: checked, aiVideos: checked, weeklyReports: checked, postingTasks: checked });
   const toggleOption = (key, checked) => setGenerateOptions(prev => ({ ...prev, [key]: checked }));
 
   // Client Tasks states
@@ -590,6 +591,12 @@ export default function AdminDashboard() {
       const rStaff = resolveStaff(assignedStaff.r || 'AUTO', 'Video Editor');
       const aStaff = resolveStaff(assignedStaff.a || 'AUTO', 'Ai Video Editor');
       const smStaff = resolveStaff(assignedStaff.sm || 'AUTO', 'Digital Marketing Executive');
+      const posterStaff = assignedStaff.poster && assignedStaff.poster !== 'AUTO'
+        ? (() => {
+            const emp = employeesList.find(e => e.id.toString() === assignedStaff.poster.toString());
+            return emp ? { assignTo: emp.department || 'Digital Marketing Executive', workingOn: emp.name } : smStaff;
+          })()
+        : smStaff;
       const scriptStaff = { assignTo: 'AI Video Lead', workingOn: 'Harshit' };
 
       const onboardingActive = clientFormServices !== 'AI Video Plans' && generateOptions.onboarding;
@@ -695,18 +702,18 @@ export default function AdminDashboard() {
         }
 
         const pkgLower = (clientFormPkg || '').toLowerCase();
-        let contractDays = 30;
+        let contentDays = 21; // 1-month plan content completion target = 21 days
         if (pkgLower.includes('3-month') || pkgLower.includes('3 month') || pkgLower.includes('3m')) {
-          contractDays = 90;
+          contentDays = 61; // 3-month plan content completion target = 61 days
         } else if (pkgLower.includes('6-month') || pkgLower.includes('6 month') || pkgLower.includes('6m')) {
-          contractDays = 180;
+          contentDays = 122; // 6-month plan content completion target = 122 days
         } else if (pkgLower.includes('yearly') || pkgLower.includes('1-year') || pkgLower.includes('annual')) {
-          contractDays = 365;
+          contentDays = 244; // 1-year plan content completion target = 244 days
         }
 
         const totalDeliverables = balanced.length;
-        const availableDays = Math.max(1, contractDays - startOffset - 2);
-        const stepDays = totalDeliverables > 0 ? Math.max(2, Math.floor(availableDays / totalDeliverables)) : 2;
+        const availableDays = Math.max(1, contentDays - startOffset);
+        const stepDays = totalDeliverables > 0 ? Math.max(1, Math.floor(availableDays / totalDeliverables)) : 1;
 
         balanced.forEach((item, index) => {
           const offset = startOffset + index * stepDays;
@@ -734,6 +741,15 @@ export default function AdminDashboard() {
                 postType: item[3],
                 date: getFormattedDate(offset + 1)
               });
+              if (generateOptions.postingTasks) {
+                tasksToCreate.push({
+                  taskTitle: `Post AI Video ${item[1]}`,
+                  assignTo: 'Content Posting',
+                  workingOn: posterStaff ? posterStaff.workingOn : '',
+                  postType: 'Posting',
+                  date: getFormattedDate(offset + 2)
+                });
+              }
             } else {
               tasksToCreate.push({
                 taskTitle: `${item[0]} ${item[1]}`,
@@ -742,6 +758,15 @@ export default function AdminDashboard() {
                 postType: item[3],
                 date: getFormattedDate(offset)
               });
+              if (generateOptions.postingTasks) {
+                tasksToCreate.push({
+                  taskTitle: `Post ${item[0]} ${item[1]}`,
+                  assignTo: 'Content Posting',
+                  workingOn: posterStaff ? posterStaff.workingOn : '',
+                  postType: 'Posting',
+                  date: getFormattedDate(offset + 1)
+                });
+              }
             }
           }
         });
@@ -947,30 +972,48 @@ export default function AdminDashboard() {
 
   const getClientPlanStatus = (client) => {
     const start = parseDbDate(client.joiningDate);
-    if (!start) return { status: 'Unknown', daysLeft: 0, expiryDateStr: '' };
+    if (!start) return { status: 'Unknown', daysLeft: 0, expiringSoonDay: 0, overdueDays: 0, displayText: 'Unknown', expiryDateStr: '' };
     
     const expiry = new Date(start);
-    expiry.setDate(expiry.getDate() + 21); // 21-day cycle
+    expiry.setDate(expiry.getDate() + 30); // 30-day cycle
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
     expiry.setHours(0, 0, 0, 0);
     
     const diffTime = expiry.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
+    const daysPassed = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     const expiryDateStr = expiry.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
     
-    if (diffDays < 0) {
-      return { status: 'Expired', daysLeft: diffDays, expiryDateStr };
-    } else if (diffDays <= 3) {
-      return { status: 'Expiring Soon', daysLeft: diffDays, expiryDateStr };
+    if (diffDays <= 0) {
+      const overdueDays = Math.abs(diffDays) + 1;
+      return { 
+        status: 'Expired', 
+        daysLeft: diffDays, 
+        expiringSoonDay: 0,
+        overdueDays: overdueDays,
+        displayText: `Overdue (${overdueDays})`,
+        expiryDateStr 
+      };
+    } else if (daysPassed >= 22) {
+      const expiringSoonDay = daysPassed - 21;
+      return { 
+        status: 'Expiring Soon', 
+        daysLeft: diffDays, 
+        expiringSoonDay: expiringSoonDay,
+        overdueDays: 0,
+        displayText: `Expiring Soon (${expiringSoonDay})`,
+        expiryDateStr 
+      };
     }
-    return { status: 'Active', daysLeft: diffDays, expiryDateStr };
+    return { status: 'Active', daysLeft: diffDays, expiringSoonDay: 0, overdueDays: 0, displayText: 'Active', expiryDateStr };
   };
 
   const handleRenewClientPlan = async (clientDbId, bizName) => {
-    if (!confirm(`Are you sure you want to renew the plan for "${bizName}"? Setup/onboarding tasks will be skipped; only content deliverables (Creatives, Reels, AI Videos, Weekly Reports) will be generated for the new 21-day cycle.`)) return;
+    if (!confirm(`Are you sure you want to renew the plan for "${bizName}"? Setup/onboarding tasks will be skipped; only content deliverables (Creatives, Reels, AI Videos, Weekly Reports) will be generated for the new 30-day cycle.`)) return;
     
     setFormLoading(true);
     try {
@@ -1630,7 +1673,7 @@ export default function AdminDashboard() {
                     <div>
                       <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Plan Renewals Required!</h4>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        {expiringCount} client plan(s) have expired or are finishing within the next 3 days.
+                        {expiringCount} client plan(s) have expired or are expiring soon.
                       </p>
                     </div>
                   </div>
@@ -2756,9 +2799,9 @@ export default function AdminDashboard() {
                   <div className="flex flex-wrap gap-2">
                     {[
                       { key: 'All', label: 'All Contracts', count: clientsList.filter(c => c.active).length },
-                      { key: 'Expired', label: 'Expired', count: clientsList.filter(c => c.active && getClientPlanStatus(c).status === 'Expired').length, color: 'text-red-500 bg-red-50 dark:bg-red-950/20' },
-                      { key: 'Expiring Soon', label: 'Expiring Soon', count: clientsList.filter(c => c.active && getClientPlanStatus(c).status === 'Expiring Soon').length, color: 'text-orange-500 bg-orange-50 dark:bg-orange-955/20' },
-                      { key: 'Active', label: 'Active', count: clientsList.filter(c => c.active && getClientPlanStatus(c).status === 'Active').length, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-955/20' }
+                      { key: 'Expired', label: 'Expired (Renewal Due)', count: clientsList.filter(c => c.active && getClientPlanStatus(c).status === 'Expired').length, color: 'text-red-500 bg-red-50 dark:bg-red-950/20' },
+                      { key: 'Expiring Soon', label: 'Expiring Soon (Days 23–30)', count: clientsList.filter(c => c.active && getClientPlanStatus(c).status === 'Expiring Soon').length, color: 'text-orange-500 bg-orange-50 dark:bg-orange-955/20' },
+                      { key: 'Active', label: 'Active (Days 1–22)', count: clientsList.filter(c => c.active && getClientPlanStatus(c).status === 'Active').length, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-955/20' }
                     ].map(btn => (
                       <button
                         key={btn.key}
@@ -2806,16 +2849,19 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="overflow-x-auto p-4 space-y-6">
-                  {/* Renewable Contracts Table */}
-                  {(renewalFilter === 'All' || renewalFilter === 'Expired' || renewalFilter === 'Expiring Soon') && (
-                    <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                      <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-655 flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-                          Renew Plan Required
-                        </span>
-                        <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 text-[8px] font-bold rounded uppercase tracking-wider border border-orange-200 dark:border-orange-900/50">
-                          Renew Plan
+                  {/* Expired / Overdue Contracts Table (Renewal Required) */}
+                  {(renewalFilter === 'All' || renewalFilter === 'Expired') && (
+                    <div className="border border-red-200 dark:border-red-900/50 rounded-xl overflow-hidden shadow-sm">
+                      <div className="p-3 bg-red-50/70 dark:bg-red-950/30 border-b border-red-200 dark:border-red-900/50 flex justify-between items-center">
+                        <div>
+                          <span className="text-[11px] font-extrabold uppercase tracking-wider text-red-700 dark:text-red-400 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                            Expired Contracts — Renewal Required (Post 30-Day Cycle)
+                          </span>
+                          <p className="text-[10px] text-red-600/80 dark:text-red-300/70 font-medium mt-0.5">30-day cycle completed. Renewal starts on Day 31 (next day after Day 30).</p>
+                        </div>
+                        <span className="px-2 py-0.5 bg-red-600 text-white text-[8px] font-bold rounded uppercase tracking-wider shadow-sm">
+                          Renewal Required
                         </span>
                       </div>
                       <table className="w-full text-left border-collapse">
@@ -2823,8 +2869,8 @@ export default function AdminDashboard() {
                           <tr className="bg-slate-50/50 dark:bg-slate-800/20 text-slate-500 font-semibold border-b border-slate-200 dark:border-slate-800 text-[9px] uppercase tracking-wider">
                             <th className="p-4">Business / Client Name</th>
                             <th className="p-4">Current Cycle Date</th>
-                            <th className="p-4">Calculated Expiry Date</th>
-                            <th className="p-4">Days Remaining</th>
+                            <th className="p-4">Expiry Date (30 Days Completed)</th>
+                            <th className="p-4">Overdue Days</th>
                             <th className="p-4">Active Plan Services</th>
                             <th className="p-4">Status</th>
                             <th className="p-4 text-right">Actions</th>
@@ -2834,12 +2880,7 @@ export default function AdminDashboard() {
                           {(() => {
                             const list = clientsList
                               .filter(c => c.active)
-                              .filter(c => {
-                                const { status } = getClientPlanStatus(c);
-                                if (renewalFilter === 'Expired') return status === 'Expired';
-                                if (renewalFilter === 'Expiring Soon') return status === 'Expiring Soon';
-                                return status === 'Expired' || status === 'Expiring Soon';
-                              })
+                              .filter(c => getClientPlanStatus(c).status === 'Expired')
                               .filter(c => {
                                 if (!renewalSearch) return true;
                                 const q = renewalSearch.toLowerCase();
@@ -2849,20 +2890,21 @@ export default function AdminDashboard() {
                             if (list.length === 0) {
                               return (
                                 <tr>
-                                  <td colSpan="7" className="p-8 text-center text-slate-400 italic">No renewable contracts found.</td>
+                                  <td colSpan="7" className="p-8 text-center text-slate-400 italic">No expired contracts currently.</td>
                                 </tr>
                               );
                             }
 
                             return list.map(client => {
-                              const { status, daysLeft, expiryDateStr } = getClientPlanStatus(client);
+                              const planStatus = getClientPlanStatus(client);
+                              const { expiryDateStr, overdueDays, displayText } = planStatus;
                               return (
-                                <tr key={`renew-${client.id}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition text-slate-700 dark:text-slate-300">
+                                <tr key={`renew-${client.id}`} className="hover:bg-red-50/30 dark:hover:bg-red-950/20 transition text-slate-700 dark:text-slate-300">
                                   <td className="p-4">
                                     <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                                       {client.businessName}
-                                      <span className="px-1 py-0.5 bg-orange-600 text-white text-[7px] font-black rounded uppercase tracking-widest shrink-0">
-                                        RENEW PLAN
+                                      <span className="px-1.5 py-0.5 bg-red-600 text-white text-[7px] font-black rounded uppercase tracking-widest shrink-0">
+                                        EXPIRED
                                       </span>
                                     </div>
                                     <div className="text-[10px] text-slate-400 mt-0.5">ID: {client.clientId} | Person: {client.clientName || 'N/A'}</div>
@@ -2870,35 +2912,25 @@ export default function AdminDashboard() {
                                   <td className="p-4 font-semibold">{client.joiningDate}</td>
                                   <td className="p-4 font-semibold">{expiryDateStr || 'N/A'}</td>
                                   <td className="p-4 font-bold">
-                                    {daysLeft < 0 ? (
-                                      <span className="text-red-500 font-extrabold">{Math.abs(daysLeft)} day(s) overdue</span>
-                                    ) : daysLeft === 0 ? (
-                                      <span className="text-orange-500 font-extrabold">Today</span>
-                                    ) : (
-                                      <span className="text-slate-600 dark:text-slate-400">{daysLeft} day(s) left</span>
-                                    )}
+                                    <span className="text-red-500 font-extrabold">Overdue ({overdueDays})</span>
                                   </td>
                                   <td className="p-4">
                                     <div className="font-bold text-blue-650 dark:text-blue-400">{client.services}</div>
                                     <div className="text-[9px] text-slate-450 mt-0.5">{client.packageName}</div>
                                   </td>
                                   <td className="p-4">
-                                    <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider
-                                      ${status === 'Expired' 
-                                        ? 'bg-red-105 text-red-800 dark:bg-red-955/40 dark:text-red-400 border border-red-200 dark:border-red-900/45' 
-                                        : 'bg-orange-100 text-orange-850 dark:bg-orange-955/40 dark:text-orange-400 border border-orange-200 dark:border-orange-900/45'}`}
-                                    >
-                                      {status}
+                                    <span className="inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-red-100 text-red-800 dark:bg-red-955/40 dark:text-red-400 border border-red-200 dark:border-red-900/45">
+                                      {displayText}
                                     </span>
                                   </td>
                                   <td className="p-4 text-right">
                                     <button
                                       onClick={() => handleRenewClientPlan(client.id, client.businessName)}
                                       disabled={formLoading}
-                                      className="py-1.5 px-3 rounded-lg text-[10px] font-bold transition flex items-center gap-1 shadow-sm disabled:opacity-50 ml-auto bg-orange-600 hover:bg-orange-700 text-white shadow-orange-500/10 cursor-pointer"
+                                      className="py-1.5 px-3 rounded-lg text-[10px] font-bold transition flex items-center gap-1 shadow-sm disabled:opacity-50 ml-auto bg-red-600 hover:bg-red-700 text-white shadow-red-500/10 cursor-pointer"
                                     >
                                       <RefreshCw className={`w-3 h-3 ${formLoading ? 'animate-spin' : ''}`} />
-                                      <span>Renew Plan</span>
+                                      <span>Renew Plan Now</span>
                                     </button>
                                   </td>
                                 </tr>
@@ -2910,7 +2942,95 @@ export default function AdminDashboard() {
                     </div>
                   )}
 
-                  {/* Active Contracts Table */}
+                  {/* Expiring Soon Notice Table (Active Contracts Days 23 to 30) */}
+                  {(renewalFilter === 'All' || renewalFilter === 'Expiring Soon') && (
+                    <div className="border border-orange-200 dark:border-orange-900/50 rounded-xl overflow-hidden shadow-sm">
+                      <div className="p-3 bg-orange-50/70 dark:bg-orange-955/30 border-b border-orange-200 dark:border-orange-900/50 flex justify-between items-center">
+                        <div>
+                          <span className="text-[11px] font-extrabold uppercase tracking-wider text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                            Expiring Soon Notice — Active Contracts (Days 23–30 of 30)
+                          </span>
+                          <p className="text-[10px] text-orange-600/80 dark:text-orange-300/70 font-medium mt-0.5">Plan remains active through Day 30. Renewal starts on Day 31 (next day after Day 30).</p>
+                        </div>
+                        <span className="px-2 py-0.5 bg-orange-500 text-white text-[8px] font-bold rounded uppercase tracking-wider">
+                          Final Week Notice
+                        </span>
+                      </div>
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50/50 dark:bg-slate-800/20 text-slate-500 font-semibold border-b border-slate-200 dark:border-slate-800 text-[9px] uppercase tracking-wider">
+                            <th className="p-4">Business / Client Name</th>
+                            <th className="p-4">Current Cycle Date</th>
+                            <th className="p-4">Expected End Date (Day 30)</th>
+                            <th className="p-4">Expiring Soon Countdown</th>
+                            <th className="p-4">Active Plan Services</th>
+                            <th className="p-4">Status</th>
+                            <th className="p-4 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {(() => {
+                            const list = clientsList
+                              .filter(c => c.active)
+                              .filter(c => getClientPlanStatus(c).status === 'Expiring Soon')
+                              .filter(c => {
+                                if (!renewalSearch) return true;
+                                const q = renewalSearch.toLowerCase();
+                                return c.businessName.toLowerCase().includes(q) || c.clientId.toLowerCase().includes(q);
+                              });
+
+                            if (list.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan="7" className="p-8 text-center text-slate-400 italic">No contracts currently in expiring soon notice (Days 23–30).</td>
+                                </tr>
+                              );
+                            }
+
+                            return list.map(client => {
+                              const planStatus = getClientPlanStatus(client);
+                              const { expiryDateStr, expiringSoonDay, displayText } = planStatus;
+                              return (
+                                <tr key={`expiring-${client.id}`} className="hover:bg-orange-50/30 dark:hover:bg-orange-955/20 transition text-slate-700 dark:text-slate-300">
+                                  <td className="p-4">
+                                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                      {client.businessName}
+                                      <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[7px] font-black rounded uppercase tracking-widest shrink-0">
+                                        EXPIRING SOON
+                                      </span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">ID: {client.clientId} | Person: {client.clientName || 'N/A'}</div>
+                                  </td>
+                                  <td className="p-4 font-semibold">{client.joiningDate}</td>
+                                  <td className="p-4 font-semibold">{expiryDateStr || 'N/A'}</td>
+                                  <td className="p-4 font-bold">
+                                    <span className="text-orange-500 font-extrabold">Expiring Soon ({expiringSoonDay})</span>
+                                  </td>
+                                  <td className="p-4">
+                                    <div className="font-bold text-blue-650 dark:text-blue-400">{client.services}</div>
+                                    <div className="text-[9px] text-slate-450 mt-0.5">{client.packageName}</div>
+                                  </td>
+                                  <td className="p-4">
+                                    <span className="inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-orange-100 text-orange-850 dark:bg-orange-955/40 dark:text-orange-400 border border-orange-200 dark:border-orange-900/45">
+                                      {displayText}
+                                    </span>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <span className="inline-block px-2.5 py-1 rounded-lg text-[9px] font-bold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/40">
+                                      Active (Renewal on Day 31)
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            });
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Active Contracts Table (Days 1 to 22) */}
                   {(renewalFilter === 'All' || renewalFilter === 'Active') && (
                     <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
                       <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
@@ -2972,14 +3092,9 @@ export default function AdminDashboard() {
                                     </span>
                                   </td>
                                   <td className="p-4 text-right">
-                                    <button
-                                      onClick={() => handleRenewClientPlan(client.id, client.businessName)}
-                                      disabled={formLoading}
-                                      className="py-1.5 px-3 rounded-lg text-[10px] font-bold transition flex items-center gap-1 shadow-sm disabled:opacity-50 ml-auto bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer"
-                                    >
-                                      <RefreshCw className={`w-3 h-3 ${formLoading ? 'animate-spin' : ''}`} />
-                                      <span>Renew Plan</span>
-                                    </button>
+                                    <span className="inline-block px-2.5 py-1 rounded-lg text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-955/30 border border-emerald-200 dark:border-emerald-900/40">
+                                      Plan Active
+                                    </span>
                                   </td>
                                 </tr>
                               );
@@ -3821,18 +3936,18 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex gap-6 items-center pt-5">
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 dark:text-slate-355">Page Creation Required?</label>
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Page Created / Account Ready?</label>
                       <select
-                        value={pageCreationRequired ? "Yes" : "No"}
+                        value={clientFormReady ? "Yes" : "No"}
                         onChange={(e) => {
-                          const isReq = e.target.value === "Yes";
-                          setPageCreationRequired(isReq);
-                          setClientFormReady(!isReq);
+                          const isReady = e.target.value === "Yes";
+                          setClientFormReady(isReady);
+                          setPageCreationRequired(!isReady);
                         }}
                         className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
                       >
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes">Yes (Page Created & Ready)</option>
+                        <option value="No">No (Page Creation Required)</option>
                       </select>
                     </div>
                     <label className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
@@ -4013,6 +4128,7 @@ export default function AdminDashboard() {
                     { key: 'reels',         label: 'Reels / Shorts (R)',icon: '🎬', desc: `${reqBuilder.r} video reels` },
                     { key: 'aiVideos',      label: 'AI Videos (AI)',    icon: '🤖', desc: `${reqBuilder.a} AI videos` },
                     { key: 'weeklyReports', label: 'Weekly Reports',    icon: '📊', desc: '4 weekly report tasks' },
+                    { key: 'postingTasks',  label: 'Posting Tasks',     icon: '📲', desc: 'Posting upon client approval' },
                   ].map(opt => (
                     <label
                       key={opt.key}
@@ -4122,6 +4238,26 @@ export default function AdminDashboard() {
                       <option value="AUTO">Auto Assign (First-In Round Robin)</option>
                       {employeesList
                         .filter(e => ['pujan', 'preet', 'rama'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
+                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {generateOptions.postingTasks && (
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Content Poster</span>
+                      <span className="text-[8px] font-extrabold uppercase bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">Content Posting</span>
+                    </div>
+                    <select 
+                      value={assignedStaff.poster} 
+                      onChange={e => setAssignedStaff({...assignedStaff, poster: e.target.value})}
+                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px]"
+                    >
+                      <option value="AUTO">Auto Assign (Default - Same as Social Media Exec)</option>
+                      {employeesList
                         .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
                     </select>
                   </div>
@@ -4334,18 +4470,18 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex gap-6 items-center pt-5">
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 dark:text-slate-355">Page Creation Required?</label>
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Page Created / Account Ready?</label>
                       <select
-                        value={pageCreationRequired ? "Yes" : "No"}
+                        value={clientFormReady ? "Yes" : "No"}
                         onChange={(e) => {
-                          const isReq = e.target.value === "Yes";
-                          setPageCreationRequired(isReq);
-                          setClientFormReady(!isReq);
+                          const isReady = e.target.value === "Yes";
+                          setClientFormReady(isReady);
+                          setPageCreationRequired(!isReady);
                         }}
                         className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none"
                       >
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
+                        <option value="Yes">Yes (Page Created & Ready)</option>
+                        <option value="No">No (Page Creation Required)</option>
                       </select>
                     </div>
                     <label className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300 cursor-pointer">

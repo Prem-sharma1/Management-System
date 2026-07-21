@@ -295,8 +295,9 @@ export default function EmployeeDashboard() {
       return;
     }
 
-    const isCompleted = ['DONE', 'Completed', 'Client Review', 'Completion'].includes(newStatus);
-    const isExempt = currentUser && ['pujan', 'preet', 'rama'].includes(currentUser.name.toLowerCase());
+    const isCompleted = ['DONE', 'Completed', 'Client Review', 'Completion', 'Posted'].includes(newStatus);
+    const isPostingTask = selectedTaskForStatus?.postType === 'Posting' || (selectedTaskForStatus?.taskTitle && selectedTaskForStatus.taskTitle.toLowerCase().startsWith('post '));
+    const isExempt = (currentUser && ['pujan', 'preet', 'rama'].includes(currentUser.name.toLowerCase())) || isPostingTask;
     
     if (isCompleted && !isExempt && !workSampleFile && (!selectedTaskForStatus?.workSampleUrl)) {
       setFormError('A work sample file is required to submit work for client review / completion.');
@@ -412,10 +413,84 @@ export default function EmployeeDashboard() {
 
   const employeeTasksList = tasksList;
 
-  const employeeMyClientTasks = allClientTasks.filter(task => {
-    if (!task.workingOn || !currentUser?.name) return false;
-    return task.workingOn.toLowerCase().includes(currentUser.name.toLowerCase());
-  });
+  const isSocialMediaStaff = currentUser && (
+    ['pujan', 'preet', 'rama', 'swapnil', 'danish'].includes(currentUser.name.toLowerCase()) ||
+    (currentUser.department && (
+      currentUser.department.toLowerCase().includes('social media') ||
+      currentUser.department.toLowerCase().includes('digital marketing') ||
+      currentUser.department.toLowerCase().includes('graphic designer')
+    ))
+  );
+
+  const isPostingTaskReady = (task, allTasks) => {
+    const isPosting = task.postType === 'Posting' || (task.taskTitle && task.taskTitle.toLowerCase().startsWith('post '));
+    if (!isPosting) return true;
+
+    if (['Completion', 'Completed', 'DONE', 'Done', 'Posted', 'Processing', 'In Progress'].includes(task.status)) {
+      return true;
+    }
+
+    const contentTitle = task.taskTitle.replace(/^Post\s+/i, '');
+    const contentTask = allTasks.find(t => 
+      t.clientId === task.clientId && 
+      (t.taskTitle.toLowerCase() === contentTitle.toLowerCase() || (task.notes && t.taskId === task.notes))
+    );
+
+    if (contentTask) {
+      if (['Completion', 'Completed', 'DONE', 'Done'].includes(contentTask.status)) {
+        return true;
+      }
+      if (contentTask.status === 'Client Review') {
+        const changedTime = contentTask.statusChangedAt ? new Date(contentTask.statusChangedAt).getTime() : new Date(contentTask.createdAt).getTime();
+        const timeDiffHours = (new Date().getTime() - changedTime) / (1000 * 60 * 60);
+        if (timeDiffHours >= 24) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    if (task.status === 'Client Review') {
+      const changedTime = task.statusChangedAt ? new Date(task.statusChangedAt).getTime() : new Date(task.createdAt).getTime();
+      const timeDiffHours = (new Date().getTime() - changedTime) / (1000 * 60 * 60);
+      return timeDiffHours >= 24;
+    }
+
+    return false;
+  };
+
+  const employeeMyClientTasks = allClientTasks
+    .filter(task => {
+      const isAssignedToMe = task.workingOn && currentUser?.name && task.workingOn.toLowerCase().includes(currentUser.name.toLowerCase());
+      const isDeptUnclaimed = !task.workingOn && task.assignTo && currentUser?.department && task.assignTo.toLowerCase().includes(currentUser.department.toLowerCase());
+      const isPosting = task.postType === 'Posting' || (task.taskTitle && task.taskTitle.toLowerCase().startsWith('post '));
+      const isUnclaimedPosting = (!task.workingOn || task.workingOn === 'AUTO') && isPosting;
+      const isSMStaff = isSocialMediaStaff && isPosting;
+
+      if (isAssignedToMe || isDeptUnclaimed || isUnclaimedPosting || isSMStaff) {
+        return isPostingTaskReady(task, allClientTasks);
+      }
+
+      return false;
+    });
+
+  const isTaskReadyToPostToday = (ct) => {
+    const isPosting = ct.postType === 'Posting' || (ct.taskTitle && ct.taskTitle.toLowerCase().startsWith('post '));
+    if (isPosting) {
+      const contentTitle = ct.taskTitle.replace(/^Post\s+/i, '');
+      const contentTask = allClientTasks.find(t => 
+        t.clientId === ct.clientId && 
+        (t.taskTitle.toLowerCase() === contentTitle.toLowerCase() || (ct.notes && t.taskId === ct.notes))
+      );
+      if (contentTask) {
+        const isApproved = ['Completion', 'Completed', 'DONE', 'Done'].includes(contentTask.status);
+        const changedTime = contentTask.statusChangedAt ? new Date(contentTask.statusChangedAt).getTime() : new Date(contentTask.createdAt).getTime();
+        const isAutoApproved = contentTask.status === 'Client Review' && ((new Date().getTime() - changedTime) / (1000 * 60 * 60) >= 24);
+        if (isApproved || isAutoApproved) return true;
+      }
+    }
+    return false;
+  };
 
   const completedTasks = employeeTasksList.filter(t => t.status === 'DONE').length;
   const pendingTasks = employeeTasksList.filter(t => t.status !== 'DONE').length;
@@ -429,24 +504,15 @@ export default function EmployeeDashboard() {
 
   const filteredClientTasks = employeeMyClientTasks.filter(ct => {
     if (!filterDate) return true;
+    if (isTaskReadyToPostToday(ct) && filterDate === todayIso) return true;
     return convertDbDateToIso(ct.date) === formats.isoFormat;
   });
 
-  const isWeeklyReportStaff = currentUser && ['pujan', 'preet', 'rama'].includes(currentUser.name.toLowerCase());
-
   const myDepartmentClientTasks = allClientTasks.filter(t => {
-    if (t.workingOn === currentUser?.name) return true;
-    
-    if (isWeeklyReportStaff) {
-      if (t.status === 'Completion') return true;
-      if (t.status === 'Client Review') {
-        const changedTime = t.statusChangedAt ? new Date(t.statusChangedAt).getTime() : new Date(t.createdAt).getTime();
-        const timeDiffMinutes = (new Date().getTime() - changedTime) / (1000 * 60);
-        if (timeDiffMinutes >= 10) return true;
-      }
-    }
-    
-    if (!t.workingOn && t.assignTo === currentUser?.department) return true;
+    if (t.workingOn && currentUser?.name && t.workingOn.toLowerCase().includes(currentUser.name.toLowerCase())) return true;
+    if (!t.workingOn && t.assignTo && currentUser?.department && t.assignTo.toLowerCase().includes(currentUser.department.toLowerCase())) return true;
+    const isPosting = t.postType === 'Posting' || (t.taskTitle && t.taskTitle.toLowerCase().startsWith('post '));
+    if ((!t.workingOn || t.workingOn === 'AUTO') && isPosting) return true;
     return false;
   });
 
@@ -455,9 +521,21 @@ export default function EmployeeDashboard() {
     return convertDbDateToIso(ct.date) === formats.isoFormat;
   });
 
+  const todaysClientTasksList = employeeMyClientTasks.filter(ct => {
+    const isPosting = ct.postType === 'Posting' || (ct.taskTitle && ct.taskTitle.toLowerCase().startsWith('post '));
+    if (isPosting) {
+      return isTaskReadyToPostToday(ct) || ['Completion', 'Completed', 'DONE', 'Posted'].includes(ct.status);
+    }
+    if (ct.status === 'Posted' || ct.status === 'Completion' || ct.status === 'Completed' || ct.status === 'DONE') {
+      if (convertDbDateToIso(ct.date) !== todayIso) return false;
+    }
+    if (convertDbDateToIso(ct.date) === todayIso) return true;
+    return false;
+  });
+
   const todaysTasksCount = [
     ...employeeTasksList.filter(t => t.status !== 'DONE' && t.dueDate === todayIso),
-    ...employeeMyClientTasks.filter(ct => ct.status !== 'Completion' && convertDbDateToIso(ct.date) === todayIso)
+    ...todaysClientTasksList.filter(ct => ct.status !== 'Posted')
   ].length;
 
   return (
@@ -688,8 +766,7 @@ export default function EmployeeDashboard() {
                       ...employeeTasksList
                         .filter(t => t.dueDate === todayIso)
                         .map(t => ({ ...t, type: 'internal' })),
-                      ...employeeMyClientTasks
-                        .filter(ct => convertDbDateToIso(ct.date) === todayIso)
+                      ...todaysClientTasksList
                         .map(ct => ({ ...ct, type: 'client' }))
                     ].length === 0 ? (
                       <p className="text-xs text-slate-400 text-center py-6 italic font-medium">No tasks scheduled for today.</p>
@@ -698,8 +775,7 @@ export default function EmployeeDashboard() {
                         ...employeeTasksList
                           .filter(t => t.dueDate === todayIso)
                           .map(t => ({ ...t, type: 'internal' })),
-                        ...employeeMyClientTasks
-                          .filter(ct => convertDbDateToIso(ct.date) === todayIso)
+                        ...todaysClientTasksList
                           .map(ct => ({ ...ct, type: 'client' }))
                       ].map((item) => (
                         <div 
@@ -711,9 +787,20 @@ export default function EmployeeDashboard() {
                               {item.type === 'internal' ? item.title : item.taskTitle}
                             </p>
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] font-semibold text-slate-500">
-                              <span className={`px-1 rounded text-[8px] uppercase ${item.type === 'internal' ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/25 dark:text-blue-400'}`}>
-                                {item.type === 'internal' ? 'Internal' : 'Client Task'}
-                              </span>
+                              {(() => {
+                                const isPostingTask = item.type === 'client' && (item.postType === 'Posting' || (item.taskTitle && item.taskTitle.toLowerCase().startsWith('post ')));
+                                return (
+                                  <span className={`px-1 rounded text-[8px] font-bold uppercase ${
+                                    item.type === 'internal'
+                                      ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                      : isPostingTask
+                                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                                      : 'bg-blue-50 text-blue-600 dark:bg-blue-900/25 dark:text-blue-400'
+                                  }`}>
+                                    {item.type === 'internal' ? 'Internal' : isPostingTask ? 'Posting Task' : 'Client Task'}
+                                  </span>
+                                );
+                              })()}
                               <span>•</span>
                               <span className="truncate">{item.type === 'internal' ? `Assigned by: ${item.createdBy.name}` : `Client: ${item.businessName}`}</span>
                               {item.priority && (
@@ -725,6 +812,30 @@ export default function EmployeeDashboard() {
                                 </>
                               )}
                             </div>
+                            {/* Approved Content Link for Posting Tasks & Deliverables */}
+                            {item.type === 'client' && (() => {
+                              const mediaUrl = item.workSampleUrl || (() => {
+                                const contentTitle = item.taskTitle.replace(/^Post\s+/i, '');
+                                const contentTask = allClientTasks.find(t => t.clientId === item.clientId && (t.taskTitle === contentTitle || t.taskTitle.toLowerCase() === contentTitle.toLowerCase()));
+                                return contentTask?.workSampleUrl;
+                              })();
+                              
+                              if (mediaUrl) {
+                                return (
+                                  <div className="mt-1">
+                                    <a 
+                                      href={mediaUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 dark:text-amber-400 hover:underline bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200/60 dark:border-amber-800/40"
+                                    >
+                                      <FileDown className="w-3 h-3" /> View Approved Content {item.workingOn ? `(by ${item.workingOn})` : ''}
+                                    </a>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                           
                           <div className="shrink-0 flex items-center gap-2">
@@ -884,7 +995,9 @@ export default function EmployeeDashboard() {
                                   {item.priority || 'Normal'}
                                 </span>
                               </div>
-                              <p className="text-[9px] text-blue-600/70 dark:text-blue-400/70 mt-1.5 font-bold">Client: {item.businessName} | Date: {item.date}</p>
+                              <p className="text-[9px] text-blue-600/70 dark:text-blue-400/70 mt-1.5 font-bold">
+                                Client: {item.businessName} | {item.postType === 'Posting' || (item.taskTitle && item.taskTitle.toLowerCase().startsWith('post ')) ? 'Trigger: Auto on Client Approval / 24h' : `Date: ${item.date}`}
+                              </p>
                             </div>
                           )
                         ));
@@ -988,7 +1101,7 @@ export default function EmployeeDashboard() {
 
                 {/* Client Tasks Section */}
                 <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
-                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-4">Client Deliverables</h4>
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-4">Assigned Client & Posting Tasks</h4>
                   <div className="space-y-4">
                     {filteredClientTasks.length === 0 ? (
                       <p className="text-xs text-slate-400 text-center py-6">No client tasks assigned yet for this date.</p>
@@ -1007,13 +1120,13 @@ export default function EmployeeDashboard() {
                                   : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
                                 {ct.priority || 'Normal'}
                               </span>
-                              <span className="text-[10px] text-slate-400 ml-1 font-normal">({ct.taskId})</span>
+                              <span className="text-[10px] text-slate-400 font-normal ml-1">({ct.taskId})</span>
                             </p>
                             <p className="text-[10px] text-slate-500 font-medium mt-1">
                               <Building className="w-3 h-3 inline-block mr-1 text-slate-400" /> Client: <span className="font-bold">{ct.businessName}</span> | Post Type: {ct.postType || 'N/A'}
                             </p>
                             <p className="text-[10px] text-slate-400 font-medium mt-1">
-                              Date: {ct.date} | Status: <span className={`font-bold ${['Completed', 'DONE', 'Completion'].includes(ct.status) ? 'text-emerald-500' : ['Overdue', 'OVERDUE'].includes(ct.status) ? 'text-red-500' : ['Pending', 'PENDING'].includes(ct.status) ? 'text-yellow-500' : 'text-blue-500'}`}>{ct.status}</span>
+                              {ct.postType === 'Posting' || (ct.taskTitle && ct.taskTitle.toLowerCase().startsWith('post ')) ? 'Trigger: Auto on Client Approval / 24h' : `Date: ${ct.date}`} | Status: <span className={`font-bold ${['Completed', 'DONE', 'Completion'].includes(ct.status) ? 'text-emerald-500' : ['Overdue', 'OVERDUE'].includes(ct.status) ? 'text-red-500' : ['Pending', 'PENDING'].includes(ct.status) ? 'text-yellow-500' : 'text-blue-500'}`}>{ct.status}</span>
                             </p>
                             {/* Display script link for AI Video tasks */}
                             {ct.postType === 'AI Video' && (() => {
@@ -1046,6 +1159,26 @@ export default function EmployeeDashboard() {
                                 </a>
                               </div>
                             )}
+                            {/* Display approved content link for Posting tasks */}
+                            {(ct.postType === 'Posting' || (ct.taskTitle && ct.taskTitle.toLowerCase().startsWith('post '))) && (() => {
+                              const contentTitle = ct.taskTitle.replace(/^Post\s+/i, '');
+                              const contentTask = allClientTasks.find(t => t.clientId === ct.clientId && (t.taskTitle === contentTitle || t.taskTitle.toLowerCase() === contentTitle.toLowerCase()));
+                              if (contentTask && contentTask.workSampleUrl) {
+                                return (
+                                  <div className="mt-1.5">
+                                    <a 
+                                      href={contentTask.workSampleUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-400 hover:underline bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded-md w-fit border border-amber-200/70 dark:border-amber-800/40"
+                                    >
+                                      <FileDown className="w-3.5 h-3.5" /> View Approved Content {contentTask.workingOn ? `(by ${contentTask.workingOn})` : ''}
+                                    </a>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                             {ct.reason && (
                               <p className="text-[10px] text-red-500 font-medium italic mt-1.5 bg-red-50 dark:bg-red-950/20 p-1.5 rounded-md border border-red-100 dark:border-red-900/30">Reason: {ct.reason}</p>
                             )}
@@ -1245,9 +1378,9 @@ export default function EmployeeDashboard() {
                                   <span className="text-[10px] text-slate-400 font-normal ml-1">({task.taskId})</span>
                                   {(() => {
                                       const changedTime = task.statusChangedAt ? new Date(task.statusChangedAt).getTime() : new Date(task.createdAt).getTime();
-                                      const timeDiffMinutes = (new Date().getTime() - changedTime) / (1000 * 60);
-                                      const isApproved = task.status === 'Completion';
-                                      const isAutoApproved = task.status === 'Client Review' && timeDiffMinutes >= 10;
+                                      const timeDiffHours = (new Date().getTime() - changedTime) / (1000 * 60 * 60);
+                                      const isApproved = task.status === 'Completion' || task.status === 'Completed' || task.status === 'DONE';
+                                      const isAutoApproved = task.status === 'Client Review' && timeDiffHours >= 24;
                                       
                                       if (isApproved) {
                                         return (
@@ -1258,7 +1391,7 @@ export default function EmployeeDashboard() {
                                       } else if (isAutoApproved) {
                                         return (
                                           <span className="ml-2 inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-amber-100 text-amber-855 dark:bg-amber-955/40 dark:text-amber-400 animate-pulse">
-                                            Auto-Approved (10m) - Ready to Post
+                                            Auto-Approved (24h) - Ready to Post
                                           </span>
                                         );
                                       }
@@ -1268,19 +1401,25 @@ export default function EmployeeDashboard() {
                                 <p className="text-xs text-slate-500">
                                   Client: <span className="font-semibold text-slate-700 dark:text-slate-300">{task.businessName}</span> | 
                                   Type: {task.postType} | 
-                                  Date: <input 
-                                    type="date" 
-                                    className="bg-transparent border-b border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-blue-500 mx-1 px-1"
-                                    value={convertDbDateToIso(task.date)}
-                                    onChange={async (e) => {
-                                      await fetch(`/api/client-tasks/${task.id}`, {
-                                        method: 'PUT',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ date: e.target.value })
-                                      });
-                                      refreshData();
-                                    }}
-                                  />
+                                  {task.postType === 'Posting' || (task.taskTitle && task.taskTitle.toLowerCase().startsWith('post ')) ? (
+                                    <span className="font-bold text-amber-600 dark:text-amber-400 ml-1">Trigger: Auto on Client Approval / 24h</span>
+                                  ) : (
+                                    <>
+                                      Date: <input 
+                                        type="date" 
+                                        className="bg-transparent border-b border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-blue-500 mx-1 px-1"
+                                        value={convertDbDateToIso(task.date)}
+                                        onChange={async (e) => {
+                                          await fetch(`/api/client-tasks/${task.id}`, {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ date: e.target.value })
+                                          });
+                                          refreshData();
+                                        }}
+                                      />
+                                    </>
+                                  )}
                                 </p>
                                 <div className="text-xs text-slate-500 flex items-center gap-2 mt-2">
                                   <span>Assigned to:</span>
@@ -1461,6 +1600,11 @@ export default function EmployeeDashboard() {
                          <option value="PENDING">Pending (Blocked)</option>
                          <option value="OVERDUE">Overdue</option>
                        </>
+                    ) : (selectedTaskForStatus?.postType === 'Posting' || (selectedTaskForStatus?.taskTitle && selectedTaskForStatus.taskTitle.toLowerCase().startsWith('post '))) ? (
+                       <>
+                         <option value="Not Started">Not Posted</option>
+                         <option value="Completion">Posted</option>
+                       </>
                     ) : (
                        <>
                          <option value="Not Started">Not Started</option>
@@ -1489,7 +1633,7 @@ export default function EmployeeDashboard() {
                   </div>
                 )}
 
-                {['DONE', 'Completed', 'Client Review', 'Completion'].includes(newStatus) && currentUser && !['pujan', 'preet', 'rama'].includes(currentUser.name.toLowerCase()) && (
+                {['DONE', 'Completed', 'Client Review', 'Completion'].includes(newStatus) && currentUser && !['pujan', 'preet', 'rama'].includes(currentUser.name.toLowerCase()) && !(selectedTaskForStatus?.postType === 'Posting' || (selectedTaskForStatus?.taskTitle && selectedTaskForStatus.taskTitle.toLowerCase().startsWith('post '))) && (
                   <div className="space-y-1 mt-2">
                     <label className="font-bold text-blue-600 dark:text-blue-400">Upload Work Sample <span className="text-red-500">*</span></label>
                     <p className="text-[10px] text-slate-500 mb-1">Creative team members must attach today's work sample to submit for client review / completion.</p>

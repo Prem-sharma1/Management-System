@@ -223,10 +223,10 @@ export default function ClientDashboard() {
     if (!clientInfo) return { startStr: '', expiryStr: '', daysLeft: 0, progressPct: 0 };
     
     const cycleStart = parseDbDate(clientInfo.joiningDate);
-    const cycleEnd = new Date(cycleStart.getTime() + 21 * 24 * 60 * 60 * 1000);
+    const cycleEnd = new Date(cycleStart.getTime() + 30 * 24 * 60 * 60 * 1000);
     const today = new Date();
     
-    const totalDays = 21;
+    const totalDays = 30;
     const timeDiff = cycleEnd.getTime() - today.getTime();
     const daysLeft = Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
     
@@ -419,7 +419,7 @@ export default function ClientDashboard() {
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
                       <Calendar className="w-4 h-4 text-indigo-400" />
-                      Active 21-Day Contract Cycle
+                      Active 30-Day Contract Cycle
                     </span>
                     <span className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded text-[9px] font-bold">
                       Cycle Countdowns
@@ -458,7 +458,7 @@ export default function ClientDashboard() {
 
                 <div className="flex items-center gap-2 text-[10px] text-slate-400 bg-slate-950/30 p-2.5 rounded-xl border border-slate-800/40">
                   <Info className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                  <p>Upon plan expiry, subscription renewing will dynamically schedule your next 21-day deliverables schedule.</p>
+                  <p>Upon plan expiry, subscription renewing will dynamically schedule your next 30-day deliverables schedule.</p>
                 </div>
               </div>
 

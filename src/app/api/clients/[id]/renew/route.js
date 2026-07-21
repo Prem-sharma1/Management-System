@@ -81,7 +81,7 @@ export async function POST(request, { params }) {
 
     if (currentStart) {
       const currentExpiry = new Date(currentStart);
-      currentExpiry.setDate(currentExpiry.getDate() + 21);
+      currentExpiry.setDate(currentExpiry.getDate() + 30);
       
       // If previous plan is still active, start new plan the day after expiry
       if (currentExpiry >= today) {
@@ -183,62 +183,62 @@ export async function POST(request, { params }) {
       for (let i = 1; i <= count; i++) {
         const base = 1 + (i - 1) * 4;
         tasksToCreate.push({
-          taskTitle: `${getOrdinal(i)} AI Video Script`,
+          taskTitle: `AI Video Script ${i}`,
           assignTo: 'AI Video Lead',
           postType: 'Script',
           offset: base
         });
         tasksToCreate.push({
-          taskTitle: `${getOrdinal(i)} AI Video`,
+          taskTitle: `AI Video ${i}`,
           assignTo: 'Ai Video Editor',
           postType: 'AI Video',
           offset: base + 1
         });
       }
     } else {
-      // Standard plans: create SM Graphic, SM Reels, SM AI Videos, Weekly Reports
+      // Standard plans: create Graphic, Reel, AI Video, Weekly Reports
       // Excludes Setup/Onboarding tasks!
       const items = [];
-      for (let i = 1; i <= cCount; i++) items.push({ title: `SM Graphic ${i}`, category: 'SM Graphic', num: i, assignTo: 'Graphic Designer', type: 'Graphic' });
-      for (let i = 1; i <= rCount; i++) items.push({ title: `SM Reels ${i}`, category: 'SM Reels', num: i, assignTo: 'Video Editor', type: 'Reel' });
-      for (let i = 1; i <= aCount; i++) items.push({ title: `${getOrdinal(i)} AI Video`, category: 'SM AI Videos', num: i, assignTo: 'Ai Video Editor', type: 'AI Video' });
+      for (let i = 1; i <= cCount; i++) items.push({ title: `Graphic ${i}`, category: 'Graphic', num: i, assignTo: 'Graphic Designer', type: 'Graphic' });
+      for (let i = 1; i <= rCount; i++) items.push({ title: `Reel ${i}`, category: 'Reels', num: i, assignTo: 'Video Editor', type: 'Reel' });
+      for (let i = 1; i <= aCount; i++) items.push({ title: `AI Video ${i}`, category: 'AI Videos', num: i, assignTo: 'Ai Video Editor', type: 'AI Video' });
 
       // Rotate/balance items distribution
       const pools = {
-        'SM Graphic': items.filter(x => x.category === 'SM Graphic'),
-        'SM Reels': items.filter(x => x.category === 'SM Reels'),
-        'SM AI Videos': items.filter(x => x.category === 'SM AI Videos')
+        'Graphic': items.filter(x => x.category === 'Graphic'),
+        'Reels': items.filter(x => x.category === 'Reels'),
+        'AI Videos': items.filter(x => x.category === 'AI Videos')
       };
 
       const balanced = [];
-      while (pools['SM Graphic'].length || pools['SM Reels'].length || pools['SM AI Videos'].length) {
-        ['SM Graphic', 'SM Reels', 'SM Graphic', 'SM AI Videos'].forEach(k => {
+      while (pools['Graphic'].length || pools['Reels'].length || pools['AI Videos'].length) {
+        ['Graphic', 'Reels', 'Graphic', 'AI Videos'].forEach(k => {
           if (pools[k].length) balanced.push(pools[k].shift());
         });
       }
 
-      const pkgLower = (packageName || client.packageName || '').toLowerCase();
-      let contractDays = 30;
+      const pkgLower = (client.packageName || '').toLowerCase();
+      let contentDays = 21; // 1-month plan content completion target = 21 days
       let reportWeeks = 4;
       if (pkgLower.includes('3-month') || pkgLower.includes('3 month') || pkgLower.includes('3m')) {
-        contractDays = 90;
+        contentDays = 61; // 3-month plan content completion target = 61 days
         reportWeeks = 12;
       } else if (pkgLower.includes('6-month') || pkgLower.includes('6 month') || pkgLower.includes('6m')) {
-        contractDays = 180;
+        contentDays = 122; // 6-month plan content completion target = 122 days
         reportWeeks = 24;
       } else if (pkgLower.includes('yearly') || pkgLower.includes('1-year') || pkgLower.includes('annual')) {
-        contractDays = 365;
+        contentDays = 244; // 1-year plan content completion target = 244 days
         reportWeeks = 52;
       }
 
       const totalDeliverables = balanced.length;
-      const stepDays = totalDeliverables > 0 ? Math.max(2, Math.floor((contractDays - 2) / totalDeliverables)) : 2;
+      const stepDays = totalDeliverables > 0 ? Math.max(1, Math.floor(contentDays / totalDeliverables)) : 1;
 
       balanced.forEach((item, index) => {
         const offset = index * stepDays;
         if (item.type === 'AI Video') {
           tasksToCreate.push({
-            taskTitle: `${getOrdinal(item.num)} AI Video Script`,
+            taskTitle: `AI Video Script ${item.num}`,
             assignTo: 'AI Video Lead',
             postType: 'Script',
             offset: offset
@@ -249,12 +249,24 @@ export async function POST(request, { params }) {
             postType: item.type,
             offset: offset + 1
           });
+          tasksToCreate.push({
+            taskTitle: `Post ${item.title}`,
+            assignTo: 'Digital Marketing Executive',
+            postType: 'Posting',
+            offset: offset + 2
+          });
         } else {
           tasksToCreate.push({
             taskTitle: item.title,
             assignTo: item.assignTo,
             postType: item.type,
             offset: offset
+          });
+          tasksToCreate.push({
+            taskTitle: `Post ${item.title}`,
+            assignTo: 'Digital Marketing Executive',
+            postType: 'Posting',
+            offset: offset + 1
           });
         }
       });
@@ -355,7 +367,7 @@ export async function POST(request, { params }) {
 
     // 5. Create Audit Log
     const newExpiry = new Date(newStart);
-    newExpiry.setDate(newExpiry.getDate() + 21);
+    newExpiry.setDate(newExpiry.getDate() + 30);
     const newExpiryStr = formatDateToDb(newExpiry);
 
     await prisma.auditLog.create({
