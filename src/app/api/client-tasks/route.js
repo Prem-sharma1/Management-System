@@ -12,11 +12,22 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
+    // 1. Purge any invalid 'Post ... Script ...' tasks from DB before fetching
+    await prisma.clientTask.deleteMany({
+      where: {
+        OR: [
+          { taskTitle: { contains: 'Script', mode: 'insensitive' }, postType: 'Posting' },
+          { taskTitle: { startsWith: 'Post AI Video Script', mode: 'insensitive' } },
+          { taskTitle: { startsWith: 'Post Script', mode: 'insensitive' } }
+        ]
+      }
+    });
+
     const tasks = await prisma.clientTask.findMany({
       include: { Client: true }
     });
 
-    // 1. Auto-approve tasks in 'Client Review' for > 24 hours
+    // 2. Auto-approve tasks in 'Client Review' for > 24 hours
     const now = new Date();
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
@@ -42,11 +53,15 @@ export async function GET(request) {
       });
     }
 
-    // 2. Auto-create missing posting tasks for content deliverables if they don't exist
-    const contentTasks = tasks.filter(t => 
-      ['Graphic', 'Reel', 'AI Video'].includes(t.postType) || 
-      (t.taskTitle && (t.taskTitle.startsWith('Graphic') || t.taskTitle.startsWith('Reel') || t.taskTitle.startsWith('AI Video')))
-    );
+    // 3. Auto-create missing posting tasks ONLY for Graphic, Reel, and AI Video content (EXCLUDING Scripts)
+    const contentTasks = tasks.filter(t => {
+      const titleLower = (t.taskTitle || '').toLowerCase();
+      const typeLower = (t.postType || '').toLowerCase();
+      if (typeLower === 'script' || titleLower.includes('script')) return false;
+      if (typeLower === 'posting' || titleLower.startsWith('post ')) return false;
+      return ['graphic', 'reel', 'ai video'].includes(typeLower) || 
+        titleLower.startsWith('graphic') || titleLower.startsWith('reel') || titleLower.startsWith('ai video');
+    });
 
     for (const cTask of contentTasks) {
       const postingTitle = `Post ${cTask.taskTitle}`;
@@ -66,7 +81,7 @@ export async function GET(request) {
               clientId: cTask.clientId,
               businessName: cTask.businessName || '',
               taskTitle: postingTitle,
-              date: cTask.date,
+              date: 'Trigger on Approval',
               assignTo: 'Content Posting',
               workingOn: 'AUTO',
               status: 'Not Started',

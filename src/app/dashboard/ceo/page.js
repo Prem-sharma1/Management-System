@@ -1247,7 +1247,13 @@ export default function CeoDashboard() {
                         .map((task) => (
                           <tr key={task.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition">
                             <td className="p-4 font-bold text-slate-450">
-                              <div>{task.date}</div>
+                              <div>
+                                {task.postType === 'Posting' || (task.taskTitle && task.taskTitle.toLowerCase().startsWith('post ')) ? (
+                                  <span className="text-amber-600 dark:text-amber-400 font-extrabold text-[10px]">Trigger on Approval (24h)</span>
+                                ) : (
+                                  task.date
+                                )}
+                              </div>
                               <div className="text-[8px] text-slate-400 mt-0.5 font-bold uppercase">{task.taskId}</div>
                             </td>
                             <td className="p-4">
@@ -2535,7 +2541,13 @@ export default function CeoDashboard() {
                           {selectedClientTasks.map((task) => (
                             <tr key={task.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/30 transition">
                               <td className="p-2.5 font-semibold">
-                                <div className="text-slate-800 dark:text-slate-200">{task.date}</div>
+                                <div className="text-slate-800 dark:text-slate-200">
+                                  {task.postType === 'Posting' || (task.taskTitle && task.taskTitle.toLowerCase().startsWith('post ')) ? (
+                                    <span className="text-amber-600 dark:text-amber-400 font-extrabold text-[9px] uppercase tracking-wider">Trigger on Approval (24h)</span>
+                                  ) : (
+                                    task.date
+                                  )}
+                                </div>
                                 <div className="text-[8px] text-slate-400 mt-0.5 font-bold uppercase">{task.taskId}</div>
                               </td>
                               <td className="p-2.5">
