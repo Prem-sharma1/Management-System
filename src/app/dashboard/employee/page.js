@@ -464,10 +464,9 @@ export default function EmployeeDashboard() {
       const isAssignedToMe = task.workingOn && currentUser?.name && task.workingOn.toLowerCase().includes(currentUser.name.toLowerCase());
       const isDeptUnclaimed = !task.workingOn && task.assignTo && currentUser?.department && task.assignTo.toLowerCase().includes(currentUser.department.toLowerCase());
       const isPosting = task.postType === 'Posting' || (task.taskTitle && task.taskTitle.toLowerCase().startsWith('post '));
-      const isUnclaimedPosting = (!task.workingOn || task.workingOn === 'AUTO') && isPosting;
-      const isSMStaff = isSocialMediaStaff && isPosting;
+      const isUnclaimedPosting = !task.workingOn && isPosting && currentUser?.department && currentUser.department.toLowerCase().includes('posting');
 
-      if (isAssignedToMe || isDeptUnclaimed || isUnclaimedPosting || isSMStaff) {
+      if (isAssignedToMe || isDeptUnclaimed || isUnclaimedPosting) {
         return isPostingTaskReady(task, allClientTasks);
       }
 
@@ -511,8 +510,6 @@ export default function EmployeeDashboard() {
   const myDepartmentClientTasks = allClientTasks.filter(t => {
     if (t.workingOn && currentUser?.name && t.workingOn.toLowerCase().includes(currentUser.name.toLowerCase())) return true;
     if (!t.workingOn && t.assignTo && currentUser?.department && t.assignTo.toLowerCase().includes(currentUser.department.toLowerCase())) return true;
-    const isPosting = t.postType === 'Posting' || (t.taskTitle && t.taskTitle.toLowerCase().startsWith('post '));
-    if ((!t.workingOn || t.workingOn === 'AUTO') && isPosting) return true;
     return false;
   });
 

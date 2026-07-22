@@ -71,6 +71,13 @@ export async function GET(request) {
       );
 
       if (!existingPostingTask) {
+        const existingPostingWithStaff = tasks.find(t => 
+          t.clientId === cTask.clientId && 
+          (t.postType === 'Posting' || (t.taskTitle && t.taskTitle.toLowerCase().startsWith('post '))) &&
+          t.workingOn && t.workingOn !== 'AUTO'
+        );
+        const assignedPosterName = existingPostingWithStaff ? existingPostingWithStaff.workingOn : '';
+
         const uniqueSuffix = `${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
         const newTaskId = `${cTask.taskId}-POST-${uniqueSuffix}`;
 
@@ -83,7 +90,7 @@ export async function GET(request) {
               taskTitle: postingTitle,
               date: 'Trigger on Approval',
               assignTo: 'Content Posting',
-              workingOn: 'AUTO',
+              workingOn: assignedPosterName,
               status: 'Not Started',
               priority: cTask.priority || 'Normal',
               postType: 'Posting',

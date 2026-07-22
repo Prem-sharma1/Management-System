@@ -181,7 +181,7 @@ export default function AdminDashboard() {
   // Deliverable Assignment States
   const [showDeliverableAssignmentModal, setShowDeliverableAssignmentModal] = useState(false);
   const [pendingClientSave, setPendingClientSave] = useState(null); // 'ADD' or 'EDIT'
-  const [assignedStaff, setAssignedStaff] = useState({ c: 'AUTO', r: 'AUTO', a: 'AUTO', sm: 'AUTO', poster: 'AUTO' });
+  const [assignedStaff, setAssignedStaff] = useState({ c: 'AUTO', r: 'AUTO', a: 'AUTO', sm: 'AUTO', poster: '' });
   const [generateOptions, setGenerateOptions] = useState({
     onboarding: true,
     creatives: true,
@@ -485,7 +485,7 @@ export default function AdminDashboard() {
       setPaidAmount('19499');
       setActualNotes('');
     }
-    setAssignedStaff({ c: 'AUTO', r: 'AUTO', a: 'AUTO', sm: 'AUTO' });
+    setAssignedStaff({ c: 'AUTO', r: 'AUTO', a: 'AUTO', sm: 'AUTO', poster: '' });
   };
 
   const handleAddClient = async (e) => {
@@ -591,12 +591,12 @@ export default function AdminDashboard() {
       const rStaff = resolveStaff(assignedStaff.r || 'AUTO', 'Video Editor');
       const aStaff = resolveStaff(assignedStaff.a || 'AUTO', 'Ai Video Editor');
       const smStaff = resolveStaff(assignedStaff.sm || 'AUTO', 'Digital Marketing Executive');
-      const posterStaff = assignedStaff.poster && assignedStaff.poster !== 'AUTO'
+      const posterStaff = assignedStaff.poster && assignedStaff.poster !== 'AUTO' && assignedStaff.poster !== ''
         ? (() => {
             const emp = employeesList.find(e => e.id.toString() === assignedStaff.poster.toString());
-            return emp ? { assignTo: emp.department || 'Digital Marketing Executive', workingOn: emp.name } : smStaff;
+            return emp ? { assignTo: emp.department || 'Content Posting', workingOn: emp.name } : { assignTo: 'Content Posting', workingOn: '' };
           })()
-        : smStaff;
+        : { assignTo: 'Content Posting', workingOn: '' };
       const scriptStaff = { assignTo: 'AI Video Lead', workingOn: 'Harshit' };
 
       const onboardingActive = clientFormServices !== 'AI Video Plans' && generateOptions.onboarding;
@@ -4262,7 +4262,7 @@ export default function AdminDashboard() {
                       onChange={e => setAssignedStaff({...assignedStaff, poster: e.target.value})}
                       className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px]"
                     >
-                      <option value="AUTO">Auto Assign (Default - Same as Social Media Exec)</option>
+                      <option value="">-- Select Specific Content Poster --</option>
                       {employeesList
                         .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
                     </select>
