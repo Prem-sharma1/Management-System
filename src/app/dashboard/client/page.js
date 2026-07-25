@@ -197,17 +197,37 @@ export default function ClientDashboard() {
     }
   };
 
-  // Date Parsing helper
+  const COMPLETED_STATUSES = ['Done', 'DONE', 'Completed', 'Completed (Done)', 'Completion', 'Posted'];
+
+  // Robust Date Parsing helper supporting YYYY-MM-DD, DD-MMM-YYYY, DD/MM/YYYY
   const parseDbDate = (dStr) => {
-    if (!dStr) return new Date();
-    const parts = dStr.split('-');
-    if (parts.length < 3) return new Date();
-    const [day, mStr, year] = parts;
-    const months = {
-      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-    };
-    return new Date(parseInt(year), months[mStr] || 0, parseInt(day));
+    if (!dStr || dStr === 'Trigger on Approval') return new Date();
+    const cleanStr = dStr.trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(cleanStr)) {
+      const [y, m, d] = cleanStr.slice(0, 10).split('-').map(v => parseInt(v, 10));
+      return new Date(y, m - 1, d);
+    }
+    const parts = cleanStr.split(/[\/\-]/);
+    if (parts.length >= 3) {
+      const day = parseInt(parts[0], 10);
+      const monthPart = parts[1].toLowerCase().trim();
+      const year = parseInt(parts[2], 10);
+
+      const months = {
+        jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+        jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+      };
+
+      let month = months[monthPart.slice(0, 3)];
+      if (month === undefined && !isNaN(parseInt(monthPart, 10))) {
+        month = parseInt(monthPart, 10) - 1;
+      }
+      if (month !== undefined && !isNaN(day) && !isNaN(year)) {
+        return new Date(year, month, day);
+      }
+    }
+    const d = new Date(cleanStr);
+    return isNaN(d.getTime()) ? new Date() : d;
   };
 
   const formatDbDate = (date) => {
@@ -252,17 +272,12 @@ export default function ClientDashboard() {
     );
   }
 
-  // Filter tasks belonging only to the current contract cycle
-  const cycleStart = clientInfo ? parseDbDate(clientInfo.joiningDate) : new Date();
-  const currentCycleTasks = tasks.filter(t => {
-    const taskDate = parseDbDate(t.date);
-    // Include tasks started on or after cycle start date
-    return taskDate.getTime() >= (cycleStart.getTime() - 12 * 60 * 60 * 1000);
-  });
+  // Filter tasks belonging to current contract cycle or general client tasks
+  const currentCycleTasks = tasks;
 
   const totalDeliverables = currentCycleTasks.length;
   const completedDeliverables = currentCycleTasks.filter(t => 
-    ['Done', 'Completed', 'Completed (Done)'].includes(t.status)
+    COMPLETED_STATUSES.includes(t.status)
   ).length;
   const pendingDeliverables = totalDeliverables - completedDeliverables;
   const completionPct = totalDeliverables > 0 ? Math.round((completedDeliverables / totalDeliverables) * 100) : 0;
@@ -594,7 +609,7 @@ export default function ClientDashboard() {
                       </tr>
                     ) : (
                       filteredTasks.map((task) => {
-                        const isDone = ['Done', 'Completed', 'Completed (Done)', 'Completion'].includes(task.status);
+                        const isDone = COMPLETED_STATUSES.includes(task.status);
                         const isRev = task.status === 'Revision';
                         const isProcessing = task.status === 'Processing';
                         const isClientReview = task.status === 'Client Review';

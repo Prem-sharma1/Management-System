@@ -95,6 +95,16 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
+    // If description contains a taskId reference (e.g. "Task ID: CT-xxx"), delete matching ClientTask/ClientDelivery
+    if (task.description) {
+      const match = task.description.match(/Task ID:\s*([^\s|]+)/i);
+      if (match && match[1]) {
+        const taskIdRef = match[1].trim();
+        await prisma.clientTask.deleteMany({ where: { taskId: taskIdRef } });
+        await prisma.clientDelivery.deleteMany({ where: { linkedTaskId: taskIdRef } });
+      }
+    }
+
     await prisma.task.delete({ where: { id } });
 
     await prisma.auditLog.create({

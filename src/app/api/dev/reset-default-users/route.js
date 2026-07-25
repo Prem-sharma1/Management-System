@@ -91,7 +91,7 @@ export async function GET() {
         password: empHash,
         name: 'Bob Johnson',
         role: 'EMPLOYEE',
-        department: 'Engineering',
+        department: 'Software Development',
         salary: 75000,
         status: 'ACTIVE',
         avatar: '👨‍💻'
@@ -101,7 +101,7 @@ export async function GET() {
         password: empHash,
         name: 'Bob Johnson',
         role: 'EMPLOYEE',
-        department: 'Engineering',
+        department: 'Software Development',
         salary: 75000,
         status: 'ACTIVE',
         avatar: '👨‍💻'

@@ -28,7 +28,7 @@ export default function LoginPage() {
   // Sign Up states
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
-  const [department, setDepartment] = useState('Engineering');
+  const [department, setDepartment] = useState('Social Media Marketing');
 
   // Client states
   const [isClient, setIsClient] = useState(false);
@@ -315,11 +315,12 @@ export default function LoginPage() {
                           onChange={(e) => setDepartment(e.target.value)}
                           className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition text-sm text-slate-900 appearance-none cursor-pointer"
                         >
-                          <option value="Engineering">Engineering</option>
-                          <option value="HR">Human Resources</option>
+                          <option value="Social Media Marketing">Social Media Marketing</option>
+                          <option value="Video Editing / Content Creator">Video Editing / Content Creator</option>
+                          <option value="Graphics">Graphics</option>
+                          <option value="Software Development">Software Development</option>
                           <option value="Sales">Sales</option>
-                          <option value="Marketing">Marketing</option>
-                          <option value="Finance">Finance</option>
+                          <option value="HR">HR</option>
                         </select>
                       </div>
                     </div>

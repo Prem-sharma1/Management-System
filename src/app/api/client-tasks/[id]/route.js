@@ -134,6 +134,29 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
+    // 1. Delete matching internal employee Task records if any
+    await prisma.task.deleteMany({
+      where: {
+        OR: [
+          { description: { contains: targetTask.taskId } },
+          {
+            AND: [
+              { title: targetTask.taskTitle },
+              { description: { contains: targetTask.businessName } }
+            ]
+          }
+        ]
+      }
+    });
+
+    // 2. Delete matching ClientDelivery records if linked
+    if (targetTask.taskId) {
+      await prisma.clientDelivery.deleteMany({
+        where: { linkedTaskId: targetTask.taskId }
+      });
+    }
+
+    // 3. Delete the ClientTask record itself
     await prisma.clientTask.delete({ where: { id } });
 
     await prisma.auditLog.create({

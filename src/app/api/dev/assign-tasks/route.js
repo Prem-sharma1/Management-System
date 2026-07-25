@@ -89,25 +89,54 @@ export async function assignTasksAndDeliveries() {
     const emps = employeesByDept[deptKey] || [];
     if (emps.length === 0) continue;
 
-    const uniqueDates = Object.keys(tasksByDeptAndDate[deptKey]);
-    // Sort unique dates chronologically
-    uniqueDates.sort((a, b) => parseDateString(a) - parseDateString(b));
+    if (deptKey === 'ai video editor') {
+      const teamOrder = ['Masoom', 'Nouman', 'Divyansh'];
+      const teamUsers = teamOrder
+        .map(name => emps.find(e => e.name.toLowerCase().includes(name.toLowerCase())))
+        .filter(Boolean);
 
-    // For each unique date, pick a rotating employee and assign all tasks on that date
-    for (let i = 0; i < uniqueDates.length; i++) {
-      const dateStr = uniqueDates[i];
-      const employee = emps[i % emps.length];
-      const tasks = tasksByDeptAndDate[deptKey][dateStr];
-
-      for (const task of tasks) {
-        await prisma.clientTask.update({
-          where: { id: task.id },
-          data: {
-            workingOn: employee.name,
-            status: task.status === 'Not Started' ? 'In Progress' : task.status
+      const uniqueDates = Object.keys(tasksByDeptAndDate[deptKey]);
+      for (const dateStr of uniqueDates) {
+        const tasks = tasksByDeptAndDate[deptKey][dateStr];
+        for (const task of tasks) {
+          let assignedName = emps[0].name;
+          if (teamUsers.length > 0) {
+            const match = (task.clientId || '').match(/\d+/);
+            const num = match ? parseInt(match[0], 10) : 1;
+            const idx = Math.abs(num - 1) % teamUsers.length;
+            assignedName = teamUsers[idx].name;
           }
-        });
-        updatedTasksCount.count++;
+          await prisma.clientTask.update({
+            where: { id: task.id },
+            data: {
+              workingOn: assignedName,
+              status: task.status === 'Not Started' ? 'In Progress' : task.status
+            }
+          });
+          updatedTasksCount.count++;
+        }
+      }
+    } else {
+      const uniqueDates = Object.keys(tasksByDeptAndDate[deptKey]);
+      // Sort unique dates chronologically
+      uniqueDates.sort((a, b) => parseDateString(a) - parseDateString(b));
+
+      // For each unique date, pick a rotating employee and assign all tasks on that date
+      for (let i = 0; i < uniqueDates.length; i++) {
+        const dateStr = uniqueDates[i];
+        const employee = emps[i % emps.length];
+        const tasks = tasksByDeptAndDate[deptKey][dateStr];
+
+        for (const task of tasks) {
+          await prisma.clientTask.update({
+            where: { id: task.id },
+            data: {
+              workingOn: employee.name,
+              status: task.status === 'Not Started' ? 'In Progress' : task.status
+            }
+          });
+          updatedTasksCount.count++;
+        }
       }
     }
   }

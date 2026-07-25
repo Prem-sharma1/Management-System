@@ -8,6 +8,33 @@ import {
   Sun, DollarSign, TrendingUp, Download, Users, FileDown, Activity
 } from 'lucide-react';
 
+const convertDbDateToIso = (dateStr) => {
+  if (!dateStr) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const day = parts[0];
+    const monthName = parts[1];
+    const year = parts[2];
+    
+    const months = {
+      jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+      jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
+    };
+    const month = months[monthName.toLowerCase()];
+    if (month && day && year) {
+      return `${year}-${month}-${day.padStart(2, '0')}`;
+    }
+  }
+  
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    return d.toISOString().split('T')[0];
+  }
+  return '';
+};
+
 export default function TLDashboard() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
@@ -536,6 +563,51 @@ export default function TLDashboard() {
   const completedMyTasks = myTasksList.filter(t => t.status === 'DONE').length;
   const pendingMyTasks = myTasksList.filter(t => t.status !== 'DONE').length;
 
+  const todayIso = new Date().toISOString().split('T')[0];
+
+  const tlMyClientTasks = allClientTasks.filter(t => {
+    const isAssignedToMe = t.workingOn && currentUser?.name && t.workingOn.toLowerCase().includes(currentUser.name.toLowerCase());
+    const baseDept = currentUser?.department?.replace(' Lead', '')?.toLowerCase() || '';
+    const assignToDept = t.assignTo?.toLowerCase() || '';
+    const isDeptMatch = !t.workingOn && baseDept && assignToDept.startsWith(baseDept);
+    return isAssignedToMe || isDeptMatch;
+  });
+
+  const isTaskReadyToPostToday = (ct) => {
+    const isPosting = ct.postType === 'Posting' || (ct.taskTitle && ct.taskTitle.toLowerCase().startsWith('post '));
+    if (isPosting) {
+      const contentTitle = ct.taskTitle.replace(/^Post\s+/i, '');
+      const contentTask = allClientTasks.find(t => 
+        t.clientId === ct.clientId && 
+        (t.taskTitle.toLowerCase() === contentTitle.toLowerCase() || (ct.notes && t.taskId === ct.notes))
+      );
+      if (contentTask) {
+        const isApproved = ['Completion', 'Completed', 'DONE', 'Done'].includes(contentTask.status);
+        const changedTime = contentTask.statusChangedAt ? new Date(contentTask.statusChangedAt).getTime() : new Date(contentTask.createdAt).getTime();
+        const isAutoApproved = contentTask.status === 'Client Review' && ((new Date().getTime() - changedTime) / (1000 * 60 * 60) >= 24);
+        if (isApproved || isAutoApproved) return true;
+      }
+    }
+    return false;
+  };
+
+  const todaysClientTasksList = tlMyClientTasks.filter(ct => {
+    const isPosting = ct.postType === 'Posting' || (ct.taskTitle && ct.taskTitle.toLowerCase().startsWith('post '));
+    if (isPosting) {
+      return isTaskReadyToPostToday(ct) || ['Completion', 'Completed', 'DONE', 'Posted'].includes(ct.status);
+    }
+    if (ct.status === 'Posted' || ct.status === 'Completion' || ct.status === 'Completed' || ct.status === 'DONE') {
+      if (convertDbDateToIso(ct.date) !== todayIso) return false;
+    }
+    if (convertDbDateToIso(ct.date) === todayIso) return true;
+    return false;
+  });
+
+  const todaysTasksCount = [
+    ...myTasksList.filter(t => t.status !== 'DONE' && t.dueDate === todayIso),
+    ...todaysClientTasksList.filter(ct => ct.status !== 'Posted' && ct.status !== 'Completion' && ct.status !== 'Completed' && ct.status !== 'DONE')
+  ].length;
+
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
       
@@ -767,6 +839,120 @@ export default function TLDashboard() {
                   </div>
                 </div>
 
+                {/* Today's Tasks List Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                  <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <div>
+                      <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Today's Tasks Checklist</h4>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Assigned deliverables and checklist duties for today.</p>
+                    </div>
+                    <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[9px] font-bold rounded-lg uppercase">Today ({todaysTasksCount})</span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {[
+                      ...myTasksList
+                        .filter(t => t.dueDate === todayIso)
+                        .map(t => ({ ...t, type: 'internal' })),
+                      ...todaysClientTasksList
+                        .map(ct => ({ ...ct, type: 'client' }))
+                    ].length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-6 italic font-medium">No tasks scheduled for today.</p>
+                    ) : (
+                      [
+                        ...myTasksList
+                          .filter(t => t.dueDate === todayIso)
+                          .map(t => ({ ...t, type: 'internal' })),
+                        ...todaysClientTasksList
+                          .map(ct => ({ ...ct, type: 'client' }))
+                      ].map((item) => (
+                        <div 
+                          key={item.type === 'internal' ? `today-int-${item.id}` : `today-cli-${item.id}`}
+                          className="p-3.5 border border-slate-200/60 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-800/10 flex items-center justify-between gap-3 text-xs shadow-sm hover:shadow transition duration-200"
+                        >
+                          <div className="space-y-1 overflow-hidden pr-2">
+                            <p className="font-bold text-slate-900 dark:text-white truncate">
+                              {item.type === 'internal' ? item.title : item.taskTitle}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] font-semibold text-slate-500">
+                              {(() => {
+                                const isPostingTask = item.type === 'client' && (item.postType === 'Posting' || (item.taskTitle && item.taskTitle.toLowerCase().startsWith('post ')));
+                                return (
+                                  <span className={`px-1 rounded text-[8px] font-bold uppercase ${
+                                    item.type === 'internal'
+                                      ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                      : isPostingTask
+                                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                                      : 'bg-blue-50 text-blue-600 dark:bg-blue-900/25 dark:text-blue-400'
+                                  }`}>
+                                    {item.type === 'internal' ? 'Internal' : isPostingTask ? 'Posting Task' : 'Client Task'}
+                                  </span>
+                                );
+                              })()}
+                              <span>•</span>
+                              <span className="truncate">{item.type === 'internal' ? `Assigned by: ${item.createdBy?.name || 'Admin'}` : `Client: ${item.businessName}`}</span>
+                              {item.priority && (
+                                <>
+                                  <span>•</span>
+                                  <span className={`uppercase text-[8px] font-bold ${item.priority === 'Urgent' ? 'text-red-500' : item.priority === 'High' ? 'text-orange-500' : 'text-slate-400'}`}>
+                                    {item.priority}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            {/* Approved Content Link / Work Sample */}
+                            {item.type === 'client' && (() => {
+                              const mediaUrl = item.workSampleUrl || (() => {
+                                const contentTitle = item.taskTitle.replace(/^Post\s+/i, '');
+                                const contentTask = allClientTasks.find(t => t.clientId === item.clientId && (t.taskTitle === contentTitle || t.taskTitle.toLowerCase() === contentTitle.toLowerCase()));
+                                return contentTask?.workSampleUrl;
+                              })();
+                              
+                              if (mediaUrl) {
+                                return (
+                                  <div className="mt-1">
+                                    <a 
+                                      href={mediaUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 dark:text-amber-400 hover:underline bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200/60 dark:border-amber-800/40"
+                                    >
+                                      <FileDown className="w-3 h-3" /> View Approved Content / Work Sample
+                                    </a>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                          
+                          <div className="shrink-0 flex items-center gap-2">
+                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider
+                              ${item.status === 'Completion' || item.status === 'DONE' 
+                                ? 'bg-emerald-100 text-emerald-850 dark:bg-emerald-950/40 dark:text-emerald-400' 
+                                : item.status === 'Processing' || item.status === 'IN_PROGRESS'
+                                ? 'bg-blue-100 text-blue-850 dark:bg-blue-950/40 dark:text-blue-400' 
+                                : item.status === 'Client Review'
+                                ? 'bg-amber-100 text-amber-850 dark:bg-amber-950/40 dark:text-amber-400'
+                                : item.status === 'Revision'
+                                ? 'bg-red-100 text-red-850 dark:bg-red-955/40 dark:text-red-400'
+                                : 'bg-slate-100 text-slate-755 dark:bg-slate-800 dark:text-slate-400'}`}
+                            >
+                              {item.status === 'DONE' || item.status === 'Completion' ? 'Done' : item.status}
+                            </span>
+                            <button 
+                              onClick={() => openStatusModal(item, item.type === 'internal' ? 'INTERNAL' : 'CLIENT')}
+                              className="py-1 px-2.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg text-[9px] font-bold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition flex items-center gap-0.5 cursor-pointer"
+                            >
+                              Update
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
                 {/* Clock Logs history */}
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
                   <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-4">My Sign-in Sheet (Recent)</h4>
@@ -799,6 +985,17 @@ export default function TLDashboard() {
 
               {/* Right Column: Brief summary cards */}
               <div className="lg:col-span-5 space-y-6">
+                
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border-l-4 border-l-blue-600 flex items-center justify-between transition hover:shadow-md animate-slide-up">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-450 font-extrabold uppercase tracking-widest block">Today's Assigned Tasks</span>
+                    <h3 className="text-2xl font-black text-blue-600 dark:text-blue-400">{todaysTasksCount}</h3>
+                    <p className="text-[9px] text-slate-400 font-medium">Scheduled for today</p>
+                  </div>
+                  <div className="w-10 h-10 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                </div>
                 
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
                   <div className="space-y-1">

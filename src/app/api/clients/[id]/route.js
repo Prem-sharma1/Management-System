@@ -106,6 +106,28 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
+    // 1. Delete associated client portal user accounts if any
+    await prisma.user.deleteMany({
+      where: {
+        role: 'CLIENT',
+        OR: [
+          { department: targetClient.clientId },
+          { email: targetClient.email || undefined }
+        ]
+      }
+    });
+
+    // 2. Delete internal employee tasks referencing this client
+    await prisma.task.deleteMany({
+      where: {
+        OR: [
+          { description: { contains: targetClient.clientId } },
+          { description: { contains: targetClient.businessName } }
+        ]
+      }
+    });
+
+    // 3. Delete Client record (Prisma cascade handles ClientTask, ClientDelivery, ClientFeedback)
     await prisma.client.delete({ where: { id } });
 
     await prisma.auditLog.create({

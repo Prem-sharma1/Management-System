@@ -147,6 +147,16 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 });
     }
 
+    // Delete all tasks assigned to or created by this user
+    await prisma.task.deleteMany({
+      where: {
+        OR: [
+          { assignedToId: id },
+          { createdById: id }
+        ]
+      }
+    });
+
     await prisma.user.delete({ where: { id } });
 
     await prisma.auditLog.create({

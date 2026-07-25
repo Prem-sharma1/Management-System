@@ -292,7 +292,19 @@ export async function POST(request, { params }) {
       const dept = task.assignTo;
       const deptEmployees = resolveStaff(dept) || activeEmployees.filter(e => e.department === dept);
 
-      if (deptEmployees && deptEmployees.length > 0) {
+      if (dept === 'Ai Video Editor' || dept === 'AI Video Editor') {
+        const teamOrder = ['Masoom', 'Nouman', 'Divyansh'];
+        const teamUsers = teamOrder
+          .map(name => activeEmployees.find(e => e.name.toLowerCase().includes(name.toLowerCase())))
+          .filter(Boolean);
+
+        if (teamUsers.length > 0) {
+          const match = (client.clientId || '').match(/\d+/);
+          const num = match ? parseInt(match[0], 10) : 1;
+          const idx = Math.abs(num - 1) % teamUsers.length;
+          assignedEmployeeName = teamUsers[idx].name;
+        }
+      } else if (deptEmployees && deptEmployees.length > 0) {
         const taskDate = getFormattedDate(task.offset);
         const monthYear = getMonthYearStr(taskDate);
 

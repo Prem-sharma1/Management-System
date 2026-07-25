@@ -71,7 +71,7 @@ export async function POST(request) {
             password: empHash,
             name: 'Bob Johnson',
             role: 'EMPLOYEE',
-            department: 'Engineering',
+            department: 'Software Development',
             salary: 75000,
             status: 'ACTIVE',
             avatar: '👨‍💻'

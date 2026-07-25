@@ -122,7 +122,7 @@ export default function AdminDashboard() {
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
-  const [formDept, setFormDept] = useState('Engineering');
+  const [formDept, setFormDept] = useState('Social Media Marketing');
   const [formAvatar, setFormAvatar] = useState('👤');
   const [formStatus, setFormStatus] = useState('ACTIVE');
   
@@ -576,15 +576,63 @@ export default function AdminDashboard() {
       const aCount = parsedCounts.a;
 
       const resolveStaff = (staffId, defaultDept) => {
-        if (staffId === 'AUTO') {
-          const deptEmployee = employeesList.find(e => e.department === defaultDept && e.status === 'ACTIVE');
-          if (deptEmployee) {
-            return { assignTo: defaultDept, workingOn: deptEmployee.name };
+        if (staffId !== 'AUTO' && staffId !== '' && staffId !== null && staffId !== undefined) {
+          const staff = employeesList.find(e => e.id.toString() === staffId.toString());
+          if (staff) {
+            return { assignTo: staff.department || defaultDept, workingOn: staff.name };
           }
+        }
+
+        // AUTO mode: Find all active employees matching department/role
+        const candidates = employeesList.filter(e => {
+          if (e.status === 'INACTIVE') return false;
+          const deptLower = (e.department || '').toLowerCase();
+          const targetLower = defaultDept.toLowerCase();
+
+          if (targetLower.includes('ai video editor') || targetLower.includes('ai video')) {
+            return ['divyansh', 'nouman', 'masoom'].some(n => e.name.toLowerCase().includes(n)) || deptLower.includes('ai video');
+          }
+          if (targetLower.includes('graphic')) {
+            return ['danish', 'swapnil'].some(n => e.name.toLowerCase().includes(n)) || deptLower.includes('graphic');
+          }
+          if (targetLower.includes('digital marketing') || targetLower.includes('social media')) {
+            return ['rama', 'pujan', 'preet'].some(n => e.name.toLowerCase().includes(n)) || deptLower.includes('marketing') || deptLower.includes('social');
+          }
+          if (targetLower.includes('video editor')) {
+            return ['sanmeet'].some(n => e.name.toLowerCase().includes(n)) || deptLower.includes('video editor');
+          }
+          return deptLower === targetLower || deptLower.includes(targetLower);
+        });
+
+        if (candidates.length === 0) {
           return { assignTo: defaultDept, workingOn: 'AUTO' };
         }
-        const staff = employeesList.find(e => e.id.toString() === staffId);
-        return staff ? { assignTo: staff.department, workingOn: staff.name } : { assignTo: defaultDept, workingOn: '' };
+
+        if (candidates.length === 1) {
+          return { assignTo: defaultDept, workingOn: candidates[0].name };
+        }
+
+        // Calculate assigned workload for each candidate across clients & client tasks
+        const candidateScores = candidates.map(emp => {
+          const nameLower = emp.name.toLowerCase();
+          const clientCount = clientsList.filter(c => c.workingOn && c.workingOn.toLowerCase().includes(nameLower)).length;
+          const taskCount = allClientTasks.filter(t => t.workingOn && t.workingOn.toLowerCase().includes(nameLower)).length;
+          return {
+            emp,
+            score: clientCount * 10 + taskCount
+          };
+        });
+
+        // Find minimum score (lowest workload)
+        candidateScores.sort((a, b) => a.score - b.score);
+        const minScore = candidateScores[0].score;
+        const tiedCandidates = candidateScores.filter(c => c.score === minScore).map(c => c.emp);
+
+        // Divide one by one (round-robin rotation based on existing client count)
+        const totalAssignedClients = clientsList.filter(c => c.workingOn).length;
+        const chosenEmp = tiedCandidates[totalAssignedClients % tiedCandidates.length];
+
+        return { assignTo: defaultDept, workingOn: chosenEmp.name };
       };
 
       const cStaff = resolveStaff(assignedStaff.c || 'AUTO', 'Graphic Designer');
@@ -1073,6 +1121,22 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleClearAllDeliveries = async () => {
+    if (!confirm('Are you sure you want to delete ALL campaign delivery records from the database? This action cannot be undone.')) return;
+    setFormLoading(true);
+    try {
+      const res = await fetch('/api/client-deliveries', { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to clear deliveries');
+      showToast(data.message || 'All campaign deliveries cleared successfully!');
+      await refreshData();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   const handleFileUpload = async (e, setter) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -1111,7 +1175,7 @@ export default function AdminDashboard() {
     setFormName('');
     setFormEmail('');
     setFormPassword('');
-    setFormDept('Engineering');
+    setFormDept('Social Media Marketing');
     setFormAvatar('👤');
     setFormStatus('ACTIVE');
     setFormError('');
@@ -2654,6 +2718,13 @@ export default function AdminDashboard() {
                     className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl focus:outline-none focus:border-blue-600 text-xs transition"
                   />
                 </div>
+                <button
+                  onClick={handleClearAllDeliveries}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 font-bold rounded-xl text-xs transition"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Clear All Deliveries
+                </button>
               </div>
 
               {/* Global Deliveries Table */}
@@ -3406,11 +3477,12 @@ export default function AdminDashboard() {
                     <div className="space-y-1">
                       <label className="font-bold text-slate-700 dark:text-slate-300">Department</label>
                       <select value={formDept} onChange={(e) => setFormDept(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none">
-                        <option value="Engineering">Engineering</option>
-                        <option value="HR">HR</option>
+                        <option value="Social Media Marketing">Social Media Marketing</option>
+                        <option value="Video Editing / Content Creator">Video Editing / Content Creator</option>
+                        <option value="Graphics">Graphics</option>
+                        <option value="Software Development">Software Development</option>
                         <option value="Sales">Sales</option>
-                        <option value="Marketing">Marketing</option>
-                        <option value="Design">Design</option>
+                        <option value="HR">HR</option>
                       </select>
                     </div>
                     <div className="space-y-1">
@@ -3563,11 +3635,12 @@ export default function AdminDashboard() {
                     <div className="space-y-1">
                       <label className="font-bold text-slate-700 dark:text-slate-300">Department</label>
                       <select value={formDept} onChange={(e) => setFormDept(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none">
-                        <option value="Engineering">Engineering</option>
-                        <option value="HR">HR</option>
+                        <option value="Social Media Marketing">Social Media Marketing</option>
+                        <option value="Video Editing / Content Creator">Video Editing / Content Creator</option>
+                        <option value="Graphics">Graphics</option>
+                        <option value="Software Development">Software Development</option>
                         <option value="Sales">Sales</option>
-                        <option value="Marketing">Marketing</option>
-                        <option value="Design">Design</option>
+                        <option value="HR">HR</option>
                       </select>
                     </div>
                     <div className="space-y-1">

@@ -44,9 +44,37 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
-    await prisma.clientDelivery.delete({
+    const targetDelivery = await prisma.clientDelivery.findUnique({
       where: { id: deliveryDbId }
     });
+
+    if (targetDelivery) {
+      if (targetDelivery.linkedTaskId) {
+        await prisma.task.deleteMany({
+          where: { description: { contains: targetDelivery.linkedTaskId } }
+        });
+        await prisma.clientTask.deleteMany({
+          where: { taskId: targetDelivery.linkedTaskId }
+        });
+      }
+      await prisma.clientDelivery.delete({
+        where: { id: deliveryDbId }
+      });
+    } else {
+      const targetTask = await prisma.clientTask.findUnique({
+        where: { id: deliveryDbId }
+      });
+      if (targetTask) {
+        if (targetTask.taskId) {
+          await prisma.clientDelivery.deleteMany({
+            where: { deliveryId: targetTask.taskId }
+          });
+        }
+        await prisma.clientTask.delete({
+          where: { id: deliveryDbId }
+        });
+      }
+    }
 
     return NextResponse.json({ success: true, message: 'Delivery record deleted' });
   } catch (error) {

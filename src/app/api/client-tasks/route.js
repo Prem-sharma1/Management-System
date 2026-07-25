@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { cookies } from 'next/headers';
+import { pruneBeforeJulyData, rebalanceAiVideoTasks } from '@/lib/prune';
+// Trigger HMR cache refresh
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +14,69 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    // 1. Purge any invalid 'Post ... Script ...' tasks from DB before fetching
+    // Auto-prune all pre-July data across the database
+    await pruneBeforeJulyData();
+
+    // Auto-rebalance existing AI video tasks company-by-company across Masoom, Nouman, Divyansh
+    await rebalanceAiVideoTasks();
+
+    try {
+      const fs = require('fs');
+      const allClients = await prisma.client.findMany({ orderBy: { clientId: 'asc' } });
+      const allClientTasks = await prisma.clientTask.findMany({ orderBy: { id: 'asc' } });
+      const allDeliveries = await prisma.clientDelivery.findMany({ orderBy: { id: 'asc' } });
+
+      const tasksByWorkingOn = {};
+      allClientTasks.forEach(t => {
+        const name = t.workingOn || 'UNASSIGNED';
+        tasksByWorkingOn[name] = (tasksByWorkingOn[name] || 0) + 1;
+      });
+
+      const aiVideoEditors = ['Masoom', 'Nouman', 'Divyansh'];
+      const aiVideoBreakdown = {};
+      aiVideoEditors.forEach(name => {
+        const tasksForEditor = allClientTasks.filter(t => t.workingOn && t.workingOn.toLowerCase() === name.toLowerCase());
+        aiVideoBreakdown[name] = {
+          count: tasksForEditor.length,
+          clients: [...new Set(tasksForEditor.map(t => `${t.clientId} (${t.businessName})`))]
+        };
+      });
+
+      const dump = {
+        timestamp: new Date().toISOString(),
+        summary: {
+          totalClients: allClients.length,
+          totalClientTasks: allClientTasks.length,
+          totalClientDeliveries: allDeliveries.length,
+          tasksByWorkingOn
+        },
+        aiVideoBreakdown,
+        clients: allClients.map(c => ({
+          clientId: c.clientId,
+          businessName: c.businessName,
+          joiningDate: c.joiningDate,
+          packageName: c.packageName,
+          packageAmount: c.packageAmount
+        })),
+        clientTasks: allClientTasks.map(t => ({
+          taskId: t.taskId,
+          clientId: t.clientId,
+          businessName: t.businessName,
+          taskTitle: t.taskTitle,
+          date: t.date,
+          assignTo: t.assignTo,
+          workingOn: t.workingOn,
+          status: t.status,
+          postType: t.postType
+        }))
+      };
+
+      fs.writeFileSync('d:\\AiDigitals_Projects\\Management-System\\july_data_dump.json', JSON.stringify(dump, null, 2));
+    } catch (e) {
+      console.error('Error dumping july data:', e);
+    }
+
+    // Purge any invalid 'Post ... Script ...' tasks from DB before fetching
     await prisma.clientTask.deleteMany({
       where: {
         OR: [

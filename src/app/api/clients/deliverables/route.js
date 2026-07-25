@@ -67,10 +67,35 @@ export async function POST(request) {
         assignedEmployeeName = task.workingOn;
       } else {
         // Auto assign logic
-        const dept = task.assignTo; // E.g., "Graphic Designer"
-        const deptEmployees = activeEmployees.filter(e => e.department === dept);
+        const dept = task.assignTo;
+        const deptEmployees = activeEmployees.filter(e => {
+          if (dept === 'Graphic Designer') {
+            return ['swapnil', 'danish'].some(name => e.name.toLowerCase().includes(name.toLowerCase())) || e.department === dept;
+          } else if (dept === 'Video Editor') {
+            return ['sanmeet'].some(name => e.name.toLowerCase().includes(name.toLowerCase())) || e.department === dept;
+          } else if (dept === 'AI Video Lead') {
+            return ['harshit'].some(name => e.name.toLowerCase().includes(name.toLowerCase())) || e.department === dept;
+          } else if (dept === 'Ai Video Editor' || dept === 'AI Video Editor') {
+            return ['masoom', 'nouman', 'divyansh'].some(name => e.name.toLowerCase().includes(name.toLowerCase())) || e.department === dept;
+          } else if (dept === 'Digital Marketing Executive' || dept === 'Social Media Executive') {
+            return ['rama', 'pujan', 'preet'].some(name => e.name.toLowerCase().includes(name.toLowerCase())) || e.department === dept;
+          }
+          return e.department === dept;
+        });
 
-        if (deptEmployees.length > 0) {
+        if (dept === 'Ai Video Editor' || dept === 'AI Video Editor') {
+          const teamOrder = ['Masoom', 'Nouman', 'Divyansh'];
+          const teamUsers = teamOrder
+            .map(name => activeEmployees.find(e => e.name.toLowerCase().includes(name.toLowerCase())))
+            .filter(Boolean);
+
+          if (teamUsers.length > 0) {
+            const match = (clientId || '').match(/\d+/);
+            const num = match ? parseInt(match[0], 10) : 1;
+            const idx = Math.abs(num - 1) % teamUsers.length;
+            assignedEmployeeName = teamUsers[idx].name;
+          }
+        } else if (deptEmployees.length > 0) {
           const taskDate = task.date || dateStr;
           const monthYear = getMonthYearStr(taskDate);
 

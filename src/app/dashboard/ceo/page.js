@@ -93,7 +93,7 @@ export default function CeoDashboard() {
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formRole, setFormRole] = useState('EMPLOYEE');
-  const [formDept, setFormDept] = useState('Engineering');
+  const [formDept, setFormDept] = useState('Social Media Marketing');
   const [formSalary, setFormSalary] = useState('');
   const [formAvatar, setFormAvatar] = useState('👤');
 
@@ -496,7 +496,7 @@ export default function CeoDashboard() {
     setFormEmail('');
     setFormPassword('');
     setFormRole('EMPLOYEE');
-    setFormDept('Engineering');
+    setFormDept('Social Media Marketing');
     setFormSalary('');
     setFormAvatar('👤');
     setFormError('');
@@ -1709,11 +1709,13 @@ export default function CeoDashboard() {
                       onChange={(e) => setFormDept(e.target.value)}
                       className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
                     >
-                      <option value="Engineering">Engineering</option>
-                      <option value="HR">HR</option>
+                      <option value="Executive">Executive</option>
+                      <option value="Social Media Marketing">Social Media Marketing</option>
+                      <option value="Video Editing / Content Creator">Video Editing / Content Creator</option>
+                      <option value="Graphics">Graphics</option>
+                      <option value="Software Development">Software Development</option>
                       <option value="Sales">Sales</option>
-                      <option value="Marketing">Marketing</option>
-                      <option value="Design">Design</option>
+                      <option value="HR">HR</option>
                     </select>
                   </div>
                   <div className="space-y-1">
@@ -1839,11 +1841,12 @@ export default function CeoDashboard() {
                       className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
                     >
                       <option value="Executive">Executive</option>
-                      <option value="Engineering">Engineering</option>
-                      <option value="HR">HR</option>
+                      <option value="Social Media Marketing">Social Media Marketing</option>
+                      <option value="Video Editing / Content Creator">Video Editing / Content Creator</option>
+                      <option value="Graphics">Graphics</option>
+                      <option value="Software Development">Software Development</option>
                       <option value="Sales">Sales</option>
-                      <option value="Marketing">Marketing</option>
-                      <option value="Design">Design</option>
+                      <option value="HR">HR</option>
                     </select>
                   </div>
                   <div className="space-y-1">
