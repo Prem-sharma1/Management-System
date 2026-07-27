@@ -612,25 +612,9 @@ export default function AdminDashboard() {
           return { assignTo: defaultDept, workingOn: candidates[0].name };
         }
 
-        // Calculate assigned workload for each candidate across clients & client tasks
-        const candidateScores = candidates.map(emp => {
-          const nameLower = emp.name.toLowerCase();
-          const clientCount = clientsList.filter(c => c.workingOn && c.workingOn.toLowerCase().includes(nameLower)).length;
-          const taskCount = allClientTasks.filter(t => t.workingOn && t.workingOn.toLowerCase().includes(nameLower)).length;
-          return {
-            emp,
-            score: clientCount * 10 + taskCount
-          };
-        });
-
-        // Find minimum score (lowest workload)
-        candidateScores.sort((a, b) => a.score - b.score);
-        const minScore = candidateScores[0].score;
-        const tiedCandidates = candidateScores.filter(c => c.score === minScore).map(c => c.emp);
-
-        // Divide one by one (round-robin rotation based on existing client count)
-        const totalAssignedClients = clientsList.filter(c => c.workingOn).length;
-        const chosenEmp = tiedCandidates[totalAssignedClients % tiedCandidates.length];
+        // Pure Round-Robin (First Come, First Served rotation: 1st -> 2nd -> 3rd -> 1st)
+        const totalAssignedClients = clientsList.length;
+        const chosenEmp = candidates[totalAssignedClients % candidates.length];
 
         return { assignTo: defaultDept, workingOn: chosenEmp.name };
       };

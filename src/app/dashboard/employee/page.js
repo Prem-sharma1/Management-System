@@ -1132,7 +1132,7 @@ export default function EmployeeDashboard() {
                               if (scriptTask && scriptTask.workSampleUrl) {
                                 return (
                                   <a 
-                                    href={scriptTask.workSampleUrl} 
+                                    href={scriptTask.workSampleUrl.startsWith('http://') || scriptTask.workSampleUrl.startsWith('https://') || scriptTask.workSampleUrl.startsWith('/') ? scriptTask.workSampleUrl : `https://${scriptTask.workSampleUrl}`} 
                                     target="_blank" 
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md w-fit"
@@ -1147,7 +1147,7 @@ export default function EmployeeDashboard() {
                             {ct.workSampleUrl && (
                               <div className="mt-1.5">
                                 <a 
-                                  href={ct.workSampleUrl} 
+                                  href={ct.workSampleUrl.startsWith('http://') || ct.workSampleUrl.startsWith('https://') || ct.workSampleUrl.startsWith('/') ? ct.workSampleUrl : `https://${ct.workSampleUrl}`} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-md w-fit"
@@ -1164,7 +1164,7 @@ export default function EmployeeDashboard() {
                                 return (
                                   <div className="mt-1.5">
                                     <a 
-                                      href={contentTask.workSampleUrl} 
+                                      href={contentTask.workSampleUrl.startsWith('http://') || contentTask.workSampleUrl.startsWith('https://') || contentTask.workSampleUrl.startsWith('/') ? contentTask.workSampleUrl : `https://${contentTask.workSampleUrl}`} 
                                       target="_blank" 
                                       rel="noopener noreferrer"
                                       className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-400 hover:underline bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded-md w-fit border border-amber-200/70 dark:border-amber-800/40"

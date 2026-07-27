@@ -629,7 +629,7 @@ export default function ClientDashboard() {
                               {task.taskTitle}
                               {task.workSampleUrl && (
                                 <a 
-                                  href={task.workSampleUrl} 
+                                  href={task.workSampleUrl.startsWith('http://') || task.workSampleUrl.startsWith('https://') || task.workSampleUrl.startsWith('/') ? task.workSampleUrl : `https://${task.workSampleUrl}`} 
                                   target="_blank" 
                                   rel="noopener noreferrer" 
                                   className="block text-[10px] text-blue-400 hover:underline mt-1 font-bold"

@@ -224,7 +224,7 @@ export async function pruneBeforeJulyData() {
 
 export async function rebalanceAiVideoTasks() {
   try {
-    const teamNames = ['Masoom', 'Nouman', 'Divyansh'];
+    const teamNames = ['Divyansh', 'Nouman', 'Masoom'];
     const activeEditors = await prisma.user.findMany({
       where: { name: { in: teamNames } }
     });

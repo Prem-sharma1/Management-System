@@ -293,7 +293,7 @@ export async function POST(request, { params }) {
       const deptEmployees = resolveStaff(dept) || activeEmployees.filter(e => e.department === dept);
 
       if (dept === 'Ai Video Editor' || dept === 'AI Video Editor') {
-        const teamOrder = ['Masoom', 'Nouman', 'Divyansh'];
+        const teamOrder = ['Divyansh', 'Nouman', 'Masoom'];
         const teamUsers = teamOrder
           .map(name => activeEmployees.find(e => e.name.toLowerCase().includes(name.toLowerCase())))
           .filter(Boolean);
