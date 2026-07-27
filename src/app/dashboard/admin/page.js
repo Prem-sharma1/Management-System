@@ -27,7 +27,9 @@ import {
   Send,
   AlertTriangle,
   RefreshCw,
-  MessageSquare
+  MessageSquare,
+  CreditCard,
+  DollarSign
 } from 'lucide-react';
 
 const SERVICES_PRICING = {
@@ -221,6 +223,118 @@ export default function AdminDashboard() {
   const [feedbacksList, setFeedbacksList] = useState([]);
   const [feedbackAdminFilter, setFeedbackAdminFilter] = useState('All'); // 'All', 'Feedback', 'Concern', 'Pending', 'Reviewed'
   const [feedbackAdminSearch, setFeedbackAdminSearch] = useState('');
+
+  // Pending Payments tab states
+  const [paymentTabFilter, setPaymentTabFilter] = useState('All'); // 'All', 'Overdue7', 'Within7'
+  const [paymentTabSearch, setPaymentTabSearch] = useState('');
+
+  const getClientPaymentInfo = (client) => {
+    if (!client) return { pStatus: 'Full', paidAmount: 0, totalAmount: 0, pendingBalance: 0, isPartial: false, daysPassed: 0, isOverdue7Days: false, actualNotes: '' };
+    
+    const totalAmount = client.packageAmount || 0;
+    let pStatus = 'Full';
+    let paidAmount = totalAmount;
+    let actualNotes = '';
+
+    try {
+      if (client.notes) {
+        const parsed = JSON.parse(client.notes);
+        if (parsed && typeof parsed === 'object') {
+          pStatus = parsed.paymentStatus || 'Full';
+          paidAmount = parsed.paidAmount !== undefined ? parseFloat(parsed.paidAmount) || 0 : totalAmount;
+          actualNotes = parsed.actualNotes || '';
+        } else {
+          actualNotes = client.notes;
+        }
+      }
+    } catch (e) {
+      actualNotes = client.notes || '';
+    }
+
+    const pendingBalance = Math.max(0, totalAmount - paidAmount);
+    const isPartial = pStatus === 'Half' || pendingBalance > 0;
+
+    let daysPassed = 0;
+    if (client.joiningDate) {
+      const parseToISO = (dateStr) => {
+        if (!dateStr || typeof dateStr !== 'string') return null;
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return dateStr.slice(0, 10);
+        const monthMap = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12' };
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+          const [dd, mon, yyyy] = parts;
+          const mm = monthMap[mon.toLowerCase()];
+          if (mm && dd && yyyy) return `${yyyy}-${mm}-${dd.padStart(2, '0')}`;
+        }
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+      };
+
+      const isoDate = parseToISO(client.joiningDate);
+      if (isoDate) {
+        const start = new Date(isoDate);
+        const now = new Date();
+        const diffMs = now.getTime() - start.getTime();
+        daysPassed = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      }
+    }
+
+    const isOverdue7Days = isPartial && daysPassed >= 7;
+
+    return {
+      pStatus,
+      paidAmount,
+      totalAmount,
+      pendingBalance,
+      isPartial,
+      daysPassed,
+      isOverdue7Days,
+      actualNotes
+    };
+  };
+
+  const handleMarkFullyPaid = async (client) => {
+    if (!confirm(`Mark remaining payment (₹${(client.packageAmount - (getClientPaymentInfo(client).paidAmount)).toLocaleString()}) as FULLY PAID for ${client.businessName}?`)) return;
+    setFormLoading(true);
+    try {
+      let currentActualNotes = '';
+      try {
+        if (client.notes) {
+          const parsed = JSON.parse(client.notes);
+          if (parsed && typeof parsed === 'object') {
+            currentActualNotes = parsed.actualNotes || '';
+          } else {
+            currentActualNotes = client.notes;
+          }
+        }
+      } catch (e) {
+        currentActualNotes = client.notes || '';
+      }
+
+      const updatedNotesObj = {
+        paymentStatus: 'Full',
+        paidAmount: client.packageAmount,
+        actualNotes: currentActualNotes
+      };
+
+      const res = await fetch(`/api/clients/${client.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: JSON.stringify(updatedNotesObj) })
+      });
+
+      if (res.ok) {
+        showToast(`Payment marked as FULLY PAID for ${client.businessName}!`, 'success');
+        await fetchClients();
+      } else {
+        showToast('Failed to update payment status.', 'error');
+      }
+    } catch (err) {
+      showToast('Error updating payment status.', 'error');
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   // Dark Mode State
   const [darkMode, setDarkMode] = useState(false);
@@ -1589,6 +1703,37 @@ export default function AdminDashboard() {
             </button>
 
             <button
+              onClick={() => setActiveTab('pending-payments')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'pending-payments'
+                  ? 'bg-amber-50 dark:bg-amber-955/40 text-amber-700 dark:text-amber-400 font-extrabold'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <CreditCard className="w-4 h-4 text-amber-500" />
+              <span>Pending Payments</span>
+              {(() => {
+                const overdueCount = clientsList.filter(c => getClientPaymentInfo(c).isOverdue7Days).length;
+                const totalPendingCount = clientsList.filter(c => getClientPaymentInfo(c).isPartial).length;
+                if (overdueCount > 0) {
+                  return (
+                    <span className="ml-auto px-1.5 py-0.5 bg-red-600 text-white rounded-full text-[10px] font-black animate-pulse">
+                      {overdueCount} Due
+                    </span>
+                  );
+                }
+                if (totalPendingCount > 0) {
+                  return (
+                    <span className="ml-auto px-1.5 py-0.5 bg-amber-500 text-white rounded-full text-[10px] font-bold">
+                      {totalPendingCount}
+                    </span>
+                  );
+                }
+                return null;
+              })()}
+            </button>
+
+            <button
               onClick={() => setActiveTab('renewals')}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
                 activeTab === 'renewals'
@@ -1733,6 +1878,38 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               )}
+
+              {/* 7-Day Partial Payment Overdue Alert Banner */}
+              {(() => {
+                const overdue7DayClients = clientsList.filter(c => getClientPaymentInfo(c).isOverdue7Days);
+                if (overdue7DayClients.length === 0) return null;
+                return (
+                  <div className="bg-gradient-to-r from-red-50 to-amber-50 dark:from-red-955/30 dark:to-amber-955/20 border border-red-200 dark:border-red-900/60 p-4 rounded-2xl flex items-center justify-between gap-4 shadow-sm animate-pulse-soft">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                        <CreditCard className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                          Remaining Payment Follow-up Required! (7-Day Window Elapsed)
+                          <span className="px-2 py-0.5 bg-red-600 text-white text-[9px] font-black rounded-full uppercase">
+                            {overdue7DayClients.length} Action Needed
+                          </span>
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                          7 days have passed since half payment. Please contact {overdue7DayClients.map(c => c.businessName).join(', ')} to collect remaining rupees.
+                        </p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setActiveTab('pending-payments')}
+                      className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-red-500/20 whitespace-nowrap shrink-0 cursor-pointer"
+                    >
+                      Collect Remaining Payment →
+                    </button>
+                  </div>
+                );
+              })()}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 
                 {/* Total Staff Card */}
@@ -2648,6 +2825,182 @@ export default function AdminDashboard() {
                     </div>
                   )
                 }
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB: PENDING PAYMENTS */}
+          {activeTab === 'pending-payments' && (
+            <div className="space-y-6 animate-fade-in text-xs">
+              
+              {/* Top Metrics Cards */}
+              {(() => {
+                const pendingClients = clientsList.filter(c => getClientPaymentInfo(c).isPartial);
+                const overdue7Clients = pendingClients.filter(c => getClientPaymentInfo(c).isOverdue7Days);
+                const totalPendingBalance = pendingClients.reduce((sum, c) => sum + getClientPaymentInfo(c).pendingBalance, 0);
+                const totalReceived = clientsList.reduce((sum, c) => sum + getClientPaymentInfo(c).paidAmount, 0);
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Clients with Pending Balance</span>
+                      <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">{pendingClients.length}</div>
+                      <span className="text-[9px] text-slate-400 font-medium">Partial / Half payment accounts</span>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 p-5 rounded-2xl shadow-sm flex flex-col gap-1 bg-amber-50/30 dark:bg-amber-955/10">
+                      <span className="text-[10px] text-amber-700 dark:text-amber-400 font-extrabold uppercase tracking-wider">Total Remaining Rupees Due</span>
+                      <div className="text-xl font-black text-amber-700 dark:text-amber-400 mt-1">₹{totalPendingBalance.toLocaleString()}</div>
+                      <span className="text-[9px] text-amber-600/80 dark:text-amber-400/80 font-medium">Uncollected package balance</span>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/50 p-5 rounded-2xl shadow-sm flex flex-col gap-1 bg-red-50/30 dark:bg-red-955/10">
+                      <span className="text-[10px] text-red-600 dark:text-red-400 font-extrabold uppercase tracking-wider">7-Day Overdue Follow-ups</span>
+                      <div className="text-xl font-black text-red-600 dark:text-red-400 mt-1">{overdue7Clients.length}</div>
+                      <span className="text-[9px] text-red-600/80 dark:text-red-400/80 font-medium">7 days elapsed since payment</span>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Total Received Revenue</span>
+                      <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">₹{totalReceived.toLocaleString()}</div>
+                      <span className="text-[9px] text-slate-400 font-medium">Total payments collected</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Toolbar */}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+                <div className="relative flex items-center w-full max-w-md">
+                  <Search className="absolute left-3 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={paymentTabSearch}
+                    onChange={(e) => setPaymentTabSearch(e.target.value)}
+                    placeholder="Search business, name, ID, contact..."
+                    className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl focus:outline-none focus:border-blue-600 text-xs transition"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {['All', 'Overdue7', 'Within7'].map(mode => (
+                    <button
+                      key={mode}
+                      onClick={() => setPaymentTabFilter(mode)}
+                      className={`px-3 py-1.5 rounded-xl font-extrabold text-[11px] transition ${
+                        paymentTabFilter === mode
+                          ? mode === 'Overdue7' ? 'bg-red-600 text-white shadow' : 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                      }`}
+                    >
+                      {mode === 'All' ? 'All Pending' : mode === 'Overdue7' ? '⚠️ 7-Day Overdue' : '⏳ Within 7 Days'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pending Payments Table */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/40 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase tracking-wider">
+                        <th className="p-4">Client / Business</th>
+                        <th className="p-4">Contact Info</th>
+                        <th className="p-4">Package & Services</th>
+                        <th className="p-4">Total Price</th>
+                        <th className="p-4">Paid (Received)</th>
+                        <th className="p-4">Remaining Rupees Due</th>
+                        <th className="p-4">Joining / Payment Date</th>
+                        <th className="p-4">7-Day Alert Status</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {(() => {
+                        const list = clientsList
+                          .filter(c => getClientPaymentInfo(c).isPartial)
+                          .filter(c => {
+                            const info = getClientPaymentInfo(c);
+                            if (paymentTabFilter === 'Overdue7') return info.isOverdue7Days;
+                            if (paymentTabFilter === 'Within7') return !info.isOverdue7Days;
+                            return true;
+                          })
+                          .filter(c => {
+                            if (!paymentTabSearch) return true;
+                            const q = paymentTabSearch.toLowerCase();
+                            return (
+                              c.businessName.toLowerCase().includes(q) ||
+                              c.clientId.toLowerCase().includes(q) ||
+                              (c.clientName && c.clientName.toLowerCase().includes(q)) ||
+                              (c.contact && c.contact.toLowerCase().includes(q))
+                            );
+                          });
+
+                        if (list.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan="9" className="p-8 text-center text-slate-400 italic">No pending payment accounts match the current filter.</td>
+                            </tr>
+                          );
+                        }
+
+                        return list.map(client => {
+                          const info = getClientPaymentInfo(client);
+                          return (
+                            <tr key={`pay-${client.id}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition text-slate-700 dark:text-slate-300">
+                              <td className="p-4 font-bold">
+                                <div className="text-slate-900 dark:text-white">{client.businessName}</div>
+                                <div className="text-[9px] text-slate-400 font-semibold mt-0.5">ID: {client.clientId} | Person: {client.clientName || 'N/A'}</div>
+                              </td>
+                              <td className="p-4">
+                                <div className="font-semibold">{client.contact || 'No Phone'}</div>
+                                <div className="text-[9px] text-slate-400">{client.email || 'No Email'}</div>
+                              </td>
+                              <td className="p-4">
+                                <div className="font-bold text-blue-650 dark:text-blue-400">{client.packageName}</div>
+                                <div className="text-[9px] text-slate-400">{client.services}</div>
+                              </td>
+                              <td className="p-4 font-bold text-slate-900 dark:text-white">
+                                ₹{info.totalAmount.toLocaleString()}
+                              </td>
+                              <td className="p-4 font-bold text-emerald-600 dark:text-emerald-400">
+                                ₹{info.paidAmount.toLocaleString()}
+                              </td>
+                              <td className="p-4 font-black text-red-600 dark:text-red-400 text-sm">
+                                ₹{info.pendingBalance.toLocaleString()}
+                              </td>
+                              <td className="p-4 font-semibold text-slate-600 dark:text-slate-400">
+                                {client.joiningDate}
+                              </td>
+                              <td className="p-4">
+                                {info.isOverdue7Days ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black bg-red-100 text-red-700 dark:bg-red-955/50 dark:text-red-400 border border-red-300 dark:border-red-900/60 animate-pulse">
+                                    ⚠️ 7-Day Overdue ({info.daysPassed} days)
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-955/40 dark:text-amber-300 border border-amber-200/80 dark:border-amber-900/50">
+                                    ⏳ Day {info.daysPassed} of 7
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-4 text-right space-x-2">
+                                <button
+                                  onClick={() => handleMarkFullyPaid(client)}
+                                  disabled={formLoading}
+                                  className="py-1.5 px-3 rounded-xl text-[10px] font-bold transition inline-flex items-center gap-1 shadow-sm disabled:opacity-50 bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/10 cursor-pointer"
+                                >
+                                  <span>Mark Fully Paid</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
             </div>

@@ -1,28 +1,27 @@
 {
-  "timestamp": "2026-07-25T12:48:40.293Z",
+  "timestamp": "2026-07-27T12:28:46.575Z",
   "summary": {
-    "totalClients": 13,
-    "totalClientTasks": 293,
+    "totalClients": 12,
+    "totalClientTasks": 276,
     "totalClientDeliveries": 0,
     "tasksByWorkingOn": {
-      "Preet": 49,
-      "Swapnil": 39,
-      "Masoom": 9,
-      "Sanmeet": 23,
+      "Preet": 43,
+      "Swapnil": 36,
+      "Masoom": 6,
+      "Sanmeet": 22,
       "Pujan": 39,
       "Nouman": 18,
       "Divyansh": 24,
-      "Rama": 69,
+      "Rama": 65,
       "Danish Khan": 23
     }
   },
   "aiVideoBreakdown": {
     "Masoom": {
-      "count": 9,
+      "count": 6,
       "clients": [
         "AID-0001 (HIT-OFFICE)",
-        "AID-0013 (AS Account Solution)",
-        "AID-0028 (arvi)"
+        "AID-0013 (AS Account Solution)"
       ]
     },
     "Nouman": {
@@ -130,13 +129,6 @@
       "joiningDate": "2026-07-12",
       "packageName": "Standard (Monthly)",
       "packageAmount": 3999
-    },
-    {
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "joiningDate": "2026-07-25",
-      "packageName": "Basic Plan",
-      "packageAmount": 4995
     }
   ],
   "clientTasks": [
@@ -357,7 +349,7 @@
       "date": "27-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -1182,7 +1174,7 @@
       "date": "06-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Client Review",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -3173,193 +3165,6 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Divyansh",
-      "status": "Not Started",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MS0C46LS-7064-0",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Client Login / Access Collection",
-      "date": "25-Jul-2026",
-      "assignTo": "Digital Marketing Executive",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Onboarding"
-    },
-    {
-      "taskId": "AID-T-MS0C46RJ-9202-1",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Graphic 1",
-      "date": "27-Jul-2026",
-      "assignTo": "Graphic Designer",
-      "workingOn": "Swapnil",
-      "status": "Assigned",
-      "postType": "Graphic"
-    },
-    {
-      "taskId": "AID-T-MS0C46WT-8028-2",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "AI Video Script 1",
-      "date": "27-Jul-2026",
-      "assignTo": "AI Video Lead",
-      "workingOn": "Masoom",
-      "status": "Assigned",
-      "postType": "Script"
-    },
-    {
-      "taskId": "AID-T-MS0C472C-8129-3",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "AI Video 1",
-      "date": "28-Jul-2026",
-      "assignTo": "Ai Video Editor",
-      "workingOn": "Masoom",
-      "status": "Assigned",
-      "postType": "AI Video"
-    },
-    {
-      "taskId": "AID-T-MS0C477W-7753-4",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Ads Run",
-      "date": "28-Jul-2026",
-      "assignTo": "Digital Marketing Executive",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Ads"
-    },
-    {
-      "taskId": "AID-T-MS0C47DC-1065-5",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Graphic 2",
-      "date": "29-Jul-2026",
-      "assignTo": "Graphic Designer",
-      "workingOn": "Swapnil",
-      "status": "Assigned",
-      "postType": "Graphic"
-    },
-    {
-      "taskId": "AID-T-MS0C47IW-9359-6",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Post Graphic 2",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Rama",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MS0C47PD-9059-7",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Reel 1",
-      "date": "05-Aug-2026",
-      "assignTo": "Video Editor",
-      "workingOn": "Sanmeet",
-      "status": "Assigned",
-      "postType": "Reel"
-    },
-    {
-      "taskId": "AID-T-MS0C47UR-5017-8",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Post Reel 1",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Rama",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MS0C486D-1704-9",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Graphic 3",
-      "date": "12-Aug-2026",
-      "assignTo": "Graphic Designer",
-      "workingOn": "Swapnil",
-      "status": "Assigned",
-      "postType": "Graphic"
-    },
-    {
-      "taskId": "AID-T-MS0C48LG-7038-10",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Post Graphic 3",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Rama",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MS0C48T4-7451-11",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Weekly Report 1",
-      "date": "03-Aug-2026",
-      "assignTo": "Digital Marketing Executive",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Report"
-    },
-    {
-      "taskId": "AID-T-MS0C48ZC-7795-12",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Weekly Report 2",
-      "date": "11-Aug-2026",
-      "assignTo": "Digital Marketing Executive",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Report"
-    },
-    {
-      "taskId": "AID-T-MS0C497G-3526-13",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Weekly Report 3",
-      "date": "19-Aug-2026",
-      "assignTo": "Digital Marketing Executive",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Report"
-    },
-    {
-      "taskId": "AID-T-MS0C49CQ-3860-14",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Weekly Report 4",
-      "date": "27-Aug-2026",
-      "assignTo": "Digital Marketing Executive",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Report"
-    },
-    {
-      "taskId": "AID-T-MS0C46RJ-9202-1-POST-MS0C4CM0-6209",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Post Graphic 1",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Rama",
-      "status": "Not Started",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MS0C472C-8129-3-POST-MS0C4COP-5417",
-      "clientId": "AID-0028",
-      "businessName": "arvi",
-      "taskTitle": "Post AI Video 1",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Masoom",
       "status": "Not Started",
       "postType": "Posting"
     }
