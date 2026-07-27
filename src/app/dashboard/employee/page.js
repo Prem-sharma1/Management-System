@@ -1455,8 +1455,12 @@ export default function EmployeeDashboard() {
                                 >
                                   <option value="Not Started">Not Started</option>
                                   <option value="Processing">Processing</option>
-                                  <option value="Client Review">Client Review</option>
-                                  <option value="Revision">Revision</option>
+                                  {!(['preet', 'pujan', 'rama'].some(n => (currentUser?.name || '').toLowerCase().includes(n)) || ['preet', 'pujan', 'rama'].some(n => (task.workingOn || '').toLowerCase().includes(n))) && (
+                                    <>
+                                      <option value="Client Review">Client Review</option>
+                                      <option value="Revision">Revision</option>
+                                    </>
+                                  )}
                                   <option value="Completion">Completion</option>
                                   <option value="Pending">Pending</option>
                                   <option value="Overdue">Overdue</option>
@@ -1601,6 +1605,14 @@ export default function EmployeeDashboard() {
                        <>
                          <option value="Not Started">Not Posted</option>
                          <option value="Completion">Posted</option>
+                       </>
+                    ) : (['preet', 'pujan', 'rama'].some(n => (currentUser?.name || '').toLowerCase().includes(n)) || ['preet', 'pujan', 'rama'].some(n => (selectedTaskForStatus?.workingOn || '').toLowerCase().includes(n))) ? (
+                       <>
+                         <option value="Not Started">Not Started</option>
+                         <option value="Processing">Processing</option>
+                         <option value="Completion">Completion</option>
+                         <option value="Pending">Pending (Blocked)</option>
+                         <option value="Overdue">Overdue</option>
                        </>
                     ) : (
                        <>

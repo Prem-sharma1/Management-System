@@ -1817,6 +1817,14 @@ export default function TLDashboard() {
                              <option value="PENDING">Pending (Blocked)</option>
                              <option value="OVERDUE">Overdue</option>
                            </>
+                        ) : (['preet', 'pujan', 'rama'].some(n => (selectedTaskForStatus?.workingOn || '').toLowerCase().includes(n))) ? (
+                           <>
+                             <option value="Not Started">Not Started</option>
+                             <option value="Processing">Processing</option>
+                             <option value="Completion">Completion</option>
+                             <option value="Pending">Pending (Blocked)</option>
+                             <option value="Overdue">Overdue</option>
+                           </>
                         ) : (
                            <>
                              <option value="Not Started">Not Started</option>
