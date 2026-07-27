@@ -22,7 +22,8 @@ import {
   TrendingUp,
   Download,
   Users,
-  FileDown
+  FileDown,
+  User
 } from 'lucide-react';
 
 const convertDbDateToIso = (dateStr) => {
@@ -1125,23 +1126,64 @@ export default function EmployeeDashboard() {
                             <p className="text-[10px] text-slate-400 font-medium mt-1">
                               {ct.postType === 'Posting' || (ct.taskTitle && ct.taskTitle.toLowerCase().startsWith('post ')) ? 'Trigger: Auto on Client Approval / 24h' : `Date: ${ct.date}`} | Status: <span className={`font-bold ${['Completed', 'DONE', 'Completion'].includes(ct.status) ? 'text-emerald-500' : ['Overdue', 'OVERDUE'].includes(ct.status) ? 'text-red-500' : ['Pending', 'PENDING'].includes(ct.status) ? 'text-yellow-500' : 'text-blue-500'}`}>{ct.status}</span>
                             </p>
-                            {/* Display script link for AI Video tasks */}
+                            {/* Display target Video Editor for Script tasks (Harshit) */}
+                            {(ct.postType === 'Script' || (ct.taskTitle && ct.taskTitle.toLowerCase().includes('script'))) && (() => {
+                              const normTitle = ct.taskTitle.toLowerCase().replace(/\s*script\s*/i, '').trim();
+                              const videoTask = allClientTasks.find(t => 
+                                t.clientId === ct.clientId && 
+                                (t.taskTitle.toLowerCase().trim() === normTitle || t.taskTitle.toLowerCase().trim() === normTitle.replace('script', '').trim())
+                              );
+                              const editorName = videoTask?.workingOn || 'Unassigned';
+
+                              return (
+                                <div className="mt-2 p-2 bg-indigo-50/80 dark:bg-indigo-955/40 border border-indigo-200/80 dark:border-indigo-800/50 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[10px]">
+                                  <div className="flex items-center gap-1.5 font-bold text-indigo-800 dark:text-indigo-300">
+                                    <User className="w-3.5 h-3.5 text-indigo-500" />
+                                    <span>Assigned Video Editor: <strong className="text-indigo-955 dark:text-indigo-100 uppercase font-extrabold">{editorName}</strong></span>
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold w-fit ${ct.workSampleUrl || ct.notes ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-955 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-955 dark:text-amber-300'}`}>
+                                    {ct.workSampleUrl || ct.notes ? `✓ Script Shared with ${editorName}` : `⏳ Awaiting Script Upload for ${editorName}`}
+                                  </span>
+                                </div>
+                              );
+                            })()}
+
+                            {/* Display script link for AI Video tasks (Editors) */}
                             {ct.postType === 'AI Video' && (() => {
-                              const scriptTitle = `${ct.taskTitle} Script`;
-                              const scriptTask = allClientTasks.find(t => t.clientId === ct.clientId && t.taskTitle === scriptTitle);
-                              if (scriptTask && scriptTask.workSampleUrl) {
+                              const normTitle = ct.taskTitle.toLowerCase();
+                              const scriptTask = allClientTasks.find(t => 
+                                t.clientId === ct.clientId && (
+                                  t.taskTitle.toLowerCase() === `${normTitle} script` ||
+                                  t.taskTitle.toLowerCase() === normTitle.replace('ai video', 'ai video script') ||
+                                  t.taskTitle.toLowerCase().includes('script')
+                                )
+                              );
+                              if (scriptTask && (scriptTask.workSampleUrl || scriptTask.notes)) {
                                 return (
-                                  <a 
-                                    href={scriptTask.workSampleUrl.startsWith('http://') || scriptTask.workSampleUrl.startsWith('https://') || scriptTask.workSampleUrl.startsWith('/') ? scriptTask.workSampleUrl : `https://${scriptTask.workSampleUrl}`} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md w-fit"
-                                  >
-                                    <FileText className="w-3.5 h-3.5" /> View Script from Harshit
-                                  </a>
+                                  <div className="mt-1.5 flex flex-col gap-1">
+                                    {scriptTask.workSampleUrl && (
+                                      <a 
+                                        href={scriptTask.workSampleUrl.startsWith('http://') || scriptTask.workSampleUrl.startsWith('https://') || scriptTask.workSampleUrl.startsWith('/') ? scriptTask.workSampleUrl : `https://${scriptTask.workSampleUrl}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md w-fit"
+                                      >
+                                        <FileText className="w-3.5 h-3.5" /> View Script from Harshit
+                                      </a>
+                                    )}
+                                    {scriptTask.notes && (
+                                      <p className="text-[10px] text-indigo-700 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/20 p-1.5 rounded border border-indigo-100 dark:border-indigo-900/30 italic">
+                                        Script Notes: {scriptTask.notes}
+                                      </p>
+                                    )}
+                                  </div>
                                 );
                               }
-                              return null;
+                              return (
+                                <span className="inline-block mt-1.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-955/30 px-2 py-0.5 rounded border border-amber-200/50">
+                                  ⏳ Script Pending from Harshit
+                                </span>
+                              );
                             })()}
                             {/* Display own work sample if uploaded */}
                             {ct.workSampleUrl && (
@@ -1439,6 +1481,27 @@ export default function EmployeeDashboard() {
                                     </button>
                                   )}
                                 </div>
+                                {/* Display target Video Editor for Script tasks */}
+                                {(task.postType === 'Script' || (task.taskTitle && task.taskTitle.toLowerCase().includes('script'))) && (() => {
+                                  const normTitle = task.taskTitle.toLowerCase().replace(/\s*script\s*/i, '').trim();
+                                  const videoTask = allClientTasks.find(t => 
+                                    t.clientId === task.clientId && 
+                                    (t.taskTitle.toLowerCase().trim() === normTitle || t.taskTitle.toLowerCase().trim() === normTitle.replace('script', '').trim())
+                                  );
+                                  const editorName = videoTask?.workingOn || 'Unassigned';
+
+                                  return (
+                                    <div className="mt-1.5 p-1.5 bg-indigo-50/80 dark:bg-indigo-955/40 border border-indigo-200/80 dark:border-indigo-800/50 rounded-lg flex items-center justify-between gap-2 text-[10px]">
+                                      <div className="flex items-center gap-1.5 font-bold text-indigo-800 dark:text-indigo-300">
+                                        <User className="w-3.5 h-3.5 text-indigo-500" />
+                                        <span>Target Video Editor: <strong className="text-indigo-955 dark:text-indigo-100 uppercase font-extrabold">{editorName}</strong></span>
+                                      </div>
+                                      <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${task.workSampleUrl || task.notes ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-955 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-955 dark:text-amber-300'}`}>
+                                        {task.workSampleUrl || task.notes ? `✓ Script Shared with ${editorName}` : `⏳ Awaiting Script`}
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                               <div className="flex flex-col items-end justify-between gap-2">
                                 <select 
@@ -1579,6 +1642,31 @@ export default function EmployeeDashboard() {
             
             <form onSubmit={handleUpdateStatusSubmit}>
               <div className="p-6 space-y-4 text-xs">
+                {/* Target Video Editor Banner for Script tasks */}
+                {(selectedTaskForStatus?.postType === 'Script' || (selectedTaskForStatus?.taskTitle && selectedTaskForStatus.taskTitle.toLowerCase().includes('script'))) && (() => {
+                  const normTitle = selectedTaskForStatus.taskTitle.toLowerCase().replace(/\s*script\s*/i, '').trim();
+                  const videoTask = allClientTasks.find(t => 
+                    t.clientId === selectedTaskForStatus.clientId && 
+                    (t.taskTitle.toLowerCase().trim() === normTitle || t.taskTitle.toLowerCase().trim() === normTitle.replace('script', '').trim())
+                  );
+                  const editorName = videoTask?.workingOn || 'Unassigned';
+
+                  return (
+                    <div className="p-3 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-955/40 dark:to-blue-955/40 border border-indigo-200 dark:border-indigo-800 rounded-xl space-y-1">
+                      <div className="flex items-center justify-between text-xs font-bold text-indigo-900 dark:text-indigo-200">
+                        <span className="flex items-center gap-1.5">
+                          <User className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                          <span>Assigned Video Editor: <strong className="uppercase font-black text-indigo-700 dark:text-indigo-300">{editorName}</strong></span>
+                        </span>
+                        <span className="px-2 py-0.5 bg-indigo-200 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 rounded text-[9px] font-extrabold">Script Recipient</span>
+                      </div>
+                      <p className="text-[10px] text-indigo-700/80 dark:text-indigo-300/80 font-medium">
+                        When you submit or update this script, it will be automatically shared with <strong>{editorName}</strong> for AI Video editing.
+                      </p>
+                    </div>
+                  );
+                })()}
+
                 {formError && (
                   <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 text-red-700 rounded-xl flex items-center gap-2">
                     <AlertCircle className="w-4.5 h-4.5 shrink-0" />
