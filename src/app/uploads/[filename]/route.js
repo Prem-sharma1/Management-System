@@ -4,15 +4,30 @@ import path from 'path';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request, { params }) {
+export async function GET(request, context) {
   try {
-    const { filename } = params;
+    let resolvedParams = context?.params;
+    if (resolvedParams && typeof resolvedParams.then === 'function') {
+      resolvedParams = await resolvedParams;
+    }
+    
+    // Extract filename from resolvedParams or URL path fallback
+    let filename = resolvedParams?.filename;
+    if (!filename && request.url) {
+      const urlObj = new URL(request.url);
+      const parts = urlObj.pathname.split('/uploads/');
+      if (parts.length > 1) {
+        filename = parts[1];
+      }
+    }
+
     if (!filename) {
       return NextResponse.json({ error: 'Filename is required' }, { status: 400 });
     }
 
-    // Prevent directory traversal
-    const safeFilename = path.basename(filename);
+    // Prevent directory traversal and decode URI component
+    const decodedFilename = decodeURIComponent(filename);
+    const safeFilename = path.basename(decodedFilename);
     const filePath = path.join(process.cwd(), 'public', 'uploads', safeFilename);
 
     try {
