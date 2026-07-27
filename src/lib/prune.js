@@ -237,13 +237,21 @@ export async function rebalanceAiVideoTasks() {
 
     const teamList = teamNames.map(name => editorMap[name] || name);
 
-    // 1. Fetch all AI Video ClientTasks
+    // 1. Fetch ONLY actual AI Video Creation/Editing tasks.
+    // EXCLUDE Script tasks (assigned to Harshit) and Posting tasks (assigned to designated poster)
     const aiTasks = await prisma.clientTask.findMany({
       where: {
-        OR: [
-          { assignTo: { contains: 'Ai Video Editor', mode: 'insensitive' } },
-          { postType: { contains: 'AI Video', mode: 'insensitive' } },
-          { taskTitle: { contains: 'AI Video', mode: 'insensitive' } }
+        AND: [
+          {
+            OR: [
+              { assignTo: { contains: 'Ai Video Editor', mode: 'insensitive' } },
+              { postType: 'AI Video' }
+            ]
+          },
+          { postType: { notIn: ['Script', 'Posting'] } },
+          { taskTitle: { not: { contains: 'Script', mode: 'insensitive' } } },
+          { taskTitle: { not: { startsWith: 'Post', mode: 'insensitive' } } },
+          { assignTo: { notIn: ['AI Video Lead', 'Content Posting'] } }
         ]
       }
     });
@@ -262,10 +270,69 @@ export async function rebalanceAiVideoTasks() {
       }
     }
 
-    // 2. Fetch all AI Video ClientDeliveries
+    // 2. Restore ALL Script tasks to Harshit (AI Video Lead)
+    const scriptTasks = await prisma.clientTask.findMany({
+      where: {
+        OR: [
+          { postType: 'Script' },
+          { taskTitle: { contains: 'Script', mode: 'insensitive' } },
+          { assignTo: 'AI Video Lead' }
+        ]
+      }
+    });
+
+    for (const st of scriptTasks) {
+      if (st.workingOn !== 'Harshit' || st.assignTo !== 'AI Video Lead') {
+        await prisma.clientTask.update({
+          where: { id: st.id },
+          data: { workingOn: 'Harshit', assignTo: 'AI Video Lead' }
+        });
+      }
+    }
+
+    // 3. Sync Posting tasks to match the client's other posting tasks if incorrectly assigned to an editor
+    const postingTasks = await prisma.clientTask.findMany({
+      where: {
+        OR: [
+          { postType: 'Posting' },
+          { taskTitle: { startsWith: 'Post ', mode: 'insensitive' } },
+          { assignTo: 'Content Posting' }
+        ]
+      }
+    });
+
+    // Group posting tasks by clientId
+    const clientPostingMap = {};
+    postingTasks.forEach(pt => {
+      if (!clientPostingMap[pt.clientId]) clientPostingMap[pt.clientId] = [];
+      clientPostingMap[pt.clientId].push(pt);
+    });
+
+    for (const [clientId, pTasks] of Object.entries(clientPostingMap)) {
+      // Find poster assigned to non-AI-video posting tasks for this client (e.g. Divyansh)
+      const validPoster = pTasks.find(pt => 
+        pt.workingOn && 
+        pt.workingOn !== 'AUTO' && 
+        !pt.taskTitle.toLowerCase().includes('ai video')
+      )?.workingOn || pTasks.find(pt => pt.workingOn && pt.workingOn !== 'AUTO')?.workingOn;
+
+      if (validPoster) {
+        for (const pt of pTasks) {
+          if (pt.workingOn !== validPoster) {
+            await prisma.clientTask.update({
+              where: { id: pt.id },
+              data: { workingOn: validPoster }
+            });
+          }
+        }
+      }
+    }
+
+    // 4. Fetch all AI Video ClientDeliveries (EXCLUDING scripts)
     const aiDeliveries = await prisma.clientDelivery.findMany({
       where: {
-        postType: { contains: 'AI Video', mode: 'insensitive' }
+        postType: 'AI Video',
+        deliverableName: { not: { contains: 'Script', mode: 'insensitive' } }
       }
     });
 
