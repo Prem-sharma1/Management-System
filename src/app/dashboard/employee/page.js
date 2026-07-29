@@ -23,7 +23,8 @@ import {
   Download,
   Users,
   FileDown,
-  User
+  User,
+  ExternalLink
 } from 'lucide-react';
 
 const convertDbDateToIso = (dateStr) => {
@@ -107,19 +108,28 @@ export default function EmployeeDashboard() {
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    if (localStorage.getItem('theme') === 'dark') {
+    const isDark = localStorage.getItem('theme') === 'dark' || 
+      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (isDark) {
       setDarkMode(true);
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+    } else {
+      setDarkMode(false);
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
     }
   }, []);
 
   const toggleDarkMode = () => {
     if (darkMode) {
       document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
       localStorage.setItem('theme', 'light');
       setDarkMode(false);
     } else {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
       localStorage.setItem('theme', 'dark');
       setDarkMode(true);
     }
@@ -279,6 +289,67 @@ export default function EmployeeDashboard() {
     }
   };
 
+  // Direct Script PDF Upload for Assigned Tasks
+  const handleDirectScriptFileUpload = async (taskId, fileObj, isClientTask) => {
+    if (!fileObj) return;
+    try {
+      showToast('Uploading script document...');
+      const formData = new FormData();
+      formData.append('file', fileObj);
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const uploadData = await uploadRes.json();
+      const uploadedUrl = uploadData.url || uploadData.fileUrl;
+
+      if (!uploadRes.ok || !uploadedUrl) {
+        showToast(uploadData.error || 'Upload failed', 'error');
+        return;
+      }
+
+      if (isClientTask) {
+        const updateRes = await fetch(`/api/client-tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            workSampleUrl: uploadedUrl,
+            status: 'Completion'
+          }),
+        });
+
+        if (updateRes.ok) {
+          showToast('Script PDF uploaded and task marked as completed!');
+          await refreshData();
+        } else {
+          showToast('Failed to save script URL', 'error');
+        }
+      } else {
+        const updateRes = await fetch(`/api/tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            workSampleUrl: uploadedUrl,
+            description: uploadedUrl,
+            status: 'DONE'
+          }),
+        });
+
+        if (updateRes.ok) {
+          showToast('Script PDF uploaded and task marked as completed!');
+          await refreshData();
+        } else {
+          showToast('Failed to save script URL', 'error');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Script upload error', 'error');
+    }
+  };
+
   // Task operation Modal Trigger
   const openStatusModal = (task, type = 'INTERNAL') => {
     setSelectedTaskForStatus({ ...task, type });
@@ -414,13 +485,12 @@ export default function EmployeeDashboard() {
 
   const employeeTasksList = tasksList;
 
+  const userRoleStr = currentUser ? ((currentUser.department || '') + ' ' + (currentUser.designation || '')).toLowerCase() : '';
   const isSocialMediaStaff = currentUser && (
-    ['pujan', 'preet', 'rama', 'swapnil', 'danish'].includes(currentUser.name.toLowerCase()) ||
-    (currentUser.department && (
-      currentUser.department.toLowerCase().includes('social media') ||
-      currentUser.department.toLowerCase().includes('digital marketing') ||
-      currentUser.department.toLowerCase().includes('graphic designer')
-    ))
+    userRoleStr.includes('social media') ||
+    userRoleStr.includes('digital marketing') ||
+    userRoleStr.includes('graphic designer') ||
+    userRoleStr.includes('posting')
   );
 
   const isPostingTaskReady = (task, allTasks) => {
@@ -463,9 +533,15 @@ export default function EmployeeDashboard() {
   const employeeMyClientTasks = allClientTasks
     .filter(task => {
       const isAssignedToMe = task.workingOn && currentUser?.name && task.workingOn.toLowerCase().includes(currentUser.name.toLowerCase());
-      const isDeptUnclaimed = !task.workingOn && task.assignTo && currentUser?.department && task.assignTo.toLowerCase().includes(currentUser.department.toLowerCase());
+      const userDeptDesig = ((currentUser?.department || '') + ' ' + (currentUser?.designation || '')).toLowerCase();
+      const taskAssignTo = (task.assignTo || '').toLowerCase();
+      const isDeptMatch = taskAssignTo && (
+        userDeptDesig.includes(taskAssignTo) ||
+        (taskAssignTo.includes('digital marketing') || taskAssignTo.includes('social media') ? (userDeptDesig.includes('marketing') || userDeptDesig.includes('social') || userDeptDesig.includes('digital')) : false)
+      );
+      const isDeptUnclaimed = !task.workingOn && isDeptMatch;
       const isPosting = task.postType === 'Posting' || (task.taskTitle && task.taskTitle.toLowerCase().startsWith('post '));
-      const isUnclaimedPosting = !task.workingOn && isPosting && currentUser?.department && currentUser.department.toLowerCase().includes('posting');
+      const isUnclaimedPosting = !task.workingOn && isPosting && (userDeptDesig.includes('posting') || userDeptDesig.includes('marketing') || userDeptDesig.includes('social') || userDeptDesig.includes('digital'));
 
       if (isAssignedToMe || isDeptUnclaimed || isUnclaimedPosting) {
         return isPostingTaskReady(task, allClientTasks);
@@ -510,7 +586,14 @@ export default function EmployeeDashboard() {
 
   const myDepartmentClientTasks = allClientTasks.filter(t => {
     if (t.workingOn && currentUser?.name && t.workingOn.toLowerCase().includes(currentUser.name.toLowerCase())) return true;
-    if (!t.workingOn && t.assignTo && currentUser?.department && t.assignTo.toLowerCase().includes(currentUser.department.toLowerCase())) return true;
+    const userDeptDesig = ((currentUser?.department || '') + ' ' + (currentUser?.designation || '')).toLowerCase();
+    const taskAssignTo = (t.assignTo || '').toLowerCase();
+    if (!t.workingOn && taskAssignTo) {
+      if (userDeptDesig.includes(taskAssignTo)) return true;
+      if (taskAssignTo.includes('digital marketing') || taskAssignTo.includes('social media')) {
+        return userDeptDesig.includes('marketing') || userDeptDesig.includes('social') || userDeptDesig.includes('digital');
+      }
+    }
     return false;
   });
 
@@ -684,9 +767,20 @@ export default function EmployeeDashboard() {
           <div className="flex items-center gap-4">
             <button 
               onClick={toggleDarkMode}
-              className="w-9 h-9 border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-xs hover:shadow-md transition-all duration-300 transform active:scale-95 cursor-pointer"
+              title="Toggle Dark / Light Mode"
             >
-              {darkMode ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+              {darkMode ? (
+                <>
+                  <Sun className="w-4 h-4 text-amber-400 fill-amber-400/20" />
+                  <span className="text-[11px] font-semibold text-amber-300">Light Mode</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-4 h-4 text-slate-600 fill-slate-600/20" />
+                  <span className="text-[11px] font-semibold text-slate-600">Dark Mode</span>
+                </>
+              )}
             </button>
 
             <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
@@ -833,6 +927,39 @@ export default function EmployeeDashboard() {
                                 );
                               }
                               return null;
+                            })()}
+
+                            {/* Script PDF Access & Direct Upload Options */}
+                            {(() => {
+                              const scriptUrl = item.workSampleUrl || (item.description && (item.description.startsWith('http') || item.description.startsWith('/uploads/')) ? item.description : null);
+
+                              return (
+                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                  {scriptUrl && (
+                                    <a 
+                                      href={scriptUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded border border-blue-200/60 dark:border-blue-800/40"
+                                    >
+                                      <FileDown className="w-3 h-3" /> View Script PDF
+                                    </a>
+                                  )}
+                                  <label className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded cursor-pointer transition border border-indigo-200/60 dark:border-indigo-800/40">
+                                    <Plus className="w-3 h-3" /> {scriptUrl ? 'Change Script PDF' : 'Upload Script PDF'}
+                                    <input 
+                                      type="file" 
+                                      accept="application/pdf,video/*,.pdf,.mp4,.mov,.mkv,.avi,.doc,.docx" 
+                                      className="hidden" 
+                                      onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                          handleDirectScriptFileUpload(item.id, e.target.files[0], item.type === 'client');
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              );
                             })()}
                           </div>
                           
@@ -1148,8 +1275,8 @@ export default function EmployeeDashboard() {
                               );
                             })()}
 
-                            {/* Display script link for AI Video tasks (Editors) */}
-                            {ct.postType === 'AI Video' && (() => {
+                            {/* Display script link for AI Video & Reel tasks (Editors) */}
+                            {(ct.postType === 'AI Video' || ct.postType === 'Reel' || (ct.taskTitle && (ct.taskTitle.toLowerCase().includes('video') || ct.taskTitle.toLowerCase().includes('reel')))) && (() => {
                               const normTitle = ct.taskTitle.toLowerCase();
                               const scriptTask = allClientTasks.find(t => 
                                 t.clientId === ct.clientId && (
@@ -1394,6 +1521,30 @@ export default function EmployeeDashboard() {
               </div>
               <div className="p-6 space-y-8">
                 
+                {/* Onboarding Form Banner */}
+                <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h5 className="text-xs font-bold text-slate-900 dark:text-white">Brand Onboarding Form Responses & Details</h5>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Review client submitted brand guidelines, target audience, login credentials, and content preferences for your assigned clients.
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    href="https://docs.google.com/forms/d/e/1FAIpQLSfgAPH2g8ESgN2wtKd1X2raDN1vbSHECmuwtW_wDp48jqgqwg/viewform?usp=publish-editor"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl transition shrink-0 flex items-center gap-1.5 shadow-sm"
+                  >
+                    <span>Open Onboarding Form</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+
                 {/* Client Tasks Section */}
                 <div>
                   <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Client Tasks</h5>

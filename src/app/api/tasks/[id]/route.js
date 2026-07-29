@@ -8,6 +8,10 @@ async function getRequester(cookieStore) {
   return await prisma.user.findUnique({ where: { id: parseInt(userIdStr) } });
 }
 
+export async function PATCH(request, context) {
+  return PUT(request, context);
+}
+
 export async function PUT(request, { params }) {
   try {
     const { id: idParam } = await params;
@@ -26,20 +30,22 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
-    const isPowerUser = requester.role === 'CEO' || requester.role === 'ADMIN';
+    const isPowerUser = requester.role === 'CEO' || requester.role === 'ADMIN' || requester.role === 'TL' || task.createdById === requester.id;
 
     if (!isPowerUser) {
       if (task.assignedToId !== requester.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
       }
 
-      if (!status) {
-        return NextResponse.json({ error: 'Status is required' }, { status: 400 });
+      if (!status && !workSampleUrl && !description) {
+        return NextResponse.json({ error: 'Status or sample payload required' }, { status: 400 });
       }
 
-      const updateData = { status };
+      const updateData = {};
+      if (status) updateData.status = status;
       if (reason !== undefined) updateData.reason = reason;
       if (workSampleUrl !== undefined) updateData.workSampleUrl = workSampleUrl;
+      if (description !== undefined) updateData.description = description;
 
       const updatedTask = await prisma.task.update({
         where: { id },

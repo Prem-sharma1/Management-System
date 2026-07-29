@@ -19,7 +19,11 @@ import {
   TrendingUp,
   User,
   ShieldCheck,
-  Check
+  Check,
+  FileText,
+  ExternalLink,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 export default function ClientDashboard() {
@@ -37,6 +41,37 @@ export default function ClientDashboard() {
   const [revisionTask, setRevisionTask] = useState(null);
   const [revisionNotes, setRevisionNotes] = useState('');
   const [showRevisionModal, setShowRevisionModal] = useState(false);
+
+  // Dark Mode State
+  const [darkMode, setDarkMode] = useState(true);
+
+  useEffect(() => {
+    const isDark = localStorage.getItem('theme') === 'dark' || 
+      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (isDark) {
+      setDarkMode(true);
+      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+    } else {
+      setDarkMode(false);
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    if (darkMode) {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      setDarkMode(false);
+    } else {
+      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      setDarkMode(true);
+    }
+  };
 
   // Client Feedback & Support states
   const [activePortalTab, setActivePortalTab] = useState('deliverables');
@@ -301,28 +336,48 @@ export default function ClientDashboard() {
   const cycle = getCycleStats();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none antialiased">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans select-none antialiased transition-colors duration-300">
       
       {/* Header bar */}
-      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 px-6 py-4 flex justify-between items-center">
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 px-6 py-4 flex justify-between items-center transition-colors duration-300">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
             <Building2 className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="font-extrabold text-sm tracking-tight text-white">{clientInfo?.businessName || 'Workspace'}</h1>
-            <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Customer Portal | ID: {clientInfo?.clientId}</p>
+            <h1 className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white">{clientInfo?.businessName || 'Workspace'}</h1>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold tracking-wider uppercase">Customer Portal | ID: {clientInfo?.clientId}</p>
           </div>
         </div>
 
-        <button
-          onClick={handleLogout}
-          disabled={actionLoading}
-          className="py-1.5 px-3 rounded-lg text-[10px] font-bold bg-slate-800/60 hover:bg-red-950/20 border border-slate-700/60 hover:border-red-900/40 text-slate-300 hover:text-red-400 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          <span>Exit Portal</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={toggleDarkMode}
+            className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-xs hover:shadow-md transition-all duration-300 transform active:scale-95 cursor-pointer"
+            title="Toggle Dark / Light Mode"
+          >
+            {darkMode ? (
+              <>
+                <Sun className="w-4 h-4 text-amber-400 fill-amber-400/20" />
+                <span className="text-[11px] font-semibold text-amber-300">Light Mode</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-4 h-4 text-slate-600 fill-slate-600/20" />
+                <span className="text-[11px] font-semibold text-slate-600">Dark Mode</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={handleLogout}
+            disabled={actionLoading}
+            className="py-1.5 px-3 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 border border-slate-200 dark:border-slate-700/60 hover:border-red-300 dark:hover:border-red-900/40 text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Exit Portal</span>
+          </button>
+        </div>
       </header>
 
       {/* Subheader portal tab navigation */}
@@ -349,6 +404,17 @@ export default function ClientDashboard() {
           <MessageSquare className="w-3.5 h-3.5" />
           <span>Submit Feedback & Concerns</span>
         </button>
+        <button
+          onClick={() => setActivePortalTab('onboarding')}
+          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+            activePortalTab === 'onboarding'
+              ? 'border-blue-500 text-white font-extrabold'
+              : 'border-transparent text-slate-450 hover:text-slate-200'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5 text-blue-400" />
+          <span>Brand Onboarding Form</span>
+        </button>
       </div>
 
       {/* Main Content Area */}
@@ -369,6 +435,28 @@ export default function ClientDashboard() {
           </div>
         ) : activePortalTab === 'deliverables' ? (
           <>
+            {/* Onboarding Banner Callout */}
+            <div className="bg-gradient-to-r from-blue-950/60 to-indigo-950/60 border border-blue-900/50 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Complete Brand Onboarding & Guidelines Form</h4>
+                  <p className="text-[11px] text-slate-400">
+                    Submit your social media handles, logos & content preferences for your assigned executive: <strong className="text-blue-300">{tasks.find(t => t.workingOn && t.workingOn !== 'AUTO' && (t.assignTo?.toLowerCase().includes('digital marketing') || t.assignTo?.toLowerCase().includes('social media') || t.assignTo?.toLowerCase().includes('posting') || t.postType?.toLowerCase().includes('report')))?.workingOn || tasks.find(t => t.workingOn && t.workingOn !== 'AUTO')?.workingOn || 'Assigned Social Media Executive'}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActivePortalTab('onboarding')}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shrink-0 transition flex items-center gap-1.5 cursor-pointer shadow-md"
+              >
+                <span>Fill Onboarding Form</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             {/* Top row: Client Details & Cycle Countdown Card */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
@@ -755,7 +843,7 @@ export default function ClientDashboard() {
 
             </div>
           </>
-        ) : (
+        ) : activePortalTab === 'feedback' ? (
           /* Feedback & Concerns Portal tab */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in text-xs">
             
@@ -966,7 +1054,51 @@ export default function ClientDashboard() {
             </div>
 
           </div>
-        )}
+        ) : activePortalTab === 'onboarding' ? (
+          <div className="space-y-6 animate-fade-in">
+            {/* Header Banner */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 bg-blue-950 border border-blue-900/60 text-blue-400 rounded-md text-[10px] font-extrabold uppercase tracking-wider">
+                    Client Onboarding Setup
+                  </span>
+                </div>
+                <h2 className="text-xl font-bold text-white">Brand Onboarding & Information Form</h2>
+                <p className="text-xs text-slate-400 max-w-2xl">
+                  Please complete the form below to submit your brand guidelines, social media account details, target audience, and content requirements.
+                </p>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-950/80 border border-blue-900/60 rounded-xl text-xs text-blue-300 font-semibold mt-2">
+                  <User className="w-4 h-4 text-blue-400" />
+                  <span>Assigned Social Media / Digital Marketing Person: <strong className="text-white">{tasks.find(t => t.workingOn && t.workingOn !== 'AUTO' && (t.assignTo?.toLowerCase().includes('digital marketing') || t.assignTo?.toLowerCase().includes('social media') || t.assignTo?.toLowerCase().includes('posting') || t.postType?.toLowerCase().includes('report')))?.workingOn || tasks.find(t => t.workingOn && t.workingOn !== 'AUTO')?.workingOn || 'Assigned Social Media Executive'}</strong></span>
+                </div>
+              </div>
+
+              <div className="shrink-0 flex flex-col gap-2">
+                <a
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSfgAPH2g8ESgN2wtKd1X2raDN1vbSHECmuwtW_wDp48jqgqwg/viewform?usp=publish-editor"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Open Form in New Window</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Embedded Google Form */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-2 shadow-2xl overflow-hidden">
+              <iframe
+                src="https://docs.google.com/forms/d/e/1FAIpQLSfgAPH2g8ESgN2wtKd1X2raDN1vbSHECmuwtW_wDp48jqgqwg/viewform?embedded=true"
+                className="w-full h-[850px] border-0 rounded-xl bg-white"
+                title="Brand Onboarding Form"
+              >
+                Loading Onboarding Form...
+              </iframe>
+            </div>
+          </div>
+        ) : null}
 
       </main>
 

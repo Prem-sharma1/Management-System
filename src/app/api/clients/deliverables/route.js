@@ -69,25 +69,21 @@ export async function POST(request) {
         // Auto assign logic
         const dept = task.assignTo;
         const deptEmployees = activeEmployees.filter(e => {
-          if (dept === 'Graphic Designer') {
-            return ['swapnil', 'danish'].some(name => e.name.toLowerCase().includes(name.toLowerCase())) || e.department === dept;
-          } else if (dept === 'Video Editor') {
-            return ['sanmeet'].some(name => e.name.toLowerCase().includes(name.toLowerCase())) || e.department === dept;
-          } else if (dept === 'AI Video Lead') {
-            return ['harshit'].some(name => e.name.toLowerCase().includes(name.toLowerCase())) || e.department === dept;
-          } else if (dept === 'Ai Video Editor' || dept === 'AI Video Editor') {
-            return ['masoom', 'nouman', 'divyansh'].some(name => e.name.toLowerCase().includes(name.toLowerCase())) || e.department === dept;
-          } else if (dept === 'Digital Marketing Executive' || dept === 'Social Media Executive') {
-            return ['rama', 'pujan', 'preet'].some(name => e.name.toLowerCase().includes(name.toLowerCase())) || e.department === dept;
-          }
-          return e.department === dept;
+          const userRole = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
+          const target = (dept || '').toLowerCase();
+          if (target.includes('graphic')) return userRole.includes('graphic');
+          if (target.includes('video editor')) return userRole.includes('video editor');
+          if (target.includes('ai video lead')) return userRole.includes('ai video lead');
+          if (target.includes('ai video editor') || target.includes('ai video')) return userRole.includes('ai video') || userRole.includes('video editor');
+          if (target.includes('digital marketing') || target.includes('social media')) return userRole.includes('marketing') || userRole.includes('social') || userRole.includes('digital');
+          return userRole.includes(target) || target.includes((e.department || '').toLowerCase());
         });
 
-        if (dept === 'Ai Video Editor' || dept === 'AI Video Editor') {
-          const teamOrder = ['Divyansh', 'Nouman', 'Masoom'];
-          const teamUsers = teamOrder
-            .map(name => activeEmployees.find(e => e.name.toLowerCase().includes(name.toLowerCase())))
-            .filter(Boolean);
+        if (dept === 'Ai Video Editor' || dept === 'AI Video Editor' || dept === 'Video Editor') {
+          const teamUsers = activeEmployees.filter(e => {
+            const userRole = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
+            return (userRole.includes('ai video') || userRole.includes('video editor')) && !userRole.includes('lead');
+          });
 
           if (teamUsers.length > 0) {
             const match = (clientId || '').match(/\d+/);

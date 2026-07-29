@@ -5,6 +5,9 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // 5 minutes execution limit for large uploads
+
+const MAX_FILE_SIZE = 250 * 1024 * 1024; // 250MB limit
 
 async function getRequester(cookieStore) {
   const userIdStr = cookieStore.get('userId')?.value;
@@ -26,6 +29,10 @@ export async function POST(request) {
 
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    }
+
+    if (file.size && file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'File size exceeds maximum allowed limit of 250MB' }, { status: 400 });
     }
 
     const bytes = await file.arrayBuffer();
@@ -50,7 +57,7 @@ export async function POST(request) {
 
     const fileUrl = `/uploads/${filename}`;
 
-    return NextResponse.json({ success: true, fileUrl });
+    return NextResponse.json({ success: true, fileUrl, url: fileUrl });
   } catch (error) {
     console.error('Upload Error:', error);
     return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });

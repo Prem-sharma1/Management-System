@@ -32,7 +32,22 @@ export async function GET(request) {
         tasksByWorkingOn[name] = (tasksByWorkingOn[name] || 0) + 1;
       });
 
-      const aiVideoEditors = ['Masoom', 'Nouman', 'Divyansh'];
+      const activeAiEditors = await prisma.user.findMany({
+        where: {
+          status: { not: 'INACTIVE' },
+          OR: [
+            { department: { contains: 'Ai Video Editor', mode: 'insensitive' } },
+            { designation: { contains: 'Ai Video Editor', mode: 'insensitive' } },
+            { department: { contains: 'Ai Video', mode: 'insensitive' } },
+            { designation: { contains: 'Ai Video', mode: 'insensitive' } }
+          ],
+          NOT: [
+            { department: { contains: 'Lead', mode: 'insensitive' } },
+            { designation: { contains: 'Lead', mode: 'insensitive' } }
+          ]
+        }
+      });
+      const aiVideoEditors = activeAiEditors.length > 0 ? activeAiEditors.map(e => e.name) : ['Masoom', 'Nouman', 'Divyansh'];
       const aiVideoBreakdown = {};
       aiVideoEditors.forEach(name => {
         const tasksForEditor = allClientTasks.filter(t => t.workingOn && t.workingOn.toLowerCase() === name.toLowerCase());

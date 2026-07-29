@@ -10,9 +10,28 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Client ID is required' }, { status: 400 });
     }
 
-    const client = await prisma.client.findUnique({
-      where: { clientId: clientId.trim() }
+    const cleanInput = clientId.trim();
+
+    // 1. Try exact or case-insensitive match
+    let client = await prisma.client.findFirst({
+      where: {
+        clientId: { equals: cleanInput, mode: 'insensitive' }
+      }
     });
+
+    // 2. Fallback: try padded ID format if user typed AID-4 or 4 (e.g., AID-0004)
+    if (!client) {
+      const match = cleanInput.match(/\d+/);
+      if (match) {
+        const num = parseInt(match[0], 10);
+        const paddedId = `AID-${num.toString().padStart(4, '0')}`;
+        client = await prisma.client.findFirst({
+          where: {
+            clientId: { equals: paddedId, mode: 'insensitive' }
+          }
+        });
+      }
+    }
 
     if (!client) {
       return NextResponse.json({ error: 'Client ID not found' }, { status: 404 });

@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import {
   Clock, CheckSquare, Calendar, LogOut, Plus, Building, UserCheck,
   CheckCircle, FileText, AlertCircle, Briefcase, Play, Check, Moon,
-  Sun, DollarSign, TrendingUp, Download, Users, FileDown, Activity
+  Sun, DollarSign, TrendingUp, Download, Users, FileDown, Activity,
+  BarChart2, Lock
 } from 'lucide-react';
 
 const convertDbDateToIso = (dateStr) => {
@@ -54,6 +55,7 @@ export default function TLDashboard() {
   const [allClientDeliveries, setAllClientDeliveries] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [employeesList, setEmployeesList] = useState([]);
+  const [allLeavesList, setAllLeavesList] = useState([]);
   
   // TL Metrics
   const [metrics, setMetrics] = useState({
@@ -94,19 +96,28 @@ export default function TLDashboard() {
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem('theme') === 'dark') {
+    const isDark = localStorage.getItem('theme') === 'dark' || 
+      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (isDark) {
       setDarkMode(true);
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+    } else {
+      setDarkMode(false);
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
     }
   }, []);
 
   const toggleDarkMode = () => {
     if (darkMode) {
       document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
       localStorage.setItem('theme', 'light');
       setDarkMode(false);
     } else {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
       localStorage.setItem('theme', 'dark');
       setDarkMode(true);
     }
@@ -185,12 +196,15 @@ export default function TLDashboard() {
       const usersData = await usersRes.json();
       const fetchedUsers = usersData.users || [];
       
-      // Harshit's team members are strictly Divyansh, Nouman, and Masoom
-      const teamMemberNames = ['divyansh', 'nouman', 'masoom'];
-      const employees = fetchedUsers.filter(u =>
-        u.role === 'EMPLOYEE' &&
-        teamMemberNames.some(name => u.name.toLowerCase().includes(name))
-      );
+      // Team members matching TL department or designation
+      const baseDept = currentUser?.department ? currentUser.department.replace(' Lead', '').toLowerCase() : '';
+      const baseDesig = currentUser?.designation ? currentUser.designation.replace(' Lead', '').toLowerCase() : '';
+      const targetRole = baseDept || baseDesig || 'ai video';
+      const employees = fetchedUsers.filter(u => {
+        if (u.role !== 'EMPLOYEE') return false;
+        const uRole = ((u.department || '') + ' ' + (u.designation || '')).toLowerCase();
+        return uRole.includes(targetRole) || uRole.includes('video editor') || u.name.toLowerCase() === 'sanmeet';
+      });
       
       setUsersList(employees);
       setEmployeesList(employees);
@@ -220,7 +234,9 @@ export default function TLDashboard() {
       // Fetch leaves
       const leavesRes = await fetch('/api/leaves');
       const leavesData = await leavesRes.json();
-      const myLeaves = (leavesData.leaves || []).filter(l => l.userId === currentUser?.id);
+      const fetchedLeaves = leavesData.leaves || [];
+      setAllLeavesList(fetchedLeaves);
+      const myLeaves = fetchedLeaves.filter(l => l.userId === currentUser?.id);
       setLeavesList(myLeaves);
 
       // Fetch attendance clock info
@@ -324,20 +340,84 @@ export default function TLDashboard() {
     }
   };
 
+  // Direct Script PDF Upload for Assigned Tasks
+  const handleDirectScriptFileUpload = async (taskId, fileObj, isClientTask) => {
+    if (!fileObj) return;
+    try {
+      showToast('Uploading script document...');
+      const formData = new FormData();
+      formData.append('file', fileObj);
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const uploadData = await uploadRes.json();
+      const uploadedUrl = uploadData.url || uploadData.fileUrl;
+
+      if (!uploadRes.ok || !uploadedUrl) {
+        showToast(uploadData.error || 'Upload failed', 'error');
+        return;
+      }
+
+      if (isClientTask) {
+        const updateRes = await fetch(`/api/client-tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            workSampleUrl: uploadedUrl,
+            status: 'Completion'
+          }),
+        });
+
+        if (updateRes.ok) {
+          showToast('Script PDF uploaded and task marked as completed!');
+          await refreshData();
+        } else {
+          showToast('Failed to save script URL', 'error');
+        }
+      } else {
+        const updateRes = await fetch(`/api/tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            workSampleUrl: uploadedUrl,
+            description: uploadedUrl,
+            status: 'DONE'
+          }),
+        });
+
+        if (updateRes.ok) {
+          showToast('Script PDF uploaded and task marked as completed!');
+          await refreshData();
+        } else {
+          showToast('Failed to save script URL', 'error');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Script upload error', 'error');
+    }
+  };
+
   // TL Task Status Change (Assigned scripts)
   const handleTLStatusChange = async (taskId, newStatus) => {
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
       });
       if (res.ok) {
-        showToast('Task status updated');
-        refreshData();
+        showToast('Task status updated successfully.');
+        await refreshData();
+      } else {
+        showToast('Failed to update task status.', 'error');
       }
     } catch (err) {
       console.error(err);
+      showToast('Error updating status.', 'error');
     }
   };
 
@@ -389,49 +469,6 @@ export default function TLDashboard() {
       setActiveTab('tasks');
     } catch (err) {
       setFormError(err.message);
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const handleDirectScriptFileUpload = async (taskId, file, isClientTask = false) => {
-    if (!file) return;
-    try {
-      showToast('Uploading script PDF...', 'info');
-      setFormLoading(true);
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const uploadRes = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok) throw new Error(uploadData.error || 'Failed to upload PDF file');
-
-      const fileUrl = uploadData.fileUrl;
-
-      if (isClientTask) {
-        const res = await fetch(`/api/client-tasks/${taskId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ workSampleUrl: fileUrl, status: 'Completion' })
-        });
-        if (!res.ok) throw new Error('Failed to update script PDF');
-      } else {
-        const res = await fetch(`/api/tasks/${taskId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ description: fileUrl })
-        });
-        if (!res.ok) throw new Error('Failed to update script PDF');
-      }
-
-      showToast('Script PDF uploaded and assigned successfully!');
-      await refreshData();
-    } catch (err) {
-      showToast(err.message || 'Upload failed', 'error');
     } finally {
       setFormLoading(false);
     }
@@ -608,6 +645,218 @@ export default function TLDashboard() {
     ...todaysClientTasksList.filter(ct => ct.status !== 'Posted' && ct.status !== 'Completion' && ct.status !== 'Completed' && ct.status !== 'DONE')
   ].length;
 
+  const renderTodayTasksByTeamEmployee = () => (
+    <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-5 animate-fade-in mt-8">
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 gap-2">
+        <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+          <BarChart2 className="w-5 h-5 text-indigo-500 shrink-0" />
+          <span>Today&apos;s Tasks by Team Employee</span>
+          <span className="text-[11px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/30 ml-1 shrink-0">
+            {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+          </span>
+        </h3>
+        <span className="text-xs font-bold text-slate-400 shrink-0">{employeesList.length} Team Members</span>
+      </div>
+
+      {employeesList.length === 0 ? (
+        <div className="p-8 text-center text-slate-400 text-xs font-semibold">
+          No team members assigned under your supervision yet.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
+          {employeesList.map((emp) => {
+            const empInternalTasks = allTasksList.filter(t => t.assignedToId === emp.id || t.assignedTo?.name === emp.name);
+            const empClientTasks = allClientTasks.filter(t => t.workingOn === emp.name);
+
+            const internalItems = empInternalTasks.map(t => ({
+              id: `t-${t.id}`,
+              title: t.title,
+              sub: t.description || 'Internal Duty',
+              status: t.status,
+              _type: 'task'
+            }));
+
+            const clientItems = empClientTasks.map(t => ({
+              id: `ct-${t.id}`,
+              title: t.taskTitle,
+              sub: `${t.businessName} · ${t.postType || 'Deliverable'}`,
+              status: t.status,
+              _type: 'delivery'
+            }));
+
+            const allEmpItems = [...internalItems, ...clientItems];
+            const doneCount = allEmpItems.filter(i => ['DONE', 'Completed', 'Completion', 'Delivered'].includes(i.status)).length;
+            const pendingCount = allEmpItems.length - doneCount;
+
+            const avatarColors = [
+              'from-cyan-400 to-blue-500',
+              'from-violet-400 to-purple-500',
+              'from-emerald-400 to-teal-500',
+              'from-orange-400 to-rose-500'
+            ];
+            const colorIdx = emp.name.charCodeAt(0) % avatarColors.length;
+
+            return (
+              <div key={emp.id} className="bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-3 shadow-xs min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${avatarColors[colorIdx]} text-white flex items-center justify-center text-sm font-black shadow-sm shrink-0`}>
+                      {emp.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-extrabold text-slate-900 dark:text-white truncate">{emp.name}</h4>
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[11px] font-bold flex-wrap">
+                        <span className="text-emerald-600 dark:text-emerald-400">{doneCount} done</span>
+                        <span className="text-slate-300 dark:text-slate-600">·</span>
+                        <span className="text-orange-500">{pendingCount} pending</span>
+                        <span className="text-slate-300 dark:text-slate-600">·</span>
+                        <span className="text-purple-500">{internalItems.length}T</span>
+                        <span className="text-blue-500">{clientItems.length}D</span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-700 px-2.5 py-1 rounded-lg shrink-0">
+                    {allEmpItems.length}
+                  </span>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60 max-h-48 overflow-y-auto pr-1">
+                  {allEmpItems.length === 0 ? (
+                    <p className="text-[11px] text-slate-400 italic py-2">No tasks assigned to {emp.name} today.</p>
+                  ) : (
+                    allEmpItems.map(item => (
+                      <div key={item.id} className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs gap-2">
+                        <div className="space-y-0.5 min-w-0 flex-1 pr-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase shrink-0 ${item._type === 'task' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'}`}>
+                              {item._type}
+                            </span>
+                            <p className="font-bold text-slate-900 dark:text-white truncate">{item.title}</p>
+                          </div>
+                          <p className="text-[10px] text-slate-400 truncate">{item.sub}</p>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 ${['DONE', 'Completed', 'Completion', 'Delivered'].includes(item.status) ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
+                          {item.status || 'Not Started'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderTeamLeaveAndAbsences = () => (
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 space-y-6 animate-fade-in mt-8">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+        <div>
+          <h4 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <UserCheck className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
+            Team Leave Approvals & Absences
+            <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 flex items-center gap-1">
+              <Lock className="w-2.5 h-2.5 text-amber-500" /> Read-Only View (TL Access)
+            </span>
+          </h4>
+          <p className="text-xs text-slate-400 mt-1">View leave request status and attendance records for your team members ({employeesList.map(e => e.name).join(', ') || 'No team members'}).</p>
+        </div>
+      </div>
+
+      {/* Team Leave Requests Table */}
+      <div>
+        <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-3">Team Leave Requests</h5>
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/40 text-slate-500 font-extrabold border-b border-slate-200 dark:border-slate-800">
+                <th className="p-3.5 uppercase tracking-wider">Employee</th>
+                <th className="p-3.5 uppercase tracking-wider">Reason / Details</th>
+                <th className="p-3.5 uppercase tracking-wider">Date Interval</th>
+                <th className="p-3.5 uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {(() => {
+                const teamLeavesList = allLeavesList.filter(l => 
+                  employeesList.some(e => e.id === l.userId || e.name === l.user?.name)
+                );
+
+                if (teamLeavesList.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan="4" className="p-6 text-center text-slate-400 font-medium">No leave requests logged for your team members.</td>
+                    </tr>
+                  );
+                }
+
+                return teamLeavesList.map((leave) => {
+                  const empName = leave.user?.name || employeesList.find(e => e.id === leave.userId)?.name || `Employee #${leave.userId}`;
+                  return (
+                    <tr key={leave.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                      <td className="p-3.5 font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-extrabold flex items-center justify-center text-[10px]">
+                          {empName.charAt(0)}
+                        </div>
+                        <span>{empName}</span>
+                      </td>
+                      <td className="p-3.5 text-slate-700 dark:text-slate-300 font-medium">"{leave.reason}"</td>
+                      <td className="p-3.5 text-slate-500 font-semibold">{leave.startDate} to {leave.endDate}</td>
+                      <td className="p-3.5">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                          leave.status === 'APPROVED' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 border border-emerald-200 dark:border-emerald-800' :
+                          leave.status === 'REJECTED' ? 'bg-red-50 dark:bg-red-950/40 text-red-600 border border-red-200 dark:border-red-800' :
+                          'bg-amber-50 dark:bg-amber-950/40 text-amber-600 border border-amber-200 dark:border-amber-800'
+                        }`}>
+                          {leave.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                });
+              })()}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Today's Team Attendance / Absences */}
+      <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+        <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-3">Today's Team Attendance & Absences</h5>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {employeesList.map(emp => {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const log = attendanceLogs.find(a => (a.userId === emp.id || a.user?.name === emp.name) && a.date === todayStr);
+            const status = log ? log.status : 'ABSENT';
+
+            return (
+              <div key={emp.id} className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-200">
+                    {emp.name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-xs font-extrabold text-slate-900 dark:text-white">{emp.name}</p>
+                    <p className="text-[10px] text-slate-400">{emp.department || 'Team Member'}</p>
+                  </div>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                  status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' :
+                  status === 'LATE' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
+                  'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+                }`}>
+                  {status}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
       
@@ -720,8 +969,30 @@ export default function TLDashboard() {
             </button>
             
             <p className="px-4 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 mt-6">Team Leader</p>
-            
 
+            <button
+              onClick={() => setActiveTab('team-tasks')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'team-tasks'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <BarChart2 className="w-4 h-4" />
+              Team Tasks Monitor
+            </button>
+
+            <button
+              onClick={() => setActiveTab('team-leaves')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'team-leaves'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <UserCheck className="w-4 h-4" />
+              Team Leaves & Absences
+            </button>
 
             <button
               onClick={() => setActiveTab('assign-task')}
@@ -774,9 +1045,20 @@ export default function TLDashboard() {
           <div className="flex items-center gap-4">
             <button 
               onClick={toggleDarkMode}
-              className="w-9 h-9 border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-xs hover:shadow-md transition-all duration-300 transform active:scale-95 cursor-pointer"
+              title="Toggle Dark / Light Mode"
             >
-              {darkMode ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+              {darkMode ? (
+                <>
+                  <Sun className="w-4 h-4 text-amber-400 fill-amber-400/20" />
+                  <span className="text-[11px] font-semibold text-amber-300">Light Mode</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-4 h-4 text-slate-600 fill-slate-600/20" />
+                  <span className="text-[11px] font-semibold text-slate-600">Dark Mode</span>
+                </>
+              )}
             </button>
 
             <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
@@ -924,6 +1206,39 @@ export default function TLDashboard() {
                               }
                               return null;
                             })()}
+
+                            {/* Script PDF Access & Direct Upload Options */}
+                            {(() => {
+                              const scriptUrl = item.workSampleUrl || (item.description && (item.description.startsWith('http') || item.description.startsWith('/uploads/')) ? item.description : null);
+
+                              return (
+                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                  {scriptUrl && (
+                                    <a 
+                                      href={scriptUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded border border-blue-200/60 dark:border-blue-800/40"
+                                    >
+                                      <FileDown className="w-3 h-3" /> View Script PDF
+                                    </a>
+                                  )}
+                                  <label className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded cursor-pointer transition border border-indigo-200/60 dark:border-indigo-800/40">
+                                    <Plus className="w-3 h-3" /> {scriptUrl ? 'Change Script PDF' : 'Upload Script PDF'}
+                                    <input 
+                                      type="file" 
+                                      accept="application/pdf,video/*,.pdf,.mp4,.mov,.mkv,.avi,.doc,.docx" 
+                                      className="hidden" 
+                                      onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                          handleDirectScriptFileUpload(item.id, e.target.files[0], item.type === 'client');
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              );
+                            })()}
                           </div>
                           
                           <div className="shrink-0 flex items-center gap-2">
@@ -1029,6 +1344,11 @@ export default function TLDashboard() {
                   </div>
                 </div>
 
+              </div>
+
+              {/* Today's Tasks by Team Employee embedded in Overview */}
+              <div className="lg:col-span-12 w-full">
+                {renderTodayTasksByTeamEmployee()}
               </div>
 
             </div>
@@ -1202,7 +1522,7 @@ export default function TLDashboard() {
                           id: t.id,
                           isClientTask: false,
                           title: t.title,
-                          pdfUrl: (t.description && (t.description.startsWith('http') || t.description.startsWith('/uploads/'))) ? t.description : null,
+                          pdfUrl: (t.description && (t.description.startsWith('http') || t.description.startsWith('/uploads/'))) ? t.description : t.workSampleUrl || null,
                           assignedToName: t.assignedTo?.name || 'Unknown',
                           assignedToAvatar: t.assignedTo?.avatar || '👤',
                           dueDate: t.dueDate || '-',
@@ -1241,7 +1561,7 @@ export default function TLDashboard() {
                                   <Plus className="w-3.5 h-3.5" /> {item.pdfUrl ? 'Change Script PDF' : 'Upload Script PDF'}
                                   <input 
                                     type="file" 
-                                    accept="application/pdf" 
+                                    accept="application/pdf,video/*,.pdf,.mp4,.mov,.mkv,.avi,.doc,.docx" 
                                     className="hidden" 
                                     onChange={(e) => {
                                       if (e.target.files && e.target.files[0]) {
@@ -1536,6 +1856,24 @@ export default function TLDashboard() {
                   </table>
                 </div>
               </div>
+
+              {/* Read-Only Team Leave Requests & Absences embedded under Leaves tab */}
+              {renderTeamLeaveAndAbsences()}
+
+            </div>
+          )}
+
+          {/* TAB: TEAM TASKS MONITOR */}
+          {activeTab === 'team-tasks' && (
+            <div className="space-y-6 animate-fade-in">
+              {renderTodayTasksByTeamEmployee()}
+            </div>
+          )}
+
+          {/* TAB: TEAM LEAVES & ABSENCES (READ-ONLY) */}
+          {activeTab === 'team-leaves' && (
+            <div className="space-y-6 animate-fade-in">
+              {renderTeamLeaveAndAbsences()}
             </div>
           )}
 

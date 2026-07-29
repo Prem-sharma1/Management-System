@@ -159,18 +159,16 @@ export async function POST(request, { params }) {
     const tasksToCreate = [];
 
     const resolveStaff = (dept) => {
-      // Find staff in this department
+      // Find staff in this department or designation
       const deptEmployees = activeEmployees.filter(e => {
-        if (dept === 'Graphic Designer') {
-          return ['swapnil', 'danish'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-        } else if (dept === 'Video Editor') {
-          return ['sanmeet'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-        } else if (dept === 'AI Video Lead') {
-          return ['harshit'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-        } else if (dept === 'Ai Video Editor') {
-          return ['masoom', 'nouman', 'divyansh'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-        }
-        return e.department === dept;
+        const userRole = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
+        const target = (dept || '').toLowerCase();
+        if (target.includes('graphic')) return userRole.includes('graphic');
+        if (target.includes('video editor')) return userRole.includes('video editor') && !userRole.includes('ai');
+        if (target.includes('ai video lead')) return userRole.includes('ai video lead');
+        if (target.includes('ai video editor') || target.includes('ai video')) return userRole.includes('ai video');
+        if (target.includes('digital marketing') || target.includes('social media')) return userRole.includes('marketing') || userRole.includes('social') || userRole.includes('digital');
+        return userRole.includes(target) || target.includes((e.department || '').toLowerCase());
       });
       return deptEmployees.length > 0 ? deptEmployees : null;
     };
@@ -293,10 +291,10 @@ export async function POST(request, { params }) {
       const deptEmployees = resolveStaff(dept) || activeEmployees.filter(e => e.department === dept);
 
       if (dept === 'Ai Video Editor' || dept === 'AI Video Editor') {
-        const teamOrder = ['Divyansh', 'Nouman', 'Masoom'];
-        const teamUsers = teamOrder
-          .map(name => activeEmployees.find(e => e.name.toLowerCase().includes(name.toLowerCase())))
-          .filter(Boolean);
+        const teamUsers = activeEmployees.filter(e => {
+          const userRole = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
+          return userRole.includes('ai video') && !userRole.includes('lead');
+        });
 
         if (teamUsers.length > 0) {
           const match = (client.clientId || '').match(/\d+/);

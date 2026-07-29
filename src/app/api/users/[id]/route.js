@@ -102,10 +102,35 @@ export async function PUT(request, { params }) {
       data.password = await bcrypt.hash(password, salt);
     }
 
+    const oldName = targetUser.name;
+
     const updatedUser = await prisma.user.update({
       where: { id },
       data
     });
+
+    if (oldName && updatedUser.name && oldName.trim().toLowerCase() !== updatedUser.name.trim().toLowerCase()) {
+      const oldNameTrimmed = oldName.trim();
+      const newNameTrimmed = updatedUser.name.trim();
+
+      await prisma.clientTask.updateMany({
+        where: {
+          workingOn: { equals: oldNameTrimmed, mode: 'insensitive' }
+        },
+        data: {
+          workingOn: newNameTrimmed
+        }
+      });
+
+      await prisma.clientDelivery.updateMany({
+        where: {
+          workingOn: { equals: oldNameTrimmed, mode: 'insensitive' }
+        },
+        data: {
+          workingOn: newNameTrimmed
+        }
+      });
+    }
 
     await prisma.auditLog.create({
       data: {

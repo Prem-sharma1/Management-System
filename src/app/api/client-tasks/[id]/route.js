@@ -98,6 +98,17 @@ export async function PUT(request, { params }) {
       data
     });
 
+    if (updatedTask.taskId && status) {
+      try {
+        await prisma.clientDelivery.updateMany({
+          where: { linkedTaskId: updatedTask.taskId },
+          data: { status: status }
+        });
+      } catch (dErr) {
+        console.warn('Could not sync client delivery status:', dErr);
+      }
+    }
+
     await prisma.auditLog.create({
       data: {
         action: `Updated client task deliverable: ${updatedTask.taskTitle} (${updatedTask.taskId}) - Status: ${updatedTask.status}`,

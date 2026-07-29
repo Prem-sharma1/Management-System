@@ -224,21 +224,28 @@ export async function pruneBeforeJulyData() {
 
 export async function rebalanceAiVideoTasks() {
   try {
-    const teamNames = ['Divyansh', 'Nouman', 'Masoom'];
     const activeEditors = await prisma.user.findMany({
-      where: { name: { in: teamNames } }
+      where: {
+        status: { not: 'INACTIVE' },
+        OR: [
+          { department: { contains: 'Ai Video Editor', mode: 'insensitive' } },
+          { designation: { contains: 'Ai Video Editor', mode: 'insensitive' } },
+          { department: { contains: 'Ai Video', mode: 'insensitive' } },
+          { designation: { contains: 'Ai Video', mode: 'insensitive' } },
+          { department: { contains: 'Video Editor', mode: 'insensitive' } },
+          { designation: { contains: 'Video Editor', mode: 'insensitive' } }
+        ],
+        NOT: [
+          { department: { contains: 'Lead', mode: 'insensitive' } },
+          { designation: { contains: 'Lead', mode: 'insensitive' } }
+        ]
+      }
     });
 
-    const editorMap = {};
-    teamNames.forEach(name => {
-      const found = activeEditors.find(e => e.name.toLowerCase() === name.toLowerCase());
-      if (found) editorMap[name] = found.name;
-    });
-
-    const teamList = teamNames.map(name => editorMap[name] || name);
+    const teamList = activeEditors.length > 0 ? activeEditors.map(e => e.name) : ['Divyansh', 'Nouman', 'Masoom', 'Sanmeet'];
 
     // 1. Fetch ONLY actual AI Video Creation/Editing tasks.
-    // EXCLUDE Script tasks (assigned to Harshit) and Posting tasks (assigned to designated poster)
+    // EXCLUDE Script tasks (assigned to AI Video Lead) and Posting tasks (assigned to designated poster)
     const aiTasks = await prisma.clientTask.findMany({
       where: {
         AND: [
@@ -249,8 +256,8 @@ export async function rebalanceAiVideoTasks() {
             ]
           },
           { postType: { notIn: ['Script', 'Posting'] } },
-          { taskTitle: { not: { contains: 'Script', mode: 'insensitive' } } },
-          { taskTitle: { not: { startsWith: 'Post', mode: 'insensitive' } } },
+          { NOT: { taskTitle: { contains: 'Script', mode: 'insensitive' } } },
+          { NOT: { taskTitle: { startsWith: 'Post', mode: 'insensitive' } } },
           { assignTo: { notIn: ['AI Video Lead', 'Content Posting'] } }
         ]
       }
@@ -270,7 +277,18 @@ export async function rebalanceAiVideoTasks() {
       }
     }
 
-    // 2. Restore ALL Script tasks to Harshit (AI Video Lead)
+    // 2. Restore ALL Script tasks to AI Video Lead
+    const scriptLeadUser = await prisma.user.findFirst({
+      where: {
+        status: { not: 'INACTIVE' },
+        OR: [
+          { department: { contains: 'Ai Video Lead', mode: 'insensitive' } },
+          { designation: { contains: 'Ai Video Lead', mode: 'insensitive' } }
+        ]
+      }
+    });
+    const scriptLeadName = scriptLeadUser ? scriptLeadUser.name : 'Harshit';
+
     const scriptTasks = await prisma.clientTask.findMany({
       where: {
         OR: [
@@ -282,10 +300,10 @@ export async function rebalanceAiVideoTasks() {
     });
 
     for (const st of scriptTasks) {
-      if (st.workingOn !== 'Harshit' || st.assignTo !== 'AI Video Lead') {
+      if (st.workingOn !== scriptLeadName || st.assignTo !== 'AI Video Lead') {
         await prisma.clientTask.update({
           where: { id: st.id },
-          data: { workingOn: 'Harshit', assignTo: 'AI Video Lead' }
+          data: { workingOn: scriptLeadName, assignTo: 'AI Video Lead' }
         });
       }
     }
@@ -332,7 +350,7 @@ export async function rebalanceAiVideoTasks() {
     const aiDeliveries = await prisma.clientDelivery.findMany({
       where: {
         postType: 'AI Video',
-        deliverableName: { not: { contains: 'Script', mode: 'insensitive' } }
+        NOT: { notes: { contains: 'Script', mode: 'insensitive' } }
       }
     });
 

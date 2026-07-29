@@ -74,6 +74,35 @@ export async function PUT(request, { params }) {
       data
     });
 
+    // Sync all associated client tasks, deliveries, and feedbacks if client details were updated
+    const oldClientId = targetClient.clientId;
+    await prisma.clientTask.updateMany({
+      where: { clientId: oldClientId },
+      data: {
+        clientId: updatedClient.clientId,
+        businessName: updatedClient.businessName,
+        ...(data.packageName ? { packageName: updatedClient.packageName } : {}),
+        ...(data.services ? { service: updatedClient.services } : {})
+      }
+    });
+
+    await prisma.clientDelivery.updateMany({
+      where: { clientId: oldClientId },
+      data: {
+        clientId: updatedClient.clientId,
+        clientName: updatedClient.businessName || updatedClient.clientName || ''
+      }
+    });
+
+    await prisma.clientFeedback.updateMany({
+      where: { clientId: oldClientId },
+      data: {
+        clientId: updatedClient.clientId,
+        businessName: updatedClient.businessName,
+        clientName: updatedClient.clientName || ''
+      }
+    });
+
     await prisma.auditLog.create({
       data: {
         action: `Updated client profile: ${updatedClient.businessName} (${updatedClient.clientId})`,

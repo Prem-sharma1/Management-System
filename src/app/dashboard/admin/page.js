@@ -340,19 +340,28 @@ export default function AdminDashboard() {
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem('theme') === 'dark') {
+    const isDark = localStorage.getItem('theme') === 'dark' || 
+      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (isDark) {
       setDarkMode(true);
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+    } else {
+      setDarkMode(false);
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
     }
   }, []);
 
   const toggleDarkMode = () => {
     if (darkMode) {
       document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
       localStorage.setItem('theme', 'light');
       setDarkMode(false);
     } else {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
       localStorage.setItem('theme', 'dark');
       setDarkMode(true);
     }
@@ -701,21 +710,23 @@ export default function AdminDashboard() {
         const candidates = employeesList.filter(e => {
           if (e.status === 'INACTIVE') return false;
           const deptLower = (e.department || '').toLowerCase();
+          const desigLower = (e.designation || '').toLowerCase();
+          const fullRole = `${deptLower} ${desigLower}`;
           const targetLower = defaultDept.toLowerCase();
 
           if (targetLower.includes('ai video editor') || targetLower.includes('ai video')) {
-            return ['divyansh', 'nouman', 'masoom'].some(n => e.name.toLowerCase().includes(n)) || deptLower.includes('ai video');
+            return fullRole.includes('ai video editor') || fullRole.includes('ai video') || fullRole.includes('video editor');
           }
           if (targetLower.includes('graphic')) {
-            return ['danish', 'swapnil'].some(n => e.name.toLowerCase().includes(n)) || deptLower.includes('graphic');
+            return fullRole.includes('graphic');
           }
           if (targetLower.includes('digital marketing') || targetLower.includes('social media')) {
-            return ['rama', 'pujan', 'preet'].some(n => e.name.toLowerCase().includes(n)) || deptLower.includes('marketing') || deptLower.includes('social');
+            return fullRole.includes('marketing') || fullRole.includes('social') || fullRole.includes('digital');
           }
           if (targetLower.includes('video editor')) {
-            return ['sanmeet'].some(n => e.name.toLowerCase().includes(n)) || deptLower.includes('video editor');
+            return fullRole.includes('video editor');
           }
-          return deptLower === targetLower || deptLower.includes(targetLower);
+          return fullRole.includes(targetLower) || targetLower.includes(deptLower);
         });
 
         if (candidates.length === 0) {
@@ -743,7 +754,11 @@ export default function AdminDashboard() {
             return emp ? { assignTo: emp.department || 'Content Posting', workingOn: emp.name } : { assignTo: 'Content Posting', workingOn: '' };
           })()
         : { assignTo: 'Content Posting', workingOn: '' };
-      const scriptStaff = { assignTo: 'AI Video Lead', workingOn: 'Harshit' };
+      const scriptLead = employeesList.find(e => {
+        const fullRole = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
+        return fullRole.includes('ai video lead');
+      });
+      const scriptStaff = { assignTo: 'AI Video Lead', workingOn: scriptLead ? scriptLead.name : 'Harshit' };
 
       const onboardingActive = clientFormServices !== 'AI Video Plans' && generateOptions.onboarding;
 
@@ -1829,9 +1844,20 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-4">
             <button 
               onClick={toggleDarkMode}
-              className="w-9 h-9 border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-xs hover:shadow-md transition-all duration-300 transform active:scale-95 cursor-pointer"
+              title="Toggle Dark / Light Mode"
             >
-              {darkMode ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+              {darkMode ? (
+                <>
+                  <Sun className="w-4 h-4 text-amber-400 fill-amber-400/20" />
+                  <span className="text-[11px] font-semibold text-amber-300">Light Mode</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-4 h-4 text-slate-600 fill-slate-600/20" />
+                  <span className="text-[11px] font-semibold text-slate-600">Dark Mode</span>
+                </>
+              )}
             </button>
 
             <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
@@ -4587,8 +4613,8 @@ export default function AdminDashboard() {
                       <option value="" disabled>Select Staff to Assign</option>
                       <option value="AUTO">Auto Assign (First-In Round Robin)</option>
                       {employeesList
-                        .filter(e => ['swapnil', 'danish'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
-                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
+                        .filter(e => ((e.department || '') + ' ' + (e.designation || '')).toLowerCase().includes('graphic'))
+                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.designation || e.department})</option>)}
                     </select>
                   </div>
                 </div>
@@ -4609,8 +4635,11 @@ export default function AdminDashboard() {
                       <option value="" disabled>Select Staff to Assign</option>
                       <option value="AUTO">Auto Assign (First-In Round Robin)</option>
                       {employeesList
-                        .filter(e => ['sanmeet'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
-                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
+                        .filter(e => {
+                          const role = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
+                          return role.includes('video editor') && !role.includes('ai');
+                        })
+                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.designation || e.department})</option>)}
                     </select>
                   </div>
                 </div>
@@ -4631,8 +4660,8 @@ export default function AdminDashboard() {
                       <option value="" disabled>Select Staff to Assign</option>
                       <option value="AUTO">Auto Assign (First-In Round Robin)</option>
                       {employeesList
-                        .filter(e => ['masoom', 'nouman', 'divyansh'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
-                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
+                        .filter(e => ((e.department || '') + ' ' + (e.designation || '')).toLowerCase().includes('ai video'))
+                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.designation || e.department})</option>)}
                     </select>
                   </div>
                 </div>
@@ -4653,8 +4682,11 @@ export default function AdminDashboard() {
                       <option value="" disabled>Select Staff to Assign</option>
                       <option value="AUTO">Auto Assign (First-In Round Robin)</option>
                       {employeesList
-                        .filter(e => ['pujan', 'preet', 'rama'].some(name => e.name.toLowerCase().includes(name.toLowerCase())))
-                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
+                        .filter(e => {
+                          const role = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
+                          return role.includes('marketing') || role.includes('social') || role.includes('digital');
+                        })
+                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.designation || e.department})</option>)}
                     </select>
                   </div>
                 </div>
@@ -5273,35 +5305,32 @@ export default function AdminDashboard() {
                       >
                         <option value="">Select Staff / Unassigned</option>
                         <option value="AUTO">Auto Assign (First-In Round Robin)</option>
-                        <optgroup label="Matching Department">
+                        <optgroup label="Matching Department / Designation">
                           {usersList.filter(e => (e.role === 'EMPLOYEE' || e.role === 'TL')).filter(e => {
-                            if (clientTaskFormAssignTo === 'Graphic Designer') {
-                              return ['swapnil', 'danish'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-                            } else if (clientTaskFormAssignTo === 'Video Editor') {
-                              return ['sanmeet'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-                            } else if (clientTaskFormAssignTo === 'AI Video Lead' || clientTaskFormAssignTo === 'AI Video Editor') {
-                              return ['masoom', 'nouman', 'divyansh'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-                            }
-                            return e.department === clientTaskFormAssignTo;
+                            const role = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
+                            const target = (clientTaskFormAssignTo || '').toLowerCase();
+                            if (target.includes('graphic')) return role.includes('graphic');
+                            if (target.includes('video editor')) return role.includes('video editor');
+                            if (target.includes('ai video lead') || target.includes('ai video editor') || target.includes('ai video')) return role.includes('ai video') || role.includes('video editor');
+                            if (target.includes('digital marketing') || target.includes('social media')) return role.includes('marketing') || role.includes('social') || role.includes('digital');
+                            return role.includes(target) || target.includes((e.department || '').toLowerCase());
                           }).map(e => (
-                            <option key={e.id} value={e.name}>{e.name} ({e.role})</option>
+                            <option key={e.id} value={e.name}>{e.name} ({e.designation || e.department || e.role})</option>
                           ))}
                         </optgroup>
                         <optgroup label="All Other Staff">
                           {usersList.filter(e => (e.role === 'EMPLOYEE' || e.role === 'TL')).filter(e => {
+                            const role = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
+                            const target = (clientTaskFormAssignTo || '').toLowerCase();
                             let isMatched = false;
-                            if (clientTaskFormAssignTo === 'Graphic Designer') {
-                              isMatched = ['swapnil', 'danish'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-                            } else if (clientTaskFormAssignTo === 'Video Editor') {
-                              isMatched = ['sanmeet'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-                            } else if (clientTaskFormAssignTo === 'AI Video Lead' || clientTaskFormAssignTo === 'AI Video Editor') {
-                              isMatched = ['masoom', 'nouman', 'divyansh'].some(name => e.name.toLowerCase().includes(name.toLowerCase()));
-                            } else {
-                              isMatched = e.department === clientTaskFormAssignTo;
-                            }
+                            if (target.includes('graphic')) isMatched = role.includes('graphic');
+                            else if (target.includes('video editor')) isMatched = role.includes('video editor');
+                            else if (target.includes('ai video lead') || target.includes('ai video editor') || target.includes('ai video')) isMatched = role.includes('ai video') || role.includes('video editor');
+                            else if (target.includes('digital marketing') || target.includes('social media')) isMatched = role.includes('marketing') || role.includes('social') || role.includes('digital');
+                            else isMatched = role.includes(target) || target.includes((e.department || '').toLowerCase());
                             return !isMatched;
                           }).map(e => (
-                            <option key={e.id} value={e.name}>{e.name} ({e.department || 'No Dept'} - {e.role})</option>
+                            <option key={e.id} value={e.name}>{e.name} ({e.designation || e.department || 'No Dept'} - {e.role})</option>
                           ))}
                         </optgroup>
                       </select>

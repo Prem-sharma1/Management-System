@@ -105,20 +105,28 @@ export default function CeoDashboard() {
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    // Check local storage for dark mode
-    if (localStorage.getItem('theme') === 'dark') {
+    const isDark = localStorage.getItem('theme') === 'dark' || 
+      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (isDark) {
       setDarkMode(true);
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+    } else {
+      setDarkMode(false);
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
     }
   }, []);
 
   const toggleDarkMode = () => {
     if (darkMode) {
       document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
       localStorage.setItem('theme', 'light');
       setDarkMode(false);
     } else {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
       localStorage.setItem('theme', 'dark');
       setDarkMode(true);
     }
@@ -807,9 +815,20 @@ export default function CeoDashboard() {
             {/* Dark Mode toggle */}
             <button 
               onClick={toggleDarkMode}
-              className="w-9 h-9 border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-xs hover:shadow-md transition-all duration-300 transform active:scale-95 cursor-pointer"
+              title="Toggle Dark / Light Mode"
             >
-              {darkMode ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+              {darkMode ? (
+                <>
+                  <Sun className="w-4 h-4 text-amber-400 fill-amber-400/20" />
+                  <span className="text-[11px] font-semibold text-amber-300">Light Mode</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-4 h-4 text-slate-600 fill-slate-600/20" />
+                  <span className="text-[11px] font-semibold text-slate-600">Dark Mode</span>
+                </>
+              )}
             </button>
 
             <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50">

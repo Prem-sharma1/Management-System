@@ -1,18 +1,19 @@
 {
-  "timestamp": "2026-07-27T12:28:46.575Z",
+  "timestamp": "2026-07-29T12:24:00.547Z",
   "summary": {
-    "totalClients": 12,
-    "totalClientTasks": 276,
+    "totalClients": 13,
+    "totalClientTasks": 293,
     "totalClientDeliveries": 0,
     "tasksByWorkingOn": {
-      "Preet": 43,
-      "Swapnil": 36,
+      "Preet": 47,
+      "Swapnil": 39,
+      "Harshit": 17,
+      "Divyansh": 2,
+      "Sanmeet": 26,
+      "Pujan": 54,
+      "Nouman": 6,
       "Masoom": 6,
-      "Sanmeet": 22,
-      "Pujan": 39,
-      "Nouman": 18,
-      "Divyansh": 24,
-      "Rama": 65,
+      "Rama": 73,
       "Danish Khan": 23
     }
   },
@@ -20,28 +21,27 @@
     "Masoom": {
       "count": 6,
       "clients": [
-        "AID-0001 (HIT-OFFICE)",
-        "AID-0013 (AS Account Solution)"
+        "AID-0003 (Shree Broadband)",
+        "AID-0015 (Niyathhi Scaffolding)",
+        "AID-0023 (Sharadam Salads and Soups)",
+        "AID-0027 (Ayush Vikas Foundation)"
       ]
     },
     "Nouman": {
-      "count": 18,
+      "count": 6,
       "clients": [
         "AID-0002 (HIT-OFFICE)",
+        "AID-0006 (Mountain Bliss)",
         "AID-0014 (Apple Multispeciality)",
-        "AID-0023 (Sharadam Salads and Soups)",
+        "AID-0018 (Tejomay Old Age Home)",
         "AID-0026 (Shvaas Breathwork & Sound Healing)"
       ]
     },
     "Divyansh": {
-      "count": 24,
+      "count": 2,
       "clients": [
-        "AID-0003 (Shree Broadband)",
-        "AID-0006 (Mountain Bliss)",
-        "AID-0015 (Niyathhi Scaffolding)",
-        "AID-0018 (Tejomay Old Age Home)",
-        "AID-0024 (Canal Touch Reasort )",
-        "AID-0027 (Ayush Vikas Foundation)"
+        "AID-0001 (HIT-OFFICE)",
+        "AID-0013 (AS Account Solution)"
       ]
     }
   },
@@ -129,6 +129,13 @@
       "joiningDate": "2026-07-12",
       "packageName": "Standard (Monthly)",
       "packageAmount": 3999
+    },
+    {
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "joiningDate": "2026-07-28",
+      "packageName": "Basic",
+      "packageAmount": 2499
     }
   ],
   "clientTasks": [
@@ -161,7 +168,7 @@
       "taskTitle": "AI Video Script 1",
       "date": "03-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Masoom",
+      "workingOn": "Harshit",
       "status": "Assigned",
       "postType": "Script"
     },
@@ -172,7 +179,7 @@
       "taskTitle": "AI Video 1",
       "date": "04-Jul-2026",
       "assignTo": "Ai Video Editor",
-      "workingOn": "Masoom",
+      "workingOn": "Divyansh",
       "status": "Assigned",
       "postType": "AI Video"
     },
@@ -381,7 +388,7 @@
       "taskTitle": "Post AI Video 1",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Masoom",
+      "workingOn": "Preet",
       "status": "Not Started",
       "postType": "Posting"
     },
@@ -414,7 +421,7 @@
       "taskTitle": "AI Video Script 1",
       "date": "03-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Nouman",
+      "workingOn": "Harshit",
       "status": "Assigned",
       "postType": "Script"
     },
@@ -426,7 +433,7 @@
       "date": "04-Jul-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Assigned",
+      "status": "Client Review",
       "postType": "AI Video"
     },
     {
@@ -590,7 +597,7 @@
       "taskTitle": "Post AI Video 1",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Nouman",
+      "workingOn": "Pujan",
       "status": "Not Started",
       "postType": "Posting"
     },
@@ -623,8 +630,8 @@
       "taskTitle": "AI Video Script 1",
       "date": "02-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Divyansh",
-      "status": "Assigned",
+      "workingOn": "Harshit",
+      "status": "Completion",
       "postType": "Script"
     },
     {
@@ -634,7 +641,7 @@
       "taskTitle": "AI Video 1",
       "date": "03-Jul-2026",
       "assignTo": "Ai Video Editor",
-      "workingOn": "Divyansh",
+      "workingOn": "Masoom",
       "status": "Assigned",
       "postType": "AI Video"
     },
@@ -777,7 +784,7 @@
       "taskTitle": "Post AI Video 1",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Divyansh",
+      "workingOn": "Preet",
       "status": "Not Started",
       "postType": "Posting"
     },
@@ -810,7 +817,7 @@
       "taskTitle": "AI Video Script 1",
       "date": "24-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Divyansh",
+      "workingOn": "Harshit",
       "status": "Assigned",
       "postType": "Script"
     },
@@ -821,7 +828,7 @@
       "taskTitle": "AI Video 1",
       "date": "25-Jul-2026",
       "assignTo": "Ai Video Editor",
-      "workingOn": "Divyansh",
+      "workingOn": "Nouman",
       "status": "Assigned",
       "postType": "AI Video"
     },
@@ -964,7 +971,7 @@
       "taskTitle": "Post AI Video 1",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Divyansh",
+      "workingOn": "Pujan",
       "status": "Not Started",
       "postType": "Posting"
     },
@@ -997,8 +1004,8 @@
       "taskTitle": "AI Video Script 1",
       "date": "24-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Masoom",
-      "status": "Assigned",
+      "workingOn": "Harshit",
+      "status": "Completion",
       "postType": "Script"
     },
     {
@@ -1008,7 +1015,7 @@
       "taskTitle": "AI Video 1",
       "date": "25-Jul-2026",
       "assignTo": "Ai Video Editor",
-      "workingOn": "Masoom",
+      "workingOn": "Divyansh",
       "status": "Assigned",
       "postType": "AI Video"
     },
@@ -1151,7 +1158,7 @@
       "taskTitle": "Post AI Video 1",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Masoom",
+      "workingOn": "Preet",
       "status": "Not Started",
       "postType": "Posting"
     },
@@ -1184,7 +1191,7 @@
       "taskTitle": "AI Video Script 1",
       "date": "06-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Nouman",
+      "workingOn": "Harshit",
       "status": "Assigned",
       "postType": "Script"
     },
@@ -1338,7 +1345,7 @@
       "taskTitle": "Post AI Video 1",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Nouman",
+      "workingOn": "Rama",
       "status": "Not Started",
       "postType": "Posting"
     },
@@ -1371,8 +1378,8 @@
       "taskTitle": "AI Video Script 1",
       "date": "06-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Divyansh",
-      "status": "Assigned",
+      "workingOn": "Harshit",
+      "status": "Completion",
       "postType": "Script"
     },
     {
@@ -1382,7 +1389,7 @@
       "taskTitle": "AI Video 1",
       "date": "07-Jul-2026",
       "assignTo": "Ai Video Editor",
-      "workingOn": "Divyansh",
+      "workingOn": "Masoom",
       "status": "Assigned",
       "postType": "AI Video"
     },
@@ -1525,7 +1532,7 @@
       "taskTitle": "Post AI Video 1",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Divyansh",
+      "workingOn": "Preet",
       "status": "Not Started",
       "postType": "Posting"
     },
@@ -1558,7 +1565,7 @@
       "taskTitle": "AI Video Script 1",
       "date": "13-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Divyansh",
+      "workingOn": "Harshit",
       "status": "Assigned",
       "postType": "Script"
     },
@@ -1569,7 +1576,7 @@
       "taskTitle": "AI Video 1",
       "date": "14-Jul-2026",
       "assignTo": "Ai Video Editor",
-      "workingOn": "Divyansh",
+      "workingOn": "Nouman",
       "status": "Assigned",
       "postType": "AI Video"
     },
@@ -1712,7 +1719,7 @@
       "taskTitle": "Post AI Video 1",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Divyansh",
+      "workingOn": "Rama",
       "status": "Not Started",
       "postType": "Posting"
     },
@@ -1745,8 +1752,8 @@
       "taskTitle": "AI Video Script 1",
       "date": "03-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Nouman",
-      "status": "Assigned",
+      "workingOn": "Harshit",
+      "status": "Completion",
       "postType": "Script"
     },
     {
@@ -1756,7 +1763,7 @@
       "taskTitle": "AI Video 1",
       "date": "04-Jul-2026",
       "assignTo": "Ai Video Editor",
-      "workingOn": "Nouman",
+      "workingOn": "Masoom",
       "status": "Assigned",
       "postType": "AI Video"
     },
@@ -1844,7 +1851,7 @@
       "taskTitle": "AI Video Script 2",
       "date": "13-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Nouman",
+      "workingOn": "Harshit",
       "status": "Assigned",
       "postType": "Script"
     },
@@ -1855,7 +1862,7 @@
       "taskTitle": "AI Video 2",
       "date": "14-Jul-2026",
       "assignTo": "Ai Video Editor",
-      "workingOn": "Nouman",
+      "workingOn": "Masoom",
       "status": "Assigned",
       "postType": "AI Video"
     },
@@ -1866,7 +1873,7 @@
       "taskTitle": "Post AI Video 2",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Nouman",
+      "workingOn": "Rama",
       "status": "Assigned",
       "postType": "Posting"
     },
@@ -2020,7 +2027,7 @@
       "taskTitle": "Post AI Video 1",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Nouman",
+      "workingOn": "Rama",
       "status": "Not Started",
       "postType": "Posting"
     },
@@ -2053,7 +2060,7 @@
       "taskTitle": "AI Video Script 1",
       "date": "24-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Divyansh",
+      "workingOn": "Harshit",
       "status": "Assigned",
       "postType": "Script"
     },
@@ -2064,7 +2071,7 @@
       "taskTitle": "AI Video 1",
       "date": "25-Jul-2026",
       "assignTo": "Ai Video Editor",
-      "workingOn": "Divyansh",
+      "workingOn": "Sanmeet",
       "status": "Assigned",
       "postType": "AI Video"
     },
@@ -2152,7 +2159,7 @@
       "taskTitle": "AI Video Script 2",
       "date": "03-Aug-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Divyansh",
+      "workingOn": "Harshit",
       "status": "Assigned",
       "postType": "Script"
     },
@@ -2163,7 +2170,7 @@
       "taskTitle": "AI Video 2",
       "date": "04-Aug-2026",
       "assignTo": "Ai Video Editor",
-      "workingOn": "Divyansh",
+      "workingOn": "Sanmeet",
       "status": "Assigned",
       "postType": "AI Video"
     },
@@ -2174,7 +2181,7 @@
       "taskTitle": "Post AI Video 2",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Divyansh",
+      "workingOn": "Rama",
       "status": "Assigned",
       "postType": "Posting"
     },
@@ -2218,7 +2225,7 @@
       "taskTitle": "Post AI Video 1",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Divyansh",
+      "workingOn": "Rama",
       "status": "Not Started",
       "postType": "Posting"
     },
@@ -2405,7 +2412,7 @@
       "taskTitle": "AI Video Script 1",
       "date": "18-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Nouman",
+      "workingOn": "Harshit",
       "status": "Assigned",
       "postType": "Script"
     },
@@ -2427,7 +2434,7 @@
       "taskTitle": "Post AI Video 1",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Nouman",
+      "workingOn": "Rama",
       "status": "Assigned",
       "postType": "Posting"
     },
@@ -2504,7 +2511,7 @@
       "taskTitle": "AI Video Script 2",
       "date": "23-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Nouman",
+      "workingOn": "Harshit",
       "status": "Assigned",
       "postType": "Script"
     },
@@ -2526,7 +2533,7 @@
       "taskTitle": "Post AI Video 2",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Nouman",
+      "workingOn": "Rama",
       "status": "Assigned",
       "postType": "Posting"
     },
@@ -2801,7 +2808,7 @@
       "taskTitle": "AI Video Script 1",
       "date": "14-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Divyansh",
+      "workingOn": "Harshit",
       "status": "Assigned",
       "postType": "Script"
     },
@@ -2812,7 +2819,7 @@
       "taskTitle": "AI Video 1",
       "date": "15-Jul-2026",
       "assignTo": "Ai Video Editor",
-      "workingOn": "Divyansh",
+      "workingOn": "Masoom",
       "status": "Assigned",
       "postType": "AI Video"
     },
@@ -2878,7 +2885,7 @@
       "taskTitle": "AI Video Script 2",
       "date": "18-Jul-2026",
       "assignTo": "AI Video Lead",
-      "workingOn": "Divyansh",
+      "workingOn": "Harshit",
       "status": "Assigned",
       "postType": "Script"
     },
@@ -2889,7 +2896,7 @@
       "taskTitle": "AI Video 2",
       "date": "20-Jul-2026",
       "assignTo": "Ai Video Editor",
-      "workingOn": "Divyansh",
+      "workingOn": "Masoom",
       "status": "Assigned",
       "postType": "AI Video"
     },
@@ -2900,7 +2907,7 @@
       "taskTitle": "Post AI Video 2",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Divyansh",
+      "workingOn": "Pujan",
       "status": "Assigned",
       "postType": "Posting"
     },
@@ -3164,7 +3171,194 @@
       "taskTitle": "Post AI Video 1",
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
-      "workingOn": "Divyansh",
+      "workingOn": "Pujan",
+      "status": "Not Started",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MS4IAQNL-7983-0",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Client Login / Access Collection",
+      "date": "28-Jul-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Pujan",
+      "status": "Assigned",
+      "postType": "Onboarding"
+    },
+    {
+      "taskId": "AID-T-MS4IAR0P-2288-1",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Graphic 1",
+      "date": "29-Jul-2026",
+      "assignTo": "Graphic Designer",
+      "workingOn": "Swapnil",
+      "status": "Assigned",
+      "postType": "Graphic"
+    },
+    {
+      "taskId": "AID-T-MS4IARDS-2657-2",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "AI Video Script 1",
+      "date": "29-Jul-2026",
+      "assignTo": "AI Video Lead",
+      "workingOn": "Harshit",
+      "status": "Completion",
+      "postType": "Script"
+    },
+    {
+      "taskId": "AID-T-MS4IARQW-5517-3",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "AI Video 1",
+      "date": "30-Jul-2026",
+      "assignTo": "Ai Video Editor",
+      "workingOn": "Sanmeet",
+      "status": "Assigned",
+      "postType": "AI Video"
+    },
+    {
+      "taskId": "AID-T-MS4IAS41-3889-4",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Ads Run",
+      "date": "30-Jul-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Pujan",
+      "status": "Assigned",
+      "postType": "Ads"
+    },
+    {
+      "taskId": "AID-T-MS4IASZQ-2827-5",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Graphic 2",
+      "date": "31-Jul-2026",
+      "assignTo": "Graphic Designer",
+      "workingOn": "Swapnil",
+      "status": "Assigned",
+      "postType": "Graphic"
+    },
+    {
+      "taskId": "AID-T-MS4IATCU-2992-6",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Post Graphic 2",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Pujan",
+      "status": "Assigned",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MS4IATPZ-3690-7",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Reel 1",
+      "date": "07-Aug-2026",
+      "assignTo": "Video Editor",
+      "workingOn": "Sanmeet",
+      "status": "Assigned",
+      "postType": "Reel"
+    },
+    {
+      "taskId": "AID-T-MS4IAU35-6409-8",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Post Reel 1",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Pujan",
+      "status": "Assigned",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MS4IAUG8-3827-9",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Graphic 3",
+      "date": "14-Aug-2026",
+      "assignTo": "Graphic Designer",
+      "workingOn": "Swapnil",
+      "status": "Assigned",
+      "postType": "Graphic"
+    },
+    {
+      "taskId": "AID-T-MS4IAUTA-3997-10",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Post Graphic 3",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Pujan",
+      "status": "Assigned",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MS4IAV6D-5222-11",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Weekly Report 1",
+      "date": "05-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Pujan",
+      "status": "Assigned",
+      "postType": "Report"
+    },
+    {
+      "taskId": "AID-T-MS4IAVJI-9939-12",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Weekly Report 2",
+      "date": "13-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Pujan",
+      "status": "Assigned",
+      "postType": "Report"
+    },
+    {
+      "taskId": "AID-T-MS4IAVWM-8701-13",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Weekly Report 3",
+      "date": "21-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Pujan",
+      "status": "Assigned",
+      "postType": "Report"
+    },
+    {
+      "taskId": "AID-T-MS4IAW9Y-8290-14",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Weekly Report 4",
+      "date": "29-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Pujan",
+      "status": "Assigned",
+      "postType": "Report"
+    },
+    {
+      "taskId": "AID-T-MS4IAR0P-2288-1-POST-MS4IB4F9-1625",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Post Graphic 1",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Pujan",
+      "status": "Not Started",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MS4IARQW-5517-3-POST-MS4IB4UH-9915",
+      "clientId": "AID-0028",
+      "businessName": "Trending Realty",
+      "taskTitle": "Post AI Video 1",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Pujan",
       "status": "Not Started",
       "postType": "Posting"
     }
