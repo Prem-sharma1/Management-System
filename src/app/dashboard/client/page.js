@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import BrandOnboardingForm from './BrandOnboardingForm';
 import {
   Building2,
   LogOut,
@@ -1055,49 +1056,11 @@ export default function ClientDashboard() {
 
           </div>
         ) : activePortalTab === 'onboarding' ? (
-          <div className="space-y-6 animate-fade-in">
-            {/* Header Banner */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 bg-blue-950 border border-blue-900/60 text-blue-400 rounded-md text-[10px] font-extrabold uppercase tracking-wider">
-                    Client Onboarding Setup
-                  </span>
-                </div>
-                <h2 className="text-xl font-bold text-white">Brand Onboarding & Information Form</h2>
-                <p className="text-xs text-slate-400 max-w-2xl">
-                  Please complete the form below to submit your brand guidelines, social media account details, target audience, and content requirements.
-                </p>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-950/80 border border-blue-900/60 rounded-xl text-xs text-blue-300 font-semibold mt-2">
-                  <User className="w-4 h-4 text-blue-400" />
-                  <span>Assigned Social Media / Digital Marketing Person: <strong className="text-white">{tasks.find(t => t.workingOn && t.workingOn !== 'AUTO' && (t.assignTo?.toLowerCase().includes('digital marketing') || t.assignTo?.toLowerCase().includes('social media') || t.assignTo?.toLowerCase().includes('posting') || t.postType?.toLowerCase().includes('report')))?.workingOn || tasks.find(t => t.workingOn && t.workingOn !== 'AUTO')?.workingOn || 'Assigned Social Media Executive'}</strong></span>
-                </div>
-              </div>
-
-              <div className="shrink-0 flex flex-col gap-2">
-                <a
-                  href="https://docs.google.com/forms/d/e/1FAIpQLSfgAPH2g8ESgN2wtKd1X2raDN1vbSHECmuwtW_wDp48jqgqwg/viewform?usp=publish-editor"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>Open Form in New Window</span>
-                </a>
-              </div>
-            </div>
-
-            {/* Embedded Google Form */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-2 shadow-2xl overflow-hidden">
-              <iframe
-                src="https://docs.google.com/forms/d/e/1FAIpQLSfgAPH2g8ESgN2wtKd1X2raDN1vbSHECmuwtW_wDp48jqgqwg/viewform?embedded=true"
-                className="w-full h-[850px] border-0 rounded-xl bg-white"
-                title="Brand Onboarding Form"
-              >
-                Loading Onboarding Form...
-              </iframe>
-            </div>
-          </div>
+          <BrandOnboardingForm
+            clientInfo={clientInfo}
+            assignedExecutive={tasks.find(t => t.workingOn && t.workingOn !== 'AUTO' && (t.assignTo?.toLowerCase().includes('digital marketing') || t.assignTo?.toLowerCase().includes('social media') || t.assignTo?.toLowerCase().includes('posting') || t.postType?.toLowerCase().includes('report')))?.workingOn || tasks.find(t => t.workingOn && t.workingOn !== 'AUTO')?.workingOn || 'Assigned Executive'}
+            onSaveSuccess={fetchClientData}
+          />
         ) : null}
 
       </main>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import ClientOnboardingInspector from './ClientOnboardingInspector';
 import {
   Clock,
   CheckSquare,
@@ -1521,29 +1522,8 @@ export default function EmployeeDashboard() {
               </div>
               <div className="p-6 space-y-8">
                 
-                {/* Onboarding Form Banner */}
-                <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h5 className="text-xs font-bold text-slate-900 dark:text-white">Brand Onboarding Form Responses & Details</h5>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        Review client submitted brand guidelines, target audience, login credentials, and content preferences for your assigned clients.
-                      </p>
-                    </div>
-                  </div>
-                  <a
-                    href="https://docs.google.com/forms/d/e/1FAIpQLSfgAPH2g8ESgN2wtKd1X2raDN1vbSHECmuwtW_wDp48jqgqwg/viewform?usp=publish-editor"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl transition shrink-0 flex items-center gap-1.5 shadow-sm"
-                  >
-                    <span>Open Onboarding Form</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
+                {/* Client Onboarding Form Data Inspector */}
+                <ClientOnboardingInspector currentUser={currentUser} allClientTasks={allClientTasks} />
 
                 {/* Client Tasks Section */}
                 <div>

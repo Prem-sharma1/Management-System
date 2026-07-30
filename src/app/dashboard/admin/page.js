@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AgencyDashboard from './AgencyDashboard';
 import CampaignDeliveriesTable from './CampaignDeliveriesTable';
+import ClientOnboardingInspector from '../employee/ClientOnboardingInspector';
 import {
   Users,
   CheckSquare,
@@ -1778,6 +1779,18 @@ export default function AdminDashboard() {
             </button>
 
             <button
+              onClick={() => setActiveTab('brand-onboarding')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'brand-onboarding'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <FileText className="w-4 h-4 text-blue-500" />
+              Onboarding & Logins
+            </button>
+
+            <button
               onClick={() => setActiveTab('tasks')}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
                 activeTab === 'tasks'
@@ -2452,6 +2465,17 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* Brand Onboarding Forms & Logins Inspector Tab */}
+          {activeTab === 'brand-onboarding' && (
+            <div className="animate-fade-in space-y-6">
+              <ClientOnboardingInspector 
+                currentUser={currentUser} 
+                allClientTasks={tasksList} 
+                isAdminView={true} 
+              />
             </div>
           )}
 
