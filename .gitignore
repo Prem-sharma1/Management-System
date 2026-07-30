@@ -44,8 +44,13 @@ next-env.d.ts
 dev.db
 dev.db-journal
 
-# uploads
-/public/uploads/
+# uploads & large media
+public/uploads/
+public/uploads/*
+*.mp4
+*.mov
+*.avi
+*.mkv
 
 # sensitive files
 credentials.md
