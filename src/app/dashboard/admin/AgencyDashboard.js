@@ -46,14 +46,14 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
   const taskCompleted = tasks.filter(t => t.status === 'DONE' || t.status === 'Completed' || t.status === 'Complete Task').length;
   const taskPending = tasks.filter(t => t.status !== 'DONE' && t.status !== 'Completed' && t.status !== 'Complete Task').length;
 
-  // --- DATASET 1: OVERALL/ALL-TIME ITEMS (for Card 1 and Employee Task Tracker) ---
-  const overallTasks = tasks.filter(t => t.workingOn && t.workingOn.toLowerCase() !== 'unassigned');
-  const overallDeliveries = deliveries.filter(d => d.workingOn && d.workingOn.toLowerCase() !== 'unassigned');
+  // --- DATASET 1: OVERALL/ALL-TIME ITEMS (Includes ALL employee tasks & deliverables) ---
+  const overallTasks = tasks;
+  const overallDeliveries = deliveries;
 
   const normalizedOverallTasks = overallTasks.map(t => ({
     ...t,
     _type: 'task',
-    assignTo: (t.workingOn || 'Unassigned').trim(),
+    assignTo: (t.workingOn && t.workingOn.toLowerCase() !== 'auto' ? t.workingOn : (t.assignedTo?.name || t.assignTo || 'Unassigned Staff')).trim(),
   }));
 
   const normalizedOverallDeliveries = overallDeliveries.map(d => ({
@@ -63,7 +63,7 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
     postType: d.postType,
     status: d.status === 'Delivered' ? 'Completed' : (d.status || 'Pending'),
     priority: 'Normal',
-    assignTo: (d.workingOn || 'Unassigned').trim(),
+    assignTo: (d.workingOn || 'Unassigned Staff').trim(),
     notes: d.notes,
     _type: 'delivery',
     _deliveryId: d.deliveryId,
@@ -75,7 +75,7 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
   const overallPending = allOverallItems.filter(t => t.status !== 'DONE' && t.status !== 'Completed' && t.status !== 'Complete Task').length;
   const overallTotal = allOverallItems.length;
 
-  // --- DATASET 2: TODAY'S ITEMS (for Card 2 and the bottom employee task list) ---
+  // --- DATASET 2: TODAY'S ITEMS ---
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const todayTasks = tasks.filter(t => parseToISO(t.date) === todayStr);
@@ -84,7 +84,7 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
   const normalizedTodayTasks = todayTasks.map(t => ({
     ...t,
     _type: 'task',
-    assignTo: (t.workingOn || 'Unassigned').trim(),
+    assignTo: (t.workingOn && t.workingOn.toLowerCase() !== 'auto' ? t.workingOn : (t.assignedTo?.name || t.assignTo || 'Unassigned Staff')).trim(),
   }));
 
   const normalizedTodayDeliveries = todayDeliveries.map(d => ({
@@ -94,7 +94,7 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
     postType: d.postType,
     status: d.status === 'Delivered' ? 'Completed' : (d.status || 'Pending'),
     priority: 'Normal',
-    assignTo: (d.workingOn || 'Unassigned').trim(),
+    assignTo: (d.workingOn || 'Unassigned Staff').trim(),
     notes: d.notes,
     _type: 'delivery',
     _deliveryId: d.deliveryId,
@@ -106,21 +106,21 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
   const todayPending = allTodayItems.filter(t => t.status !== 'DONE' && t.status !== 'Completed' && t.status !== 'Complete Task').length;
   const todayTotal = allTodayItems.length;
 
-  // Group today's items by employee
-  const todayByEmployee = {};
-  allTodayItems.forEach(t => {
+  // Group ALL items by employee for the employee task cards (Sanmeet, Harshit, AI Video Editors, Swapnil, Pujan, etc.)
+  const allByEmployee = {};
+  allOverallItems.forEach(t => {
     const emp = t.assignTo;
-    if (!todayByEmployee[emp]) {
-      todayByEmployee[emp] = { name: emp, tasks: [], done: 0, pending: 0 };
+    if (!allByEmployee[emp]) {
+      allByEmployee[emp] = { name: emp, tasks: [], done: 0, pending: 0 };
     }
-    todayByEmployee[emp].tasks.push(t);
+    allByEmployee[emp].tasks.push(t);
     if (t.status === 'DONE' || t.status === 'Completed' || t.status === 'Complete Task') {
-      todayByEmployee[emp].done += 1;
+      allByEmployee[emp].done += 1;
     } else {
-      todayByEmployee[emp].pending += 1;
+      allByEmployee[emp].pending += 1;
     }
   });
-  const todayEmployeeList = Object.values(todayByEmployee).sort((a, b) => b.tasks.length - a.tasks.length);
+  const employeeCardList = Object.values(allByEmployee).sort((a, b) => b.tasks.length - a.tasks.length);
 
   // Compute revenue/billing details dynamically from active clients
   let dynamicTotalRevenue = 0;       // Received revenue
@@ -163,8 +163,9 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
 
   // Process tasks
   tasks.forEach(t => {
-    if (!t.workingOn) return;
-    const name = t.workingOn.trim();
+    const rawName = t.workingOn && t.workingOn.toLowerCase() !== 'auto' ? t.workingOn : (t.assignedTo?.name || t.assignTo || '');
+    if (!rawName) return;
+    const name = rawName.trim();
     if (!name || name.toLowerCase() === 'unassigned') return;
     
     if (!empMap[name]) {
@@ -559,28 +560,31 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
 
       </div>
 
-      {/* 4. Today's Tasks by Employee */}
+      {/* 4. All Employee Tasks & Duties Tracker */}
       <div>
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <BarChart2 className="w-5 h-5 text-indigo-500" />
-            Today&apos;s Tasks by Employee
-            <span className="text-[11px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/30 ml-1">
-              {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
-            </span>
-          </h3>
-          <span className="text-xs font-bold text-slate-400">{todayTotal} total tasks</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
+          <div>
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <BarChart2 className="w-5 h-5 text-indigo-500" />
+              Employee Tasks & Deliverables Overview
+              <span className="text-[11px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/30 ml-1">
+                {employeeCardList.length} Active Employees
+              </span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">Tracking tasks & deliverables assigned to Sanmeet, Harshit, AI Video team, and all executives.</p>
+          </div>
+          <span className="text-xs font-bold text-slate-400">{overallTotal} total items</span>
         </div>
 
-        {todayTotal === 0 ? (
+        {employeeCardList.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
             <AlertCircle className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
-            <p className="text-sm font-bold text-slate-400 dark:text-slate-500">No tasks scheduled for today</p>
-            <p className="text-xs text-slate-300 dark:text-slate-600 mt-1">Tasks with today&apos;s date will appear here</p>
+            <p className="text-sm font-bold text-slate-400 dark:text-slate-500">No employee tasks found</p>
+            <p className="text-xs text-slate-300 dark:text-slate-600 mt-1">Assigned duties will appear here per employee</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {todayEmployeeList.map((emp) => (
+            {employeeCardList.map((emp) => (
               <EmployeeTaskCard key={emp.name} emp={emp} />
             ))}
           </div>

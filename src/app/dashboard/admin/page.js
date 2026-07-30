@@ -337,6 +337,9 @@ export default function AdminDashboard() {
     }
   };
 
+  // Staff/Department Task Filter State for Admin
+  const [taskStaffFilter, setTaskStaffFilter] = useState('ALL');
+
   // Dark Mode State
   const [darkMode, setDarkMode] = useState(false);
 
@@ -2037,10 +2040,10 @@ export default function AdminDashboard() {
                   </div>
                   
                   <div className="space-y-4">
-                    {tasksList.filter(task => activeClientIds.has(task.clientId)).length === 0 ? (
+                    {tasksList.length === 0 ? (
                       <p className="text-sm text-slate-400">No active tasks found.</p>
                     ) : (
-                      tasksList.filter(task => activeClientIds.has(task.clientId)).slice(0, 4).map((task) => (
+                      tasksList.slice(0, 5).map((task) => (
                         <div key={task.id} className="p-4 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl flex items-center justify-between transition">
                           <div className="space-y-1 overflow-hidden pr-4">
                             <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{task.title}</p>
@@ -2198,21 +2201,50 @@ export default function AdminDashboard() {
           )}
 
           {/* TAB 3: TASKS BOARD */}
-          {activeTab === 'tasks' && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                <div>
-                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Department Duties Allocation</h4>
-                  <p className="text-xs text-slate-400 mt-1">Assign deliverables and log progression checkpoints.</p>
+          {activeTab === 'tasks' && (() => {
+            const filteredTasks = tasksList.filter(t => {
+              if (taskStaffFilter === 'ALL') return true;
+              const worker = ((t.workingOn || '') + ' ' + (t.assignedTo?.name || '') + ' ' + (t.assignTo || '')).toLowerCase();
+              if (taskStaffFilter === 'SANMEET') return worker.includes('sanmeet');
+              if (taskStaffFilter === 'AI_VIDEO') return worker.includes('harshit') || worker.includes('ai video') || worker.includes('video editor') || worker.includes('reel');
+              return worker.includes(taskStaffFilter.toLowerCase());
+            });
+
+            return (
+              <div className="space-y-6 animate-fade-in">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <div>
+                    <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Department Duties Allocation</h4>
+                    <p className="text-xs text-slate-400 mt-1">Filter and track tasks for Sanmeet, Harshit, AI Video Leads, and Executives.</p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Staff Filter Dropdown */}
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-bold text-slate-500 uppercase shrink-0">Filter Employee:</label>
+                      <select
+                        value={taskStaffFilter}
+                        onChange={(e) => setTaskStaffFilter(e.target.value)}
+                        className="p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 focus:outline-none"
+                      >
+                        <option value="ALL">All Staff & Employees ({tasksList.length})</option>
+                        <option value="SANMEET">★ Sanmeet (Reels & Social Media Lead)</option>
+                        <option value="AI_VIDEO">🎬 AI Video Team (Harshit & Video Editors)</option>
+                        {usersList.filter(u => u.role === 'EMPLOYEE' || u.role === 'TL').map(emp => (
+                          <option key={emp.id} value={emp.name.toUpperCase()}>👤 {emp.name} ({emp.designation || emp.department || 'Staff'})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={() => { setFormError(''); setShowAddTaskModal(true); }}
+                      className="bg-blue-800 hover:bg-blue-900 text-white py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shrink-0"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Assign New Task
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => { setFormError(''); setShowAddTaskModal(true); }}
-                  className="bg-blue-800 hover:bg-blue-900 text-white py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition"
-                >
-                  <Plus className="w-4 h-4" />
-                  Assign New Task
-                </button>
-              </div>
 
               {/* Kanban columns */}
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -2222,12 +2254,12 @@ export default function AdminDashboard() {
                   <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-350">To Do</span>
                     <span className="w-5 h-5 bg-slate-200 dark:bg-slate-800 text-[10px] font-bold rounded-full flex items-center justify-center">
-                      {tasksList.filter(t => t.status === 'TODO').length}
+                      {filteredTasks.filter(t => t.status === 'TODO').length}
                     </span>
                   </div>
                   
                   <div className="flex flex-col gap-3">
-                    {tasksList.filter(t => t.status === 'TODO').map(task => (
+                    {filteredTasks.filter(t => t.status === 'TODO').map(task => (
                       <div key={task.id} className="bg-white dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col gap-2">
                         <div className="flex justify-between items-start">
                           <div className="flex flex-col gap-1">
@@ -2245,7 +2277,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2 mt-1">
                           <div className="flex flex-col">
                             <span className="text-[9px] font-bold text-slate-400">Due: {task.dueDate || 'No Limit'}</span>
-                            <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 mt-0.5">👤 {task.assignedTo?.name || 'Unassigned'}</span>
+                            <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 mt-0.5">👤 {task.workingOn || task.assignedTo?.name || 'Unassigned'}</span>
                           </div>
                           <button 
                             onClick={() => handleUpdateTaskStatus(task.id, 'TODO')}
@@ -2264,12 +2296,12 @@ export default function AdminDashboard() {
                   <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-350">In Progress</span>
                     <span className="w-5 h-5 bg-slate-200 dark:bg-slate-800 text-[10px] font-bold rounded-full flex items-center justify-center">
-                      {tasksList.filter(t => t.status === 'IN_PROGRESS').length}
+                      {filteredTasks.filter(t => t.status === 'IN_PROGRESS').length}
                     </span>
                   </div>
 
                   <div className="flex flex-col gap-3">
-                    {tasksList.filter(t => t.status === 'IN_PROGRESS').map(task => (
+                    {filteredTasks.filter(t => t.status === 'IN_PROGRESS').map(task => (
                       <div key={task.id} className="bg-white dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col gap-2">
                         <div className="flex justify-between items-start">
                           <div className="flex flex-col gap-1">
@@ -2287,7 +2319,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2 mt-1">
                           <div className="flex flex-col">
                             <span className="text-[9px] font-bold text-slate-400">Due: {task.dueDate || 'No Limit'}</span>
-                            <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">👤 {task.assignedTo?.name || 'Unassigned'}</span>
+                            <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">👤 {task.workingOn || task.assignedTo?.name || 'Unassigned'}</span>
                           </div>
                           <button 
                             onClick={() => handleUpdateTaskStatus(task.id, 'IN_PROGRESS')}
@@ -2306,12 +2338,12 @@ export default function AdminDashboard() {
                   <div className="flex justify-between items-center border-b border-red-200 dark:border-red-900/50 pb-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-red-700 dark:text-red-400">Pending / Overdue</span>
                     <span className="w-5 h-5 bg-red-100 dark:bg-red-900 text-[10px] font-bold text-red-700 dark:text-red-400 rounded-full flex items-center justify-center">
-                      {tasksList.filter(t => t.status === 'PENDING' || t.status === 'OVERDUE').length}
+                      {filteredTasks.filter(t => t.status === 'PENDING' || t.status === 'OVERDUE').length}
                     </span>
                   </div>
 
                   <div className="flex flex-col gap-3">
-                    {tasksList.filter(t => t.status === 'PENDING' || t.status === 'OVERDUE').map(task => (
+                    {filteredTasks.filter(t => t.status === 'PENDING' || t.status === 'OVERDUE').map(task => (
                       <div key={task.id} className="bg-white dark:bg-slate-900 p-4 border border-red-200 dark:border-red-900 rounded-xl shadow-sm flex flex-col gap-2">
                         <div className="flex justify-between items-start">
                           <div className="flex flex-col gap-1">
@@ -2333,7 +2365,7 @@ export default function AdminDashboard() {
                           </div>
                         )}
                         <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2 mt-1">
-                          <span className="text-[9px] font-bold text-slate-400">Assigned: {task.assignedTo?.name || 'Unknown'}</span>
+                          <span className="text-[9px] font-bold text-slate-400">Assigned: {task.workingOn || task.assignedTo?.name || 'Unknown'}</span>
                           <span className="py-1 px-2.5 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 rounded-md text-[9px] font-bold">{task.status}</span>
                         </div>
                       </div>
@@ -2346,12 +2378,12 @@ export default function AdminDashboard() {
                   <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-350">Completed</span>
                     <span className="w-5 h-5 bg-slate-200 dark:bg-slate-800 text-[10px] font-bold rounded-full flex items-center justify-center">
-                      {tasksList.filter(t => t.status === 'DONE').length}
+                      {filteredTasks.filter(t => t.status === 'DONE').length}
                     </span>
                   </div>
 
                   <div className="flex flex-col gap-3">
-                    {tasksList.filter(t => t.status === 'DONE').map(task => (
+                    {filteredTasks.filter(t => t.status === 'DONE').map(task => (
                       <div key={task.id} className="bg-white dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col gap-2 opacity-90">
                         <div className="flex justify-between items-start">
                           <div className="flex flex-col gap-1">
@@ -2381,7 +2413,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2 mt-1">
                           <div className="flex flex-col">
                             <span className="text-[9px] font-bold text-slate-400">Completed Task</span>
-                            <span className="text-[9px] font-bold text-slate-500 mt-0.5">👤 By: {task.assignedTo?.name || 'Unassigned'}</span>
+                            <span className="text-[9px] font-bold text-slate-500 mt-0.5">👤 By: {task.workingOn || task.assignedTo?.name || 'Unassigned'}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <button 
@@ -2400,7 +2432,8 @@ export default function AdminDashboard() {
 
               </div>
             </div>
-          )}
+          );
+        })()}
 
           {/* TAB 4: LEAVE REQUESTS */}
           {activeTab === 'leaves' && (
