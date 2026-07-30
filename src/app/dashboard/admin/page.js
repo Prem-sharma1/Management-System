@@ -40,7 +40,7 @@ const SERVICES_PRICING = {
     { name: "Platinum", price: 12599, req: "Meta Ads, Creative - 18, AI Video - 6, Reels/Shorts - 6, Weekly Report" }
   ],
   "Google Ads Plans": [
-    { name: "Basic Plan", price: 4995, req: "Google Ads, Creative - 3, AI Video - 1, Reels/Shorts - 1, Weekly Report" },
+    { name: "Basic Plan", price: 4999, req: "Google Ads, Creative - 3, AI Video - 1, Reels/Shorts - 1, Weekly Report" },
     { name: "Standard Plan", price: 13499, req: "Google Ads, Creative - 9, AI Video - 3, Reels/Shorts - 3, Weekly Report" },
     { name: "Premium Plan", price: 23999, req: "Google Ads, Creative - 18, AI Video - 6, Reels/Shorts - 6, Weekly Report" }
   ],
