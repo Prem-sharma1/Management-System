@@ -47,3 +47,6 @@ dev.db-journal
 # uploads
 /public/uploads/
 
+# sensitive files
+credentials.md
+
