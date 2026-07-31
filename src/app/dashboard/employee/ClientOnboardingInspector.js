@@ -1,50 +1,32 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  Building2, 
-  Search, 
-  CheckCircle2, 
-  FileText, 
-  Globe, 
-  Camera, 
-  Target, 
-  Palette, 
-  FolderPlus, 
-  Key, 
-  Layout, 
-  Video, 
-  User, 
-  Clock, 
+import {
+  Building2,
+  Search,
+  CheckCircle2,
+  FileText,
+  Globe,
+  Camera,
+  Target,
+  Palette,
+  FolderPlus,
+  Key,
+  Layout,
+  Video,
+  User,
+  Clock,
   ExternalLink,
   ShieldCheck,
   AlertCircle
 } from 'lucide-react';
 
-export default function ClientOnboardingInspector({ currentUser, allClientTasks, isAdminView = false }) {
+export default function ClientOnboardingInspector({ currentUser, allClientTasks }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedClientId, setSelectedClientId] = useState('');
-  const [selectedExecFilter, setSelectedExecFilter] = useState('ALL');
   const [onboardingDetails, setOnboardingDetails] = useState(null);
   const [fetchingDetails, setFetchingDetails] = useState(false);
-
-  // Helper to find assigned executive per client
-  const getAssignedExecutive = (c) => {
-    if (!c) return 'Unassigned';
-    // 1. Check c.ClientTask or allClientTasks
-    const tasks = (c.ClientTask && c.ClientTask.length > 0) ? c.ClientTask : (allClientTasks || []).filter(t => t.clientId === c.clientId);
-    const dmTask = tasks.find(t => {
-      const a = (t.assignTo || '').toLowerCase();
-      return (a.includes('digital marketing') || a.includes('social media') || a.includes('posting') || a.includes('report') || a.includes('ads manager')) && t.workingOn && t.workingOn !== 'AUTO';
-    });
-    if (dmTask) return dmTask.workingOn;
-
-    const anyTask = tasks.find(t => t.workingOn && t.workingOn !== 'AUTO');
-    if (anyTask) return anyTask.workingOn;
-
-    return 'Unassigned Staff';
-  };
 
   useEffect(() => {
     async function fetchClients() {
@@ -54,10 +36,8 @@ export default function ClientOnboardingInspector({ currentUser, allClientTasks,
         const data = await res.json();
         if (res.ok && data.clients) {
           setClients(data.clients);
-          
-          // Set initial default executive filter if employee view
-          if (currentUser?.name && !isAdminView) {
-            setSelectedExecFilter(currentUser.name);
+          if (data.clients.length > 0) {
+            setSelectedClientId(data.clients[0].clientId);
           }
         }
       } catch (err) {
@@ -67,25 +47,7 @@ export default function ClientOnboardingInspector({ currentUser, allClientTasks,
       }
     }
     fetchClients();
-  }, [currentUser, isAdminView]);
-
-  // Extract list of all assigned executives
-  const availableExecutives = Array.from(new Set(clients.map(c => getAssignedExecutive(c)).filter(name => name && name !== 'Unassigned Staff')));
-
-  // Filter clients based on selected Executive Filter
-  const filteredClients = selectedExecFilter === 'ALL'
-    ? clients 
-    : clients.filter(c => getAssignedExecutive(c).toLowerCase() === selectedExecFilter.toLowerCase());
-
-  // Keep selectedClientId in sync with filtered list
-  useEffect(() => {
-    if (filteredClients.length > 0) {
-      const exists = filteredClients.some(c => c.clientId === selectedClientId);
-      if (!exists) {
-        setSelectedClientId(filteredClients[0].clientId);
-      }
-    }
-  }, [filteredClients, selectedExecFilter]);
+  }, []);
 
   useEffect(() => {
     async function loadOnboarding() {
@@ -127,58 +89,31 @@ export default function ClientOnboardingInspector({ currentUser, allClientTasks,
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-xl text-white">
       {/* Header Banner & Selector */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold shrink-0">
             <FileText className="w-5 h-5" />
           </div>
           <div>
             <h4 className="text-sm font-extrabold text-white">Client Brand Onboarding & Form Data</h4>
-            <p className="text-xs text-slate-400">View customer-submitted logins & guidelines filtered per assigned executive.</p>
+            <p className="text-xs text-slate-400">View customer-submitted brand guidelines, logins & requirements per company.</p>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Executive Filter Dropdown */}
-          <div className="flex items-center gap-1.5">
-            <label className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0">Executive:</label>
-            <select
-              value={selectedExecFilter}
-              onChange={(e) => setSelectedExecFilter(e.target.value)}
-              className="p-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-blue-400 font-bold focus:outline-none focus:border-blue-500"
-            >
-              <option value="ALL">All Executives ({clients.length})</option>
-              {currentUser?.name && (
-                <option value={currentUser.name}>★ My Assigned Clients ({currentUser.name})</option>
-              )}
-              {availableExecutives.filter(e => e !== currentUser?.name).map((exec) => (
-                <option key={exec} value={exec}>
-                  👤 {exec}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Company Selector */}
-          <div className="flex items-center gap-1.5">
-            <label className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0">Company:</label>
-            <select
-              value={selectedClientId}
-              onChange={(e) => setSelectedClientId(e.target.value)}
-              className="p-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-medium focus:outline-none focus:border-blue-500 max-w-xs"
-            >
-              {filteredClients.length > 0 ? (
-                filteredClients.map((c) => (
-                  <option key={c.clientId} value={c.clientId}>
-                    {c.businessName} [{getAssignedExecutive(c)}]
-                  </option>
-                ))
-              ) : (
-                <option value="">No clients found for this executive</option>
-              )}
-            </select>
-          </div>
+        {/* Company Dropdown */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider shrink-0">Select Company:</label>
+          <select
+            value={selectedClientId}
+            onChange={(e) => setSelectedClientId(e.target.value)}
+            className="p-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500 max-w-xs"
+          >
+            {clients.map((c) => (
+              <option key={c.clientId} value={c.clientId}>
+                {c.businessName} ({c.clientId}) - {c.packageName}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -192,12 +127,9 @@ export default function ClientOnboardingInspector({ currentUser, allClientTasks,
           {/* Client Overview Badge Header */}
           <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white">{selectedClient.businessName}</h3>
-                <span className="px-2.5 py-0.5 bg-blue-950 border border-blue-900/60 text-blue-400 rounded-md text-[10px] font-extrabold flex items-center gap-1">
-                  <User className="w-3 h-3" /> Executive: {getAssignedExecutive(selectedClient)}
-                </span>
-                <span className="px-2.5 py-0.5 bg-slate-900 border border-slate-800 text-slate-300 rounded-md text-[10px] font-extrabold">
+                <span className="px-2.5 py-0.5 bg-blue-950 border border-blue-900/60 text-blue-400 rounded-md text-[10px] font-extrabold">
                   {selectedClient.packageName}
                 </span>
                 <span className="px-2.5 py-0.5 bg-emerald-950 border border-emerald-900/60 text-emerald-400 rounded-md text-[10px] font-extrabold">
