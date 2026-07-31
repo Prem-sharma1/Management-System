@@ -633,16 +633,17 @@ export default function TLDashboard() {
     if (isPosting) {
       return isTaskReadyToPostToday(ct) || ['Completion', 'Completed', 'DONE', 'Posted'].includes(ct.status);
     }
-    if (ct.status === 'Posted' || ct.status === 'Completion' || ct.status === 'Completed' || ct.status === 'DONE') {
-      if (convertDbDateToIso(ct.date) !== todayIso) return false;
+    const ctIso = convertDbDateToIso(ct.date);
+    if (['Posted', 'Completion', 'Completed', 'DONE'].includes(ct.status)) {
+      if (ctIso !== todayIso) return false;
     }
-    if (convertDbDateToIso(ct.date) === todayIso) return true;
+    if (ctIso && ctIso <= todayIso) return true;
     return false;
   });
 
   const todaysTasksCount = [
-    ...myTasksList.filter(t => t.status !== 'DONE' && t.dueDate === todayIso),
-    ...todaysClientTasksList.filter(ct => ct.status !== 'Posted' && ct.status !== 'Completion' && ct.status !== 'Completed' && ct.status !== 'DONE')
+    ...myTasksList.filter(t => t.status !== 'DONE' && t.dueDate && t.dueDate <= todayIso),
+    ...todaysClientTasksList.filter(ct => !['Posted', 'Completion', 'Completed', 'DONE'].includes(ct.status))
   ].length;
 
   const renderTodayTasksByTeamEmployee = () => (
@@ -1791,6 +1792,7 @@ export default function TLDashboard() {
                                   <option value="Client Review">Client Review</option>
                                   <option value="Revision">Revision</option>
                                   <option value="Completion">Completion</option>
+                                  <option value="Posted">Posted</option>
                                   <option value="Overdue">Overdue</option>
                                 </select>
                               </div>
@@ -2160,6 +2162,7 @@ export default function TLDashboard() {
                              <option value="Not Started">Not Started</option>
                              <option value="Processing">Processing</option>
                              <option value="Completion">Completion</option>
+                             <option value="Posted">Posted</option>
                              <option value="Pending">Pending (Blocked)</option>
                              <option value="Overdue">Overdue</option>
                            </>
@@ -2170,6 +2173,7 @@ export default function TLDashboard() {
                              <option value="Client Review">Client Review</option>
                              <option value="Revision">Revision</option>
                              <option value="Completion">Completion</option>
+                             <option value="Posted">Posted</option>
                              <option value="Pending">Pending (Blocked)</option>
                              <option value="Overdue">Overdue</option>
                            </>

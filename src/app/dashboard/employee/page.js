@@ -1072,17 +1072,17 @@ export default function EmployeeDashboard() {
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm mt-6">
-                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-4">Today's Priorities</h4>
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-4">Today's & Carry-Forward Priorities</h4>
                   <div className="space-y-3">
                     {(() => {
                       const todayIso = new Date().toISOString().split('T')[0];
                       const todayTasks = [
                         ...employeeTasksList
-                          .filter(t => t.status !== 'DONE' && (t.dueDate === todayIso))
-                          .map(t => ({ ...t, type: 'internal' })),
+                          .filter(t => t.status !== 'DONE' && t.dueDate && t.dueDate <= todayIso)
+                          .map(t => ({ ...t, type: 'internal', isOverdue: t.dueDate < todayIso })),
                         ...employeeMyClientTasks
-                          .filter(ct => ct.status !== 'Completed' && ct.status !== 'Done' && (convertDbDateToIso(ct.date) === todayIso))
-                          .map(ct => ({ ...ct, type: 'client' }))
+                          .filter(ct => ct.status !== 'Completed' && ct.status !== 'Done' && ct.status !== 'Posted' && convertDbDateToIso(ct.date) && convertDbDateToIso(ct.date) <= todayIso)
+                          .map(ct => ({ ...ct, type: 'client', isOverdue: convertDbDateToIso(ct.date) < todayIso }))
                       ];
                       
                       if (todayTasks.length === 0) {
@@ -1091,15 +1091,24 @@ export default function EmployeeDashboard() {
                       
                       return todayTasks
                         .sort((a, b) => {
+                          if (a.isOverdue && !b.isOverdue) return -1;
+                          if (!a.isOverdue && b.isOverdue) return 1;
                           const p = { Urgent: 3, High: 2, Normal: 1 };
                           return (p[b.priority] || 1) - (p[a.priority] || 1);
                         })
-                        .slice(0, 3)
+                        .slice(0, 5)
                         .map(item => (
                           item.type === 'internal' ? (
-                            <div key={`int-${item.id}`} className="p-3 border border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/30">
+                            <div key={`int-${item.id}`} className={`p-3 border rounded-xl ${item.isOverdue ? 'border-amber-200 bg-amber-50/50 dark:border-amber-900/40 dark:bg-amber-950/20' : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30'}`}>
                               <div className="flex justify-between items-start gap-2">
-                                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{item.title}</p>
+                                <div className="space-y-0.5">
+                                  {item.isOverdue && (
+                                    <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-rose-500 text-white mb-1">
+                                      ⚠️ Yesterday / Overdue
+                                    </span>
+                                  )}
+                                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{item.title}</p>
+                                </div>
                                 <span className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase
                                   ${item.priority === 'Urgent' ? 'bg-red-500 text-white' 
                                     : item.priority === 'High' ? 'bg-orange-400 text-white' 
@@ -1110,9 +1119,16 @@ export default function EmployeeDashboard() {
                               <p className="text-[9px] text-slate-400 mt-1.5 font-bold">Due: {item.dueDate || 'No limit'}</p>
                             </div>
                           ) : (
-                            <div key={`cli-${item.id}`} className="p-3 border border-blue-100 dark:border-blue-900/30 rounded-xl bg-blue-50/50 dark:bg-blue-900/10">
+                            <div key={`cli-${item.id}`} className={`p-3 border rounded-xl ${item.isOverdue ? 'border-amber-200 bg-amber-50/60 dark:border-amber-900/40 dark:bg-amber-950/30' : 'border-blue-100 dark:border-blue-900/30 bg-blue-50/50 dark:bg-blue-900/10'}`}>
                               <div className="flex justify-between items-start gap-2">
-                                <p className="text-xs font-bold text-blue-900 dark:text-blue-100 truncate">{item.taskTitle}</p>
+                                <div className="space-y-0.5">
+                                  {item.isOverdue && (
+                                    <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-rose-500 text-white mb-1">
+                                      ⚠️ Yesterday / Overdue
+                                    </span>
+                                  )}
+                                  <p className="text-xs font-bold text-blue-900 dark:text-blue-100 truncate">{item.taskTitle}</p>
+                                </div>
                                 <span className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase
                                   ${item.priority === 'Urgent' ? 'bg-red-500 text-white' 
                                     : item.priority === 'High' ? 'bg-orange-400 text-white' 
@@ -1676,6 +1692,7 @@ export default function EmployeeDashboard() {
                                     </>
                                   )}
                                   <option value="Completion">Completion</option>
+                                  <option value="Posted">Posted</option>
                                   <option value="Pending">Pending</option>
                                   <option value="Overdue">Overdue</option>
                                 </select>
@@ -1842,8 +1859,8 @@ export default function EmployeeDashboard() {
                        </>
                     ) : (selectedTaskForStatus?.postType === 'Posting' || (selectedTaskForStatus?.taskTitle && selectedTaskForStatus.taskTitle.toLowerCase().startsWith('post '))) ? (
                        <>
-                         <option value="Not Started">Not Posted</option>
-                         <option value="Completion">Posted</option>
+                          <option value="Not Started">Not Posted</option>
+                          <option value="Posted">Posted</option>
                        </>
                     ) : (['preet', 'pujan', 'rama'].some(n => (currentUser?.name || '').toLowerCase().includes(n)) || ['preet', 'pujan', 'rama'].some(n => (selectedTaskForStatus?.workingOn || '').toLowerCase().includes(n))) ? (
                        <>

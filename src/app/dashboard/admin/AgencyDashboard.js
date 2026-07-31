@@ -75,46 +75,85 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
   const overallPending = allOverallItems.filter(t => t.status !== 'DONE' && t.status !== 'Completed' && t.status !== 'Complete Task').length;
   const overallTotal = allOverallItems.length;
 
-  // --- DATASET 2: TODAY'S ITEMS (for Card 2 and the bottom employee task list) ---
+  // --- DATASET 2: TODAY'S & CARRY-FORWARD OVERDUE ITEMS ---
   const todayStr = new Date().toISOString().slice(0, 10);
+  const [taskFilterTab, setTaskFilterTab] = useState('all'); // 'all', 'today', 'overdue'
 
-  const todayTasks = tasks.filter(t => parseToISO(t.date) === todayStr);
-  const todayDeliveries = deliveries.filter(d => parseToISO(d.postDate) === todayStr);
+  const isDoneStatus = (status) => {
+    const s = (status || '').toLowerCase();
+    return s === 'done' || s === 'completed' || s === 'complete task' || s === 'delivered' || s === 'posted';
+  };
 
-  const normalizedTodayTasks = todayTasks.map(t => ({
-    ...t,
-    _type: 'task',
-    assignTo: (t.workingOn || 'Unassigned').trim(),
-  }));
+  const todayTasks = tasks.filter(t => {
+    const iso = parseToISO(t.date);
+    if (!iso) return false;
+    if (iso === todayStr) return true;
+    if (iso < todayStr && !isDoneStatus(t.status)) return true;
+    return false;
+  });
 
-  const normalizedTodayDeliveries = todayDeliveries.map(d => ({
-    taskId: d.deliveryId,
-    taskTitle: d.postType ? `${d.postType} Post` : 'Deliverable',
-    businessName: d.clientName || d.clientId,
-    postType: d.postType,
-    status: d.status === 'Delivered' ? 'Completed' : (d.status || 'Pending'),
-    priority: 'Normal',
-    assignTo: (d.workingOn || 'Unassigned').trim(),
-    notes: d.notes,
-    _type: 'delivery',
-    _deliveryId: d.deliveryId,
-  }));
+  const todayDeliveries = deliveries.filter(d => {
+    const iso = parseToISO(d.postDate);
+    if (!iso) return false;
+    if (iso === todayStr) return true;
+    if (iso < todayStr && !isDoneStatus(d.status)) return true;
+    return false;
+  });
+
+  const normalizedTodayTasks = todayTasks.map(t => {
+    const iso = parseToISO(t.date);
+    return {
+      ...t,
+      _type: 'task',
+      assignTo: (t.workingOn || 'Unassigned').trim(),
+      _isOverdue: iso ? iso < todayStr : false,
+      _isoDate: iso
+    };
+  });
+
+  const normalizedTodayDeliveries = todayDeliveries.map(d => {
+    const iso = parseToISO(d.postDate);
+    return {
+      taskId: d.deliveryId,
+      taskTitle: d.postType ? `${d.postType} Post` : 'Deliverable',
+      businessName: d.clientName || d.clientId,
+      postType: d.postType,
+      status: d.status === 'Delivered' ? 'Completed' : (d.status || 'Pending'),
+      priority: 'Normal',
+      assignTo: (d.workingOn || 'Unassigned').trim(),
+      notes: d.notes,
+      _type: 'delivery',
+      _deliveryId: d.deliveryId,
+      _isOverdue: iso ? iso < todayStr : false,
+      _isoDate: iso
+    };
+  });
 
   const allTodayItems = [...normalizedTodayTasks, ...normalizedTodayDeliveries];
 
-  const todayCompleted = allTodayItems.filter(t => t.status === 'DONE' || t.status === 'Completed' || t.status === 'Complete Task').length;
-  const todayPending = allTodayItems.filter(t => t.status !== 'DONE' && t.status !== 'Completed' && t.status !== 'Complete Task').length;
+  const todayCompleted = allTodayItems.filter(t => isDoneStatus(t.status)).length;
+  const todayPending = allTodayItems.filter(t => !isDoneStatus(t.status)).length;
+  const todayOverdueCount = allTodayItems.filter(t => t._isOverdue).length;
+  const todayFreshCount = allTodayItems.filter(t => !t._isOverdue).length;
   const todayTotal = allTodayItems.length;
 
-  // Group today's items by employee
+  // Filter items based on user selection tab ('all', 'today', 'overdue')
+  const filteredTodayItems = allTodayItems.filter(item => {
+    if (taskFilterTab === 'today') return !item._isOverdue;
+    if (taskFilterTab === 'overdue') return item._isOverdue;
+    return true;
+  });
+
+  // Group items by employee
   const todayByEmployee = {};
-  allTodayItems.forEach(t => {
+  filteredTodayItems.forEach(t => {
     const emp = t.assignTo;
     if (!todayByEmployee[emp]) {
-      todayByEmployee[emp] = { name: emp, tasks: [], done: 0, pending: 0 };
+      todayByEmployee[emp] = { name: emp, tasks: [], done: 0, pending: 0, overdue: 0 };
     }
     todayByEmployee[emp].tasks.push(t);
-    if (t.status === 'DONE' || t.status === 'Completed' || t.status === 'Complete Task') {
+    if (t._isOverdue) todayByEmployee[emp].overdue += 1;
+    if (isDoneStatus(t.status)) {
       todayByEmployee[emp].done += 1;
     } else {
       todayByEmployee[emp].pending += 1;
@@ -559,24 +598,47 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
 
       </div>
 
-      {/* 4. Today's Tasks by Employee */}
+      {/* 4. Today's & Carry-Forward Overdue Tasks by Employee */}
       <div>
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <BarChart2 className="w-5 h-5 text-indigo-500" />
-            Today&apos;s Tasks by Employee
-            <span className="text-[11px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/30 ml-1">
-              {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
-            </span>
-          </h3>
-          <span className="text-xs font-bold text-slate-400">{todayTotal} total tasks</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 gap-3">
+          <div>
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <BarChart2 className="w-5 h-5 text-indigo-500" />
+              Employee Task Board (Today & Carry-Forward)
+              <span className="text-[11px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/30 ml-1">
+                {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+              </span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">Admin view for today&apos;s duties and compulsory carry-forward tasks from previous days / leaves.</p>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0">
+            <button
+              onClick={() => setTaskFilterTab('all')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${taskFilterTab === 'all' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              All ({todayTotal})
+            </button>
+            <button
+              onClick={() => setTaskFilterTab('today')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${taskFilterTab === 'today' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              Today ({todayFreshCount})
+            </button>
+            <button
+              onClick={() => setTaskFilterTab('overdue')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${taskFilterTab === 'overdue' ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              Overdue ({todayOverdueCount})
+            </button>
+          </div>
         </div>
 
-        {todayTotal === 0 ? (
+        {todayEmployeeList.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
             <AlertCircle className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
-            <p className="text-sm font-bold text-slate-400 dark:text-slate-500">No tasks scheduled for today</p>
-            <p className="text-xs text-slate-300 dark:text-slate-600 mt-1">Tasks with today&apos;s date will appear here</p>
+            <p className="text-sm font-bold text-slate-400 dark:text-slate-500">No tasks found for selected filter</p>
+            <p className="text-xs text-slate-300 dark:text-slate-600 mt-1">Tasks scheduled for today or carry-forward pending tasks will appear here</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -641,6 +703,12 @@ function EmployeeTaskCard({ emp }) {
             <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">{emp.done} done</span>
             <span className="text-slate-300 dark:text-slate-600">·</span>
             <span className="text-[11px] font-bold text-orange-500">{emp.pending} pending</span>
+            {emp.overdue > 0 && (
+              <>
+                <span className="text-slate-300 dark:text-slate-600">·</span>
+                <span className="text-[11px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.2 rounded">{emp.overdue} overdue</span>
+              </>
+            )}
             <span className="text-slate-300 dark:text-slate-600">·</span>
             <span className="text-[11px] font-bold text-purple-500">{emp.tasks.filter(t => t._type !== 'delivery').length}T</span>
             <span className="text-[11px] font-bold text-blue-500">{emp.tasks.filter(t => t._type === 'delivery').length}D</span>
@@ -677,10 +745,15 @@ function EmployeeTaskCard({ emp }) {
                 <div className="flex items-start gap-2">
                   <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${sCfg.dot}`} />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
+                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                       <span className={`text-[9px] font-black uppercase tracking-wider px-1 py-0.5 rounded ${isDelivery ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-300'}`}>
                         {isDelivery ? 'Delivery' : 'Task'}
                       </span>
+                      {task._isOverdue && (
+                        <span className="text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                          ⚠️ Overdue / Yesterday ({task.date || task.postDate})
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" title={task.taskTitle}>
                       {task.taskTitle || '—'}
