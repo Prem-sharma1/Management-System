@@ -8,7 +8,7 @@ DEL-AID-0004-SM-GRAPHIC-1	AID-0004	Shree Broadband	Graphic	04-Feb-2026	Pending	A
 DEL-AID-0004-SM-REELS-1	AID-0004	Shree Broadband	Reel	06-Feb-2026	Pending	AID-0004-SM-REELS-1	Sanmeet	
 DEL-AID-0004-SM-GRAPHIC-2	AID-0004	Shree Broadband	Graphic	08-Feb-2026	Pending	AID-0004-SM-GRAPHIC-2	Sanmeet	
 DEL-AID-0005-SM-GRAPHIC-1	AID-0005	A Siddhanatth Car's	Graphic	09-Feb-2026	Pending	AID-0005-SM-GRAPHIC-1		
-DEL-AID-0004-SM-AI-VIDEOS-1	AID-0004	Shree Broadband	AI Video	11-Feb-2026	Pending	AID-0004-SM-AI-VIDEOS-1	Sanmeet	
+DEL-AID-0004-SM-AI-VIDEOS-1	AID-0004	Shree Broadband	AI Video	11-Feb-2026	Pending	AID-0004-SM-AI-VIDEOS-1	Divyansh	
 DEL-AID-0005-SM-REELS-1	AID-0005	A Siddhanatth Car's	Reel	11-Feb-2026	Pending	AID-0005-SM-REELS-1		
 DEL-AID-0004-SM-GRAPHIC-3	AID-0004	Shree Broadband	Graphic	12-Feb-2026	Pending	AID-0004-SM-GRAPHIC-3	Sanmeet	
 DEL-AID-0005-SM-GRAPHIC-2	AID-0005	A Siddhanatth Car's	Graphic	13-Feb-2026	Pending	AID-0005-SM-GRAPHIC-2		
@@ -16,7 +16,7 @@ DEL-AID-0004-SM-REELS-2	AID-0004	Shree Broadband	Reel	14-Feb-2026	Pending	AID-00
 DEL-AID-0004-SM-GRAPHIC-4	AID-0004	Shree Broadband	Graphic	16-Feb-2026	Pending	AID-0004-SM-GRAPHIC-4	Sanmeet	
 DEL-AID-0005-SM-AI-VIDEOS-1	AID-0005	A Siddhanatth Car's	AI Video	16-Feb-2026	Pending	AID-0005-SM-AI-VIDEOS-1		
 DEL-AID-0005-SM-GRAPHIC-3	AID-0005	A Siddhanatth Car's	Graphic	17-Feb-2026	Pending	AID-0005-SM-GRAPHIC-3		
-DEL-AID-0004-SM-AI-VIDEOS-2	AID-0004	Shree Broadband	AI Video	19-Feb-2026	Pending	AID-0004-SM-AI-VIDEOS-2	Sanmeet	
+DEL-AID-0004-SM-AI-VIDEOS-2	AID-0004	Shree Broadband	AI Video	19-Feb-2026	Pending	AID-0004-SM-AI-VIDEOS-2	Nouman	
 DEL-AID-0005-SM-REELS-2	AID-0005	A Siddhanatth Car's	Reel	19-Feb-2026	Pending	AID-0005-SM-REELS-2		
 DEL-AID-0004-SM-GRAPHIC-5	AID-0004	Shree Broadband	Graphic	20-Feb-2026	Pending	AID-0004-SM-GRAPHIC-5	Sanmeet	
 DEL-AID-0005-SM-GRAPHIC-4	AID-0005	A Siddhanatth Car's	Graphic	21-Feb-2026	Pending	AID-0005-SM-GRAPHIC-4		
@@ -28,7 +28,7 @@ DEL-AID-0004-SM-REELS-4	AID-0004	Shree Broadband	Reel	26-Feb-2026	Pending	AID-00
 DEL-AID-0006-SM-REELS-1	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Reel	27-Feb-2026	Pending	AID-0006-SM-REELS-1	Sanmeet	
 DEL-AID-0004-SM-REELS-5	AID-0004	Shree Broadband	Reel	28-Feb-2026	Pending	AID-0004-SM-REELS-5	Sanmeet	
 DEL-AID-0006-SM-GRAPHIC-2	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Graphic	01-Mar-2026	Pending	AID-0006-SM-GRAPHIC-2	Sanmeet	
-DEL-AID-0006-SM-AI-VIDEOS-1	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	AI Video	04-Mar-2026	Pending	AID-0006-SM-AI-VIDEOS-1	Sanmeet	
+DEL-AID-0006-SM-AI-VIDEOS-1	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	AI Video	04-Mar-2026	Pending	AID-0006-SM-AI-VIDEOS-1	Masoom	
 DEL-AID-0006-SM-GRAPHIC-3	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Graphic	05-Mar-2026	Pending	AID-0006-SM-GRAPHIC-3	Pujan	
 DEL-AID-0007-SM-GRAPHIC-1	AID-0007	Shree Renuka Opticals	Graphic	05-Mar-2026	Pending	AID-0007-SM-GRAPHIC-1	Harshit	
 DEL-AID-0006-SM-REELS-2	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Reel	07-Mar-2026	Pending	AID-0006-SM-REELS-2	Harshit	

@@ -242,7 +242,7 @@ export async function rebalanceAiVideoTasks() {
       }
     });
 
-    const teamList = activeEditors.length > 0 ? activeEditors.map(e => e.name) : ['Divyansh', 'Nouman', 'Masoom', 'Sanmeet'];
+    const teamList = activeEditors.length > 0 ? activeEditors.map(e => e.name) : ['Divyansh', 'Nouman', 'Masoom'];
 
     // 1. Fetch ONLY actual AI Video Creation/Editing tasks.
     // EXCLUDE Script tasks (assigned to AI Video Lead) and Posting tasks (assigned to designated poster)

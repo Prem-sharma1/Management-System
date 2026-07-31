@@ -10,7 +10,7 @@ const plans = [
   { category: 'Meta Ads Plans', name: 'Platinum', price: 12599, billingCycle: '/6 months', features: ['Meta Ads', 'Creative - 18', 'AI Video - 6', 'Reels/Shorts - 6', 'Weekly Report'] },
 
   // Google Ads Plans
-  { category: 'Google Ads Plans', name: 'Basic Plan', price: 4995, billingCycle: '/month', features: ['Google Ads', 'Creative - 3', 'AI Video - 1', 'Reels/Shorts - 1', 'Weekly Report'] },
+  { category: 'Google Ads Plans', name: 'Basic Plan', price: 4999, billingCycle: '/month', features: ['Google Ads', 'Creative - 3', 'AI Video - 1', 'Reels/Shorts - 1', 'Weekly Report'] },
   { category: 'Google Ads Plans', name: 'Standard Plan', price: 13499, billingCycle: '/3 months', features: ['Google Ads', 'Creative - 9', 'AI Video - 3', 'Reels/Shorts - 3', 'Weekly Report'] },
   { category: 'Google Ads Plans', name: 'Premium Plan', price: 23999, billingCycle: '/6 months', features: ['Google Ads', 'Creative - 18', 'AI Video - 6', 'Reels/Shorts - 6', 'Weekly Report'] },
 

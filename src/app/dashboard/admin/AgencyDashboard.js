@@ -46,14 +46,14 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
   const taskCompleted = tasks.filter(t => t.status === 'DONE' || t.status === 'Completed' || t.status === 'Complete Task').length;
   const taskPending = tasks.filter(t => t.status !== 'DONE' && t.status !== 'Completed' && t.status !== 'Complete Task').length;
 
-  // --- DATASET 1: OVERALL/ALL-TIME ITEMS (for Card 1 and Employee Task Tracker) ---
-  const overallTasks = tasks.filter(t => t.workingOn && t.workingOn.toLowerCase() !== 'unassigned');
-  const overallDeliveries = deliveries.filter(d => d.workingOn && d.workingOn.toLowerCase() !== 'unassigned');
+  // --- DATASET 1: OVERALL/ALL-TIME ITEMS (Includes ALL employee tasks & deliverables) ---
+  const overallTasks = tasks;
+  const overallDeliveries = deliveries;
 
   const normalizedOverallTasks = overallTasks.map(t => ({
     ...t,
     _type: 'task',
-    assignTo: (t.workingOn || 'Unassigned').trim(),
+    assignTo: (t.workingOn && t.workingOn.toLowerCase() !== 'auto' ? t.workingOn : (t.assignedTo?.name || t.assignTo || 'Unassigned Staff')).trim(),
   }));
 
   const normalizedOverallDeliveries = overallDeliveries.map(d => ({
@@ -63,7 +63,7 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
     postType: d.postType,
     status: d.status === 'Delivered' ? 'Completed' : (d.status || 'Pending'),
     priority: 'Normal',
-    assignTo: (d.workingOn || 'Unassigned').trim(),
+    assignTo: (d.workingOn || 'Unassigned Staff').trim(),
     notes: d.notes,
     _type: 'delivery',
     _deliveryId: d.deliveryId,
@@ -202,8 +202,9 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
 
   // Process tasks
   tasks.forEach(t => {
-    if (!t.workingOn) return;
-    const name = t.workingOn.trim();
+    const rawName = t.workingOn && t.workingOn.toLowerCase() !== 'auto' ? t.workingOn : (t.assignedTo?.name || t.assignTo || '');
+    if (!rawName) return;
+    const name = rawName.trim();
     if (!name || name.toLowerCase() === 'unassigned') return;
     
     if (!empMap[name]) {
