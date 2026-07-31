@@ -1383,12 +1383,11 @@ export default function CeoDashboard() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 dark:bg-slate-800/40 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase tracking-wider">
-                        <th className="p-4">Date & ID</th>
+                        <th className="p-4">Date & Task ID</th>
                         <th className="p-4">Client Name</th>
                         <th className="p-4">Post Type</th>
                         <th className="p-4">Staff Member</th>
                         <th className="p-4">Status</th>
-                        <th className="p-4">Linked Task</th>
                         <th className="p-4">Notes</th>
                       </tr>
                     </thead>
@@ -1406,27 +1405,46 @@ export default function CeoDashboard() {
                         })
                         .map((delivery) => (
                           <tr key={delivery.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition">
-                            <td className="p-4 font-bold text-slate-455">
-                              <div>{delivery.postDate}</div>
-                              <div className="text-[8px] text-slate-400 mt-0.5 font-bold uppercase">{delivery.deliveryId}</div>
+                            <td className="p-4 font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5 text-xs">
+                                <span>{delivery.postDate}</span>
+                                {delivery.linkedTaskId || delivery.deliveryId ? (
+                                  <button
+                                    onClick={() => {
+                                      const client = clientsList.find(c => c.clientId === delivery.clientId);
+                                      if (client) {
+                                        setSelectedClient(client);
+                                        setShowClientDetailModal(true);
+                                        refreshClientTasks(client.id);
+                                      }
+                                    }}
+                                    className="text-[10px] text-blue-600 dark:text-blue-400 font-bold hover:underline"
+                                    title={delivery.linkedTaskId || delivery.deliveryId}
+                                  >
+                                    ({delivery.linkedTaskId || delivery.deliveryId})
+                                  </button>
+                                ) : null}
+                              </div>
                             </td>
-                            <td className="p-4">
-                              <button
-                                onClick={() => {
-                                  const client = clientsList.find(c => c.clientId === delivery.clientId);
-                                  if (client) {
-                                    setSelectedClient(client);
-                                    setShowClientDetailModal(true);
-                                    refreshClientTasks(client.id);
-                                  } else {
-                                    alert('Client CRM details not found.');
-                                  }
-                                }}
-                                className="font-bold text-slate-900 dark:text-white hover:underline text-left"
-                              >
-                                {delivery.clientName}
-                              </button>
-                              <div className="text-[9px] text-slate-400 mt-0.5 font-semibold">ID: {delivery.clientId}</div>
+                            <td className="p-4 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => {
+                                    const client = clientsList.find(c => c.clientId === delivery.clientId);
+                                    if (client) {
+                                      setSelectedClient(client);
+                                      setShowClientDetailModal(true);
+                                      refreshClientTasks(client.id);
+                                    } else {
+                                      alert('Client CRM details not found.');
+                                    }
+                                  }}
+                                  className="font-bold text-slate-900 dark:text-white hover:underline text-left"
+                                >
+                                  {delivery.clientName}
+                                </button>
+                                <span className="text-[9px] text-slate-400 font-semibold">({delivery.clientId})</span>
+                              </div>
                             </td>
                             <td className="p-4">
                               <span className="font-semibold text-slate-800 dark:text-slate-200">{delivery.postType}</span>
@@ -1443,27 +1461,8 @@ export default function CeoDashboard() {
                                 {delivery.status}
                               </span>
                             </td>
-                            <td className="p-4">
-                              {delivery.linkedTaskId ? (
-                                <button
-                                  onClick={() => {
-                                    const client = clientsList.find(c => c.clientId === delivery.clientId);
-                                    if (client) {
-                                      setSelectedClient(client);
-                                      setShowClientDetailModal(true);
-                                      refreshClientTasks(client.id);
-                                    }
-                                  }}
-                                  className="text-[9px] text-blue-600 dark:text-blue-400 font-bold hover:underline"
-                                >
-                                  {delivery.linkedTaskId}
-                                </button>
-                              ) : (
-                                <span className="text-slate-400 italic">None</span>
-                              )}
-                            </td>
                             <td className="p-4 text-slate-500 font-medium max-w-xs truncate" title={delivery.notes}>
-                              {delivery.notes || '-'}
+                              {(delivery.notes && delivery.notes !== delivery.deliveryId && delivery.notes !== delivery.linkedTaskId && !delivery.notes.startsWith('AID-T-')) ? delivery.notes : '-'}
                             </td>
                           </tr>
                         ))}

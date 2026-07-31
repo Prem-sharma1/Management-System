@@ -4,15 +4,24 @@ import pg from 'pg';
 
 let prisma;
 
-if (process.env.NODE_ENV === 'production') {
-  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+function initPrisma() {
+  const dbUrl = process.env.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder';
+
+  const pool = new pg.Pool({
+    connectionString: dbUrl,
+    connectionTimeoutMillis: 5000,
+    ssl: dbUrl.includes('sslmode=') || dbUrl.includes('prisma.io') ? { rejectUnauthorized: false } : false
+  });
+
   const adapter = new PrismaPg(pool);
-  prisma = new PrismaClient({ adapter });
+  return new PrismaClient({ adapter });
+}
+
+if (process.env.NODE_ENV === 'production') {
+  prisma = initPrisma();
 } else {
   if (!global.globalPrisma) {
-    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-    const adapter = new PrismaPg(pool);
-    global.globalPrisma = new PrismaClient({ adapter });
+    global.globalPrisma = initPrisma();
   }
   prisma = global.globalPrisma;
 }

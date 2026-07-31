@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { cookies } from 'next/headers';
+import { removeWorkSampleFile, isPostedStatus } from '@/lib/fileCleanup';
 
 async function getRequester(cookieStore) {
   const userIdStr = cookieStore.get('userId')?.value;
@@ -31,6 +32,9 @@ export async function PUT(request, { params }) {
     }
 
     const isPowerUser = requester.role === 'CEO' || requester.role === 'ADMIN' || requester.role === 'TL' || task.createdById === requester.id;
+    const checkStatus = status || task.status;
+    const checkTitle = title || task.title;
+    const checkPosted = isPostedStatus(checkStatus, '', checkTitle);
 
     if (!isPowerUser) {
       if (task.assignedToId !== requester.id) {
@@ -46,6 +50,12 @@ export async function PUT(request, { params }) {
       if (reason !== undefined) updateData.reason = reason;
       if (workSampleUrl !== undefined) updateData.workSampleUrl = workSampleUrl;
       if (description !== undefined) updateData.description = description;
+
+      if (checkPosted) {
+        updateData.workSampleUrl = null;
+        if (task.workSampleUrl) await removeWorkSampleFile(task.workSampleUrl);
+        if (workSampleUrl) await removeWorkSampleFile(workSampleUrl);
+      }
 
       const updatedTask = await prisma.task.update({
         where: { id },
@@ -64,6 +74,32 @@ export async function PUT(request, { params }) {
     if (reason !== undefined) data.reason = reason;
     if (workSampleUrl !== undefined) data.workSampleUrl = workSampleUrl;
     if (priority !== undefined) data.priority = priority;
+
+    if (checkPosted) {
+      data.workSampleUrl = null;
+      if (task.workSampleUrl) await removeWorkSampleFile(task.workSampleUrl);
+      if (workSampleUrl) await removeWorkSampleFile(workSampleUrl);
+
+      // Also clean up linked ClientTask if referenced
+      if (task.description) {
+        const match = task.description.match(/Task ID:\s*([^\s|]+)/i);
+        if (match && match[1]) {
+          const taskIdRef = match[1].trim();
+          try {
+            const ctList = await prisma.clientTask.findMany({ where: { taskId: taskIdRef } });
+            for (const ct of ctList) {
+              if (ct.workSampleUrl) await removeWorkSampleFile(ct.workSampleUrl);
+            }
+            await prisma.clientTask.updateMany({
+              where: { taskId: taskIdRef },
+              data: { workSampleUrl: null }
+            });
+          } catch (ctErr) {
+            console.warn('Could not clear linked clientTask workSampleUrl:', ctErr);
+          }
+        }
+      }
+    }
 
     const updatedTask = await prisma.task.update({
       where: { id },

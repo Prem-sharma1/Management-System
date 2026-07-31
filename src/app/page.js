@@ -34,7 +34,7 @@ export default function LoginPage() {
   const [isClient, setIsClient] = useState(false);
   const [clientId, setClientId] = useState('');
 
-  const isSpecialRole = email === 'nikhil@aidigital.com' || email === 'admin@workforce.com';
+  const isSpecialRole = email === 'nikhil@aidigital.com' || email === 'praveen@aidigital.com' || email === 'admin@workforce.com';
 
   const [hasWelcomedNikhil, setHasWelcomedNikhil] = useState(false);
 

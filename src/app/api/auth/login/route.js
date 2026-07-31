@@ -32,19 +32,19 @@ export async function POST(request) {
             avatar: '👨‍💼'
           }
         });
-      } else if (email === 'admin@workforce.com') {
+      } else if (email === 'praveen@aidigital.com' || email === 'admin@workforce.com') {
         const salt = await bcrypt.genSalt(10);
-        const adminHash = await bcrypt.hash("admin123", salt);
+        const adminHash = await bcrypt.hash("Admin@#123", salt);
         user = await prisma.user.create({
           data: {
-            email: 'admin@workforce.com',
+            email: 'praveen@aidigital.com',
             password: adminHash,
-            name: 'Jane Smith',
+            name: 'Business Head',
             role: 'ADMIN',
             department: 'HR',
             salary: 95000,
             status: 'ACTIVE',
-            avatar: '👩‍💼'
+            avatar: '👨‍💼'
           }
         });
       } else if (email === 'tl@workforce.com') {

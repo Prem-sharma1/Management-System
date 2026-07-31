@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { cookies } from 'next/headers';
+import { removeWorkSampleFile, isPostedStatus } from '@/lib/fileCleanup';
 
 export async function PUT(request, { params }) {
   try {
@@ -92,6 +93,50 @@ export async function PUT(request, { params }) {
     if (reason !== undefined) data.reason = reason;
     if (workSampleUrl !== undefined) data.workSampleUrl = workSampleUrl;
     if (body.priority !== undefined) data.priority = body.priority;
+
+    const checkStatus = status || targetTask.status;
+    const checkPostType = postType !== undefined ? postType : targetTask.postType;
+    const checkTitle = taskTitle !== undefined ? taskTitle : targetTask.taskTitle;
+
+    if (isPostedStatus(checkStatus, checkPostType, checkTitle)) {
+      data.workSampleUrl = null;
+
+      if (targetTask.workSampleUrl) {
+        await removeWorkSampleFile(targetTask.workSampleUrl);
+      }
+      if (workSampleUrl) {
+        await removeWorkSampleFile(workSampleUrl);
+      }
+
+      if (targetTask.taskId) {
+        try {
+          const linkedTasks = await prisma.task.findMany({
+            where: {
+              OR: [
+                { description: { contains: targetTask.taskId } },
+                { title: targetTask.taskTitle }
+              ]
+            }
+          });
+          for (const t of linkedTasks) {
+            if (t.workSampleUrl) {
+              await removeWorkSampleFile(t.workSampleUrl);
+            }
+          }
+          await prisma.task.updateMany({
+            where: {
+              OR: [
+                { description: { contains: targetTask.taskId } },
+                { title: targetTask.taskTitle }
+              ]
+            },
+            data: { workSampleUrl: null }
+          });
+        } catch (tErr) {
+          console.warn('Could not clear linked task workSampleUrl:', tErr);
+        }
+      }
+    }
 
     const updatedTask = await prisma.clientTask.update({
       where: { id },

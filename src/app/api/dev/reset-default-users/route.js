@@ -8,7 +8,7 @@ export async function GET() {
   try {
     const salt = await bcrypt.genSalt(10);
     const ceoHash = await bcrypt.hash("AiDigitals@246", salt);
-    const adminHash = await bcrypt.hash("admin123", salt);
+    const adminHash = await bcrypt.hash("Admin@#123", salt);
     const tlHash = await bcrypt.hash("tl123", salt);
     const empHash = await bcrypt.hash("emp123", salt);
 
@@ -38,25 +38,25 @@ export async function GET() {
 
     // 2. Admin
     const admin = await prisma.user.upsert({
-      where: { email: 'admin@workforce.com' },
+      where: { email: 'praveen@aidigital.com' },
       update: {
         password: adminHash,
-        name: 'Jane Smith',
+        name: 'Business Head',
         role: 'ADMIN',
         department: 'HR',
         salary: 95000,
         status: 'ACTIVE',
-        avatar: '👩‍💼'
+        avatar: '👨‍💼'
       },
       create: {
-        email: 'admin@workforce.com',
+        email: 'praveen@aidigital.com',
         password: adminHash,
-        name: 'Jane Smith',
+        name: 'Business Head',
         role: 'ADMIN',
         department: 'HR',
         salary: 95000,
         status: 'ACTIVE',
-        avatar: '👩‍💼'
+        avatar: '👨‍💼'
       }
     });
 

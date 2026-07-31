@@ -31,7 +31,7 @@ export async function GET(request) {
         status: ['DONE', 'Completion', 'Completed', 'Posted'].includes(t.status) ? 'Posted' : t.status === 'Not Started' ? 'Pending' : t.status,
         linkedTaskId: t.taskId,
         workingOn: t.workingOn || '',
-        notes: t.notes || t.taskTitle,
+        notes: (t.notes && t.notes !== t.taskId && !t.notes.startsWith('AID-T-')) ? t.notes : (t.taskTitle && !t.taskTitle.startsWith('AID-T-') ? t.taskTitle : ''),
         createdAt: t.createdAt
       }));
     }

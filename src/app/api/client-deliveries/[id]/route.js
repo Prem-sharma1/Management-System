@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { cookies } from 'next/headers';
+import { removeWorkSampleFile, isPostedStatus } from '@/lib/fileCleanup';
 
 export async function PUT(request, { params }) {
   try {
@@ -22,6 +23,38 @@ export async function PUT(request, { params }) {
       where: { id: deliveryDbId },
       data: { status, workingOn, notes, postDate }
     });
+
+    if (isPostedStatus(status) && updatedDelivery.linkedTaskId) {
+      try {
+        const ctList = await prisma.clientTask.findMany({
+          where: { taskId: updatedDelivery.linkedTaskId }
+        });
+        for (const ct of ctList) {
+          if (ct.workSampleUrl) {
+            await removeWorkSampleFile(ct.workSampleUrl);
+          }
+        }
+        await prisma.clientTask.updateMany({
+          where: { taskId: updatedDelivery.linkedTaskId },
+          data: { workSampleUrl: null }
+        });
+
+        const tList = await prisma.task.findMany({
+          where: { description: { contains: updatedDelivery.linkedTaskId } }
+        });
+        for (const t of tList) {
+          if (t.workSampleUrl) {
+            await removeWorkSampleFile(t.workSampleUrl);
+          }
+        }
+        await prisma.task.updateMany({
+          where: { description: { contains: updatedDelivery.linkedTaskId } },
+          data: { workSampleUrl: null }
+        });
+      } catch (cErr) {
+        console.warn('Could not clear workSampleUrl for linked delivery task:', cErr);
+      }
+    }
 
     return NextResponse.json({ success: true, delivery: updatedDelivery });
   } catch (error) {
