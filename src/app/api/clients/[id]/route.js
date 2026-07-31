@@ -103,6 +103,58 @@ export async function PUT(request, { params }) {
       }
     });
 
+    if (body.reassignStaff) {
+      const { fromUser, toUser, postType } = body.reassignStaff;
+      if (toUser) {
+        const targetUser = await prisma.user.findFirst({
+          where: { name: { equals: toUser, mode: 'insensitive' } }
+        });
+        const sourceUser = fromUser ? await prisma.user.findFirst({
+          where: { name: { equals: fromUser, mode: 'insensitive' } }
+        }) : null;
+
+        const targetName = targetUser ? targetUser.name : toUser;
+
+        const taskWhere = { clientId: updatedClient.clientId };
+        if (fromUser) taskWhere.workingOn = { equals: fromUser, mode: 'insensitive' };
+        if (postType) taskWhere.postType = { equals: postType, mode: 'insensitive' };
+
+        await prisma.clientTask.updateMany({
+          where: taskWhere,
+          data: { workingOn: targetName }
+        });
+
+        const deliveryWhere = { clientId: updatedClient.clientId };
+        if (fromUser) deliveryWhere.workingOn = { equals: fromUser, mode: 'insensitive' };
+
+        await prisma.clientDelivery.updateMany({
+          where: deliveryWhere,
+          data: { workingOn: targetName }
+        });
+
+        if (targetUser) {
+          if (sourceUser) {
+            await prisma.task.updateMany({
+              where: { assignedToId: sourceUser.id },
+              data: { assignedToId: targetUser.id }
+            });
+          } else {
+            const clientTasks = await prisma.clientTask.findMany({
+              where: taskWhere,
+              select: { taskId: true }
+            });
+            const tIds = clientTasks.map(t => t.taskId);
+            if (tIds.length > 0) {
+              await prisma.task.updateMany({
+                where: { OR: tIds.map(tId => ({ description: { contains: tId } })) },
+                data: { assignedToId: targetUser.id }
+              });
+            }
+          }
+        }
+      }
+    }
+
     await prisma.auditLog.create({
       data: {
         action: `Updated client profile: ${updatedClient.businessName} (${updatedClient.clientId})`,
