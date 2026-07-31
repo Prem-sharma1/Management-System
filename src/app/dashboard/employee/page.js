@@ -575,14 +575,19 @@ export default function EmployeeDashboard() {
   const formats = getFilterFormats(filterDate);
 
   const filteredTasksList = employeeTasksList.filter(task => {
+    const isPastOverdue = ['OVERDUE', 'Overdue', 'PENDING', 'Pending'].includes(task.status) || (task.dueDate && task.dueDate < todayIso && !['DONE', 'Completed', 'Completion'].includes(task.status));
+    if (isPastOverdue) return true;
     if (!filterDate) return true;
     return task.dueDate === formats.isoFormat;
   });
 
   const filteredClientTasks = employeeMyClientTasks.filter(ct => {
+    const ctIso = convertDbDateToIso(ct.date);
+    const isPastOverdue = ['Overdue', 'OVERDUE', 'Pending', 'PENDING'].includes(ct.status) || (ctIso && ctIso < todayIso && !['Completion', 'Completed', 'DONE', 'Done', 'Posted', 'Client Review'].includes(ct.status));
+    if (isPastOverdue) return true;
     if (!filterDate) return true;
     if (isTaskReadyToPostToday(ct) && filterDate === todayIso) return true;
-    return convertDbDateToIso(ct.date) === formats.isoFormat;
+    return ctIso === formats.isoFormat;
   });
 
   const myDepartmentClientTasks = allClientTasks.filter(t => {
@@ -1167,6 +1172,30 @@ export default function EmployeeDashboard() {
               </div>
 
               <div className="p-6 space-y-4">
+                {(() => {
+                  const overdueCount = [
+                    ...filteredTasksList.filter(t => ['OVERDUE', 'Overdue'].includes(t.status) || (t.dueDate && t.dueDate < todayIso && t.status !== 'DONE')),
+                    ...filteredClientTasks.filter(ct => ['Overdue', 'OVERDUE'].includes(ct.status) || (convertDbDateToIso(ct.date) && convertDbDateToIso(ct.date) < todayIso && !['Completion', 'Completed', 'DONE', 'Done', 'Posted', 'Client Review'].includes(ct.status)))
+                  ].length;
+
+                  if (overdueCount > 0) {
+                    return (
+                      <div className="p-3.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-xl flex items-center justify-between gap-3 text-red-700 dark:text-red-300 mb-2">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                          <span className="text-xs font-bold">
+                            ⚠️ You have {overdueCount} Overdue / Pending Task{overdueCount > 1 ? 's' : ''} from past days requiring immediate action!
+                          </span>
+                        </div>
+                        <span className="text-[10px] bg-red-600 text-white font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          Action Needed
+                        </span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
                 {filteredTasksList.length === 0 ? (
                   <p className="text-xs text-slate-400 text-center py-6">No tasks assigned yet for this date.</p>
                 ) : (
