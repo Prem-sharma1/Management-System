@@ -26,19 +26,30 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
    */
   const parseToISO = (dateStr) => {
     if (!dateStr || typeof dateStr !== 'string') return null;
-    // Already ISO YYYY-MM-DD
-    if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return dateStr.slice(0, 10);
-    // DD-Mon-YYYY  e.g. "15-Jul-2026"
-    const monthMap = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',
-                       jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12' };
-    const parts = dateStr.split('-');
+    const clean = dateStr.trim();
+    if (clean.toLowerCase().includes('trigger') || clean.toLowerCase().includes('approval')) return null;
+
+    // ISO: YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}/.test(clean)) return clean.slice(0, 10);
+
+    // DD/MM/YYYY or DD-MM-YYYY or DD-Mon-YYYY
+    const parts = clean.split(/[\/\-]/);
     if (parts.length === 3) {
-      const [dd, mon, yyyy] = parts;
-      const mm = monthMap[mon.toLowerCase()];
-      if (mm && dd && yyyy) return `${yyyy}-${mm}-${dd.padStart(2, '0')}`;
+      const monthMap = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',
+                         jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12' };
+      const [p1, p2, p3] = parts;
+      let yyyy = p3.length === 4 ? p3 : p1.length === 4 ? p1 : '2026';
+      let mm = monthMap[p2.toLowerCase()] || p2.padStart(2, '0');
+      let dd = p1.length === 4 ? p3.padStart(2, '0') : p1.padStart(2, '0');
+      if (parseInt(mm, 10) > 12) {
+        const tmp = mm;
+        mm = dd;
+        dd = tmp;
+      }
+      return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
     }
-    // Fallback: try native parse
-    const d = new Date(dateStr);
+
+    const d = new Date(clean);
     return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
   };
 
@@ -106,10 +117,36 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
   const todayPending = allTodayItems.filter(t => t.status !== 'DONE' && t.status !== 'Completed' && t.status !== 'Complete Task').length;
   const todayTotal = allTodayItems.length;
 
-  // Group ALL items by employee for the employee task cards (Sanmeet, Harshit, AI Video Editors, Swapnil, Pujan, etc.)
+  const NON_EMPLOYEE_NAMES = [
+    'auto',
+    'unassigned',
+    'unassigned staff',
+    'video editor',
+    'ai video editor',
+    'reel editor',
+    'graphic designer',
+    'ads campaign manager',
+    'script writer',
+    'social media executive',
+    'social media exec',
+    'content poster'
+  ];
+
+  // Group TODAY'S items (plus past pending/overdue tasks requiring action) by employee for daily client task tracking
   const allByEmployee = {};
-  allOverallItems.forEach(t => {
-    const emp = t.assignTo;
+  
+  // Filter for Daily Work: Tasks scheduled for Today or past incomplete/overdue tasks (Strictly Exclude Future Dates)
+  const dailyActiveItems = allOverallItems.filter(t => {
+    const rawDate = t.date || t.postDate || t.joiningDate;
+    const itemDate = parseToISO(rawDate);
+    if (!itemDate) return false;
+    return itemDate <= todayStr || t.status === 'Overdue';
+  });
+
+  dailyActiveItems.forEach(t => {
+    const emp = t.assignTo ? t.assignTo.trim() : '';
+    if (!emp || NON_EMPLOYEE_NAMES.includes(emp.toLowerCase())) return;
+
     if (!allByEmployee[emp]) {
       allByEmployee[emp] = { name: emp, tasks: [], done: 0, pending: 0 };
     }
@@ -120,7 +157,10 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
       allByEmployee[emp].pending += 1;
     }
   });
-  const employeeCardList = Object.values(allByEmployee).sort((a, b) => b.tasks.length - a.tasks.length);
+
+  const employeeCardList = Object.values(allByEmployee)
+    .filter(emp => !NON_EMPLOYEE_NAMES.includes(emp.name.trim().toLowerCase()))
+    .sort((a, b) => b.tasks.length - a.tasks.length);
 
   // Compute revenue/billing details dynamically from active clients
   let dynamicTotalRevenue = 0;       // Received revenue
@@ -166,7 +206,7 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
     const rawName = t.workingOn && t.workingOn.toLowerCase() !== 'auto' ? t.workingOn : (t.assignedTo?.name || t.assignTo || '');
     if (!rawName) return;
     const name = rawName.trim();
-    if (!name || name.toLowerCase() === 'unassigned') return;
+    if (!name || NON_EMPLOYEE_NAMES.includes(name.toLowerCase())) return;
     
     if (!empMap[name]) {
       empMap[name] = { name, pending: 0, done: 0, total: 0 };
@@ -184,7 +224,7 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
   deliveries.forEach(d => {
     if (!d.workingOn) return;
     const name = d.workingOn.trim();
-    if (!name || name.toLowerCase() === 'unassigned') return;
+    if (!name || NON_EMPLOYEE_NAMES.includes(name.toLowerCase())) return;
     
     if (!empMap[name]) {
       empMap[name] = { name, pending: 0, done: 0, total: 0 };
@@ -198,7 +238,9 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
     }
   });
 
-  const employeeData = Object.values(empMap).sort((a, b) => b.total - a.total);
+  const employeeData = Object.values(empMap)
+    .filter(emp => !NON_EMPLOYEE_NAMES.includes(emp.name.trim().toLowerCase()))
+    .sort((a, b) => b.total - a.total);
 
   // Sum up actual employee stats from rows
   const employeeTaskDone = employeeData.reduce((sum, emp) => sum + emp.done, 0);
@@ -566,14 +608,14 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
           <div>
             <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
               <BarChart2 className="w-5 h-5 text-indigo-500" />
-              Employee Tasks & Deliverables Overview
+              Daily Employee Tasks & Deliverables Overview
               <span className="text-[11px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/30 ml-1">
                 {employeeCardList.length} Active Employees
               </span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">Tracking tasks & deliverables assigned to Sanmeet, Harshit, AI Video team, and all executives.</p>
+            <p className="text-xs text-slate-400 mt-0.5">Tracking daily tasks & deliverables assigned to employees for today & active items needing attention.</p>
           </div>
-          <span className="text-xs font-bold text-slate-400">{overallTotal} total items</span>
+          <span className="text-xs font-bold text-slate-400">{employeeCardList.reduce((acc, curr) => acc + curr.tasks.length, 0)} daily items</span>
         </div>
 
         {employeeCardList.length === 0 ? (

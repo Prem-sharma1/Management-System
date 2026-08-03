@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { cookies } from 'next/headers';
-import { pruneBeforeJulyData, rebalanceAiVideoTasks } from '@/lib/prune';
+import { pruneBeforeJulyData, rebalanceAiVideoTasks, reassignMasoomAccessTasks } from '@/lib/prune';
 // Trigger HMR cache refresh
 
 export const dynamic = 'force-dynamic';
@@ -16,9 +16,6 @@ export async function GET(request) {
 
     // Auto-prune all pre-July data across the database
     await pruneBeforeJulyData();
-
-    // Auto-rebalance existing AI video tasks company-by-company across Masoom, Nouman, Divyansh
-    await rebalanceAiVideoTasks();
 
     try {
       const fs = require('fs');
@@ -192,7 +189,7 @@ export async function GET(request) {
           (t.postType === 'Posting' || (t.taskTitle && t.taskTitle.toLowerCase().startsWith('post '))) &&
           t.workingOn && t.workingOn !== 'AUTO'
         );
-        const assignedPosterName = existingPostingWithStaff ? existingPostingWithStaff.workingOn : '';
+        const assignedPosterName = existingPostingWithStaff ? existingPostingWithStaff.workingOn : 'Masoom';
 
         const uniqueSuffix = `${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
         const newTaskId = `${cTask.taskId}-POST-${uniqueSuffix}`;

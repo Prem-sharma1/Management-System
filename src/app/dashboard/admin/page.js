@@ -580,6 +580,29 @@ export default function AdminDashboard() {
       setPaymentStatus(pStatus);
       setPaidAmount(pAmt);
       setActualNotes(aNotes);
+
+      const clientTasksForThisClient = allClientTasks.filter(t => t.clientId === client.clientId);
+      const clientDeliveriesForThisClient = allClientDeliveries.filter(d => d.clientId === client.clientId);
+
+      const findStaffName = (type) => {
+        const foundTask = clientTasksForThisClient.find(t => t.postType && t.postType.toLowerCase().includes(type.toLowerCase()) && t.workingOn && t.workingOn !== 'AUTO');
+        if (foundTask) return foundTask.workingOn;
+        const foundDel = clientDeliveriesForThisClient.find(d => d.postType && d.postType.toLowerCase().includes(type.toLowerCase()) && d.workingOn && d.workingOn !== 'AUTO');
+        if (foundDel) return foundDel.workingOn;
+        return '';
+      };
+
+      const smStaffName = findStaffName('report') || findStaffName('onboarding');
+      const posterStaffName = findStaffName('posting');
+
+      setAssignedStaff({
+        c: findStaffName('graphic'),
+        r: findStaffName('reel'),
+        a: findStaffName('ai video'),
+        script: findStaffName('script'),
+        poster: posterStaffName,
+        sm: smStaffName
+      });
     } else {
       setSelectedClient(null);
       let nextId = 'AID-0001';
@@ -611,8 +634,8 @@ export default function AdminDashboard() {
       setPaymentStatus('Full');
       setPaidAmount('19499');
       setActualNotes('');
+      setAssignedStaff({ c: 'AUTO', r: 'AUTO', a: 'AUTO', script: '', poster: '', sm: 'AUTO' });
     }
-    setAssignedStaff({ c: 'AUTO', r: 'AUTO', a: 'AUTO', sm: 'AUTO', poster: '' });
   };
 
   const handleAddClient = async (e) => {
@@ -627,10 +650,12 @@ export default function AdminDashboard() {
 
   const handleEditClient = async (e) => {
     e.preventDefault();
-    await executeSaveClient('EDIT');
+    setPendingClientSave('EDIT');
+    setShowEditClientModal(false);
+    setShowDeliverableAssignmentModal(true);
   };
 
-  const executeSaveClient = async (mode) => {
+  const executeSaveClient = async (mode, customAssignments = null) => {
     setFormLoading(true);
     setFormError('');
     try {
@@ -655,7 +680,8 @@ export default function AdminDashboard() {
           paymentStatus,
           paidAmount: parseFloat(paidAmount) || 0,
           actualNotes
-        })
+        }),
+        ...(mode === 'EDIT' ? { staffAssignments: customAssignments || assignedStaff } : {})
       };
 
       const res = await fetch(url, {
@@ -685,29 +711,16 @@ export default function AdminDashboard() {
     try {
       setFormLoading(true);
 
-      // First, save the client so the clientId exists in the database
-      const saveSuccess = await executeSaveClient(pendingClientSave);
-      setShowDeliverableAssignmentModal(false);
-
-      if (!saveSuccess) {
-        return;
-      }
-
-      // Then, create the tasks via the bulk API
-      const tasksToCreate = [];
-      const items = [];
-      
-      const parsedCounts = parseReqStringToCounts(clientFormReq || '');
-      const cCount = parsedCounts.c;
-      const rCount = parsedCounts.r;
-      const aCount = parsedCounts.a;
-
       const resolveStaff = (staffId, defaultDept) => {
         if (staffId !== 'AUTO' && staffId !== '' && staffId !== null && staffId !== undefined) {
-          const staff = employeesList.find(e => e.id.toString() === staffId.toString());
+          const staff = employeesList.find(e => 
+            e.id?.toString() === staffId.toString() || 
+            e.name?.toLowerCase() === staffId.toString().toLowerCase()
+          );
           if (staff) {
             return { assignTo: staff.department || defaultDept, workingOn: staff.name };
           }
+          return { assignTo: defaultDept, workingOn: staffId };
         }
 
         // AUTO mode: Find all active employees matching department/role
@@ -719,16 +732,19 @@ export default function AdminDashboard() {
           const targetLower = defaultDept.toLowerCase();
 
           if (targetLower.includes('ai video editor') || targetLower.includes('ai video')) {
-            return fullRole.includes('ai video editor') || fullRole.includes('ai video') || fullRole.includes('video editor');
+            return fullRole.includes('ai video') || fullRole.includes('video editor') || ['masoom', 'divyansh', 'nouman'].includes(e.name.toLowerCase());
           }
           if (targetLower.includes('graphic')) {
-            return fullRole.includes('graphic');
+            return fullRole.includes('graphic') || fullRole.includes('design') || e.name.toLowerCase() === 'swapnil';
           }
           if (targetLower.includes('digital marketing') || targetLower.includes('social media')) {
             return fullRole.includes('marketing') || fullRole.includes('social') || fullRole.includes('digital');
           }
-          if (targetLower.includes('video editor')) {
-            return fullRole.includes('video editor');
+          if (targetLower.includes('video editor') || targetLower.includes('reel')) {
+            return e.name.toLowerCase() === 'sanmeet';
+          }
+          if (targetLower.includes('posting') || targetLower.includes('poster')) {
+            return fullRole.includes('posting') || e.name.toLowerCase() === 'masoom';
           }
           return fullRole.includes(targetLower) || targetLower.includes(deptLower);
         });
@@ -752,17 +768,84 @@ export default function AdminDashboard() {
       const rStaff = resolveStaff(assignedStaff.r || 'AUTO', 'Video Editor');
       const aStaff = resolveStaff(assignedStaff.a || 'AUTO', 'Ai Video Editor');
       const smStaff = resolveStaff(assignedStaff.sm || 'AUTO', 'Digital Marketing Executive');
-      const posterStaff = assignedStaff.poster && assignedStaff.poster !== 'AUTO' && assignedStaff.poster !== ''
+      const onboardingSetupStaff = smStaff;
+      
+      const isCreatorPoster = !assignedStaff.poster || assignedStaff.poster === 'CREATOR' || assignedStaff.poster === 'AUTO';
+      
+      const posterStaff = (!isCreatorPoster && assignedStaff.poster)
         ? (() => {
-            const emp = employeesList.find(e => e.id.toString() === assignedStaff.poster.toString());
-            return emp ? { assignTo: emp.department || 'Content Posting', workingOn: emp.name } : { assignTo: 'Content Posting', workingOn: '' };
+            const emp = employeesList.find(e => e.id?.toString() === assignedStaff.poster.toString() || e.name?.toLowerCase() === assignedStaff.poster.toString().toLowerCase());
+            return emp ? { assignTo: emp.department || 'Content Posting', workingOn: emp.name } : { assignTo: 'Content Posting', workingOn: assignedStaff.poster };
           })()
-        : { assignTo: 'Content Posting', workingOn: '' };
+        : { assignTo: 'Content Posting', workingOn: 'CREATOR' };
+
       const scriptLead = employeesList.find(e => {
         const fullRole = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
-        return fullRole.includes('ai video lead');
+        return fullRole.includes('ai video lead') || e.name.toLowerCase() === 'harshit';
       });
       const scriptStaff = { assignTo: 'AI Video Lead', workingOn: scriptLead ? scriptLead.name : 'Harshit' };
+
+      const resolvedStaffMap = {
+        c: cStaff.workingOn,
+        r: rStaff.workingOn,
+        a: aStaff.workingOn,
+        sm: smStaff.workingOn,
+        poster: isCreatorPoster ? 'CREATOR' : posterStaff.workingOn
+      };
+
+      const saveSuccess = await executeSaveClient(pendingClientSave, resolvedStaffMap);
+      setShowDeliverableAssignmentModal(false);
+
+      if (!saveSuccess) {
+        return;
+      }
+
+      if (pendingClientSave === 'EDIT') {
+        const reassignments = [
+          { postType: 'Graphic', toUser: cStaff.workingOn },
+          { postType: 'Reel', toUser: rStaff.workingOn },
+          { postType: 'AI Video', toUser: aStaff.workingOn },
+          { postType: 'Report', toUser: smStaff.workingOn },
+          { postType: 'Onboarding', toUser: smStaff.workingOn },
+          { postType: 'Access', toUser: smStaff.workingOn },
+          { postType: 'Setup', toUser: smStaff.workingOn },
+          { postType: 'Ads', toUser: smStaff.workingOn },
+          { postType: 'Post Graphic', toUser: isCreatorPoster ? cStaff.workingOn : posterStaff.workingOn },
+          { postType: 'Post Reel', toUser: isCreatorPoster ? rStaff.workingOn : posterStaff.workingOn },
+          { postType: 'Post AI Video', toUser: isCreatorPoster ? aStaff.workingOn : posterStaff.workingOn }
+        ];
+
+        for (const re of reassignments) {
+          if (re.toUser && re.toUser !== 'AUTO' && re.toUser !== 'CREATOR') {
+            const reRes = await fetch('/api/client-tasks/reassign', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                clientId: clientFormId,
+                toUser: re.toUser,
+                postType: re.postType
+              })
+            });
+            if (!reRes.ok) {
+              const errJson = await reRes.json().catch(() => ({}));
+              console.error(`Reassignment failed for ${re.postType} -> ${re.toUser}:`, errJson);
+            }
+          }
+        }
+
+        showToast(`Updated client profile & deliverables assignment for ${clientFormBiz}!`);
+        await refreshData();
+        return;
+      }
+
+      // Then, create the tasks via the bulk API
+      const tasksToCreate = [];
+      const items = [];
+      
+      const parsedCounts = parseReqStringToCounts(clientFormReq || '');
+      const cCount = parsedCounts.c;
+      const rCount = parsedCounts.r;
+      const aCount = parsedCounts.a;
 
       const onboardingActive = clientFormServices !== 'AI Video Plans' && generateOptions.onboarding;
 
@@ -833,21 +916,21 @@ export default function AdminDashboard() {
 
         if (pageCreationRequired) {
           onboardingTasks.push(
-            { title: 'Create Accounts', day: 0, staff: smStaff, type: 'Onboarding' },
+            { title: 'Create Accounts', day: 0, staff: onboardingSetupStaff, type: 'Onboarding' },
             { title: 'Graphic 1', day: 1, staff: cStaff, type: 'Graphic' },
-            { title: 'Create Page', day: 2, staff: smStaff, type: 'Onboarding' },
+            { title: 'Create Page', day: 2, staff: onboardingSetupStaff, type: 'Onboarding' },
             { title: 'AI Video Script 1', day: 3, staff: scriptStaff, type: 'Script' },
             { title: 'AI Video 1', day: 4, staff: aStaff, type: 'AI Video' },
-            { title: 'Ads Run', day: 5, staff: smStaff, type: 'Ads' }
+            { title: 'Ads Run', day: 5, staff: onboardingSetupStaff, type: 'Ads' }
           );
           startOffset = 6;
         } else {
           onboardingTasks.push(
-            { title: 'Client Login / Access Collection', day: 0, staff: smStaff, type: 'Onboarding' },
+            { title: 'Client Login / Access Collection', day: 0, staff: onboardingSetupStaff, type: 'Onboarding' },
             { title: 'Graphic 1', day: 1, staff: cStaff, type: 'Graphic' },
             { title: 'AI Video Script 1', day: 1, staff: scriptStaff, type: 'Script' },
             { title: 'AI Video 1', day: 2, staff: aStaff, type: 'AI Video' },
-            { title: 'Ads Run', day: 2, staff: smStaff, type: 'Ads' }
+            { title: 'Ads Run', day: 2, staff: onboardingSetupStaff, type: 'Ads' }
           );
           startOffset = 3;
         }
@@ -4663,15 +4746,20 @@ export default function AdminDashboard() {
                       <span className="text-[8px] font-extrabold uppercase bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded">Graphic Designer</span>
                     </div>
                     <select 
-                      value={assignedStaff.c} 
+                      value={assignedStaff.c || ''} 
                       onChange={e => setAssignedStaff({...assignedStaff, c: e.target.value})}
-                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px]"
+                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px] font-semibold"
                     >
-                      <option value="" disabled>Select Staff to Assign</option>
-                      <option value="AUTO">Auto Assign (First-In Round Robin)</option>
+                      {!assignedStaff.c && <option value="">-- Select Graphic Designer --</option>}
+                      {pendingClientSave !== 'EDIT' && <option value="AUTO">Auto Assign (First-In Round Robin)</option>}
                       {employeesList
-                        .filter(e => ((e.department || '') + ' ' + (e.designation || '')).toLowerCase().includes('graphic'))
-                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.designation || e.department})</option>)}
+                        .filter(e => {
+                          if (e.status === 'INACTIVE') return false;
+                          if (e.name.toLowerCase() === 'masoom') return false;
+                          const dept = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
+                          return dept.includes('graphic') || dept.includes('design') || e.name.toLowerCase() === (assignedStaff.c || '').toLowerCase();
+                        })
+                        .map(e => <option key={e.id} value={e.name}>{e.name.toLowerCase() === (assignedStaff.c || '').toLowerCase() ? `✓ ${e.name} (Assigned)` : `${e.name} (${e.department || 'Graphic'})`}</option>)}
                     </select>
                   </div>
                 </div>
@@ -4682,21 +4770,24 @@ export default function AdminDashboard() {
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1">
                       <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Reels / Shorts ({reqBuilder.r})</span>
-                      <span className="text-[8px] font-extrabold uppercase bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-400 px-1.5 py-0.5 rounded">Video Editor</span>
+                      <span className="text-[8px] font-extrabold uppercase bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-400 px-1.5 py-0.5 rounded">Reel Editor (Sanmeet)</span>
                     </div>
                     <select 
-                      value={assignedStaff.r} 
+                      value={assignedStaff.r || ''} 
                       onChange={e => setAssignedStaff({...assignedStaff, r: e.target.value})}
-                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px]"
+                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px] font-semibold"
                     >
-                      <option value="" disabled>Select Staff to Assign</option>
-                      <option value="AUTO">Auto Assign (First-In Round Robin)</option>
+                      {!assignedStaff.r && <option value="">-- Select Reel Editor --</option>}
+                      {pendingClientSave !== 'EDIT' && <option value="AUTO">Auto Assign (Sanmeet)</option>}
                       {employeesList
                         .filter(e => {
-                          const role = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
-                          return role.includes('video editor') && !role.includes('ai');
+                          if (e.status === 'INACTIVE') return false;
+                          if (e.name.toLowerCase() === 'masoom') return false;
+                          const nameLower = e.name.toLowerCase();
+                          const dept = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
+                          return nameLower === 'sanmeet' || dept.includes('reel') || nameLower === (assignedStaff.r || '').toLowerCase();
                         })
-                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.designation || e.department})</option>)}
+                        .map(e => <option key={e.id} value={e.name}>{e.name.toLowerCase() === (assignedStaff.r || '').toLowerCase() ? `✓ ${e.name} (Assigned)` : `${e.name} (${e.department || 'Reel Editor'})`}</option>)}
                     </select>
                   </div>
                 </div>
@@ -4707,18 +4798,24 @@ export default function AdminDashboard() {
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1">
                       <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">AI Videos ({reqBuilder.a})</span>
-                      <span className="text-[8px] font-extrabold uppercase bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400 px-1.5 py-0.5 rounded">AI Lead</span>
+                      <span className="text-[8px] font-extrabold uppercase bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400 px-1.5 py-0.5 rounded">AI Video Editor</span>
                     </div>
                     <select 
-                      value={assignedStaff.a} 
+                      value={assignedStaff.a || ''} 
                       onChange={e => setAssignedStaff({...assignedStaff, a: e.target.value})}
-                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px]"
+                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px] font-semibold"
                     >
-                      <option value="" disabled>Select Staff to Assign</option>
-                      <option value="AUTO">Auto Assign (First-In Round Robin)</option>
+                      {!assignedStaff.a && <option value="">-- Select AI Video Editor --</option>}
+                      {pendingClientSave !== 'EDIT' && <option value="AUTO">Auto Assign (First-In Round Robin)</option>}
                       {employeesList
-                        .filter(e => ((e.department || '') + ' ' + (e.designation || '')).toLowerCase().includes('ai video'))
-                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.designation || e.department})</option>)}
+                        .filter(e => {
+                          if (e.status === 'INACTIVE') return false;
+                          if (e.name.toLowerCase() === 'sanmeet') return false;
+                          const nameLower = e.name.toLowerCase();
+                          const dept = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
+                          return dept.includes('ai video') || dept.includes('video') || ['masoom', 'divyansh', 'nouman'].includes(nameLower) || nameLower === (assignedStaff.a || '').toLowerCase();
+                        })
+                        .map(e => <option key={e.id} value={e.name}>{e.name.toLowerCase() === (assignedStaff.a || '').toLowerCase() ? `✓ ${e.name} (Assigned)` : `${e.name} (${e.department || 'AI Video'})`}</option>)}
                     </select>
                   </div>
                 </div>
@@ -4732,18 +4829,20 @@ export default function AdminDashboard() {
                       <span className="text-[8px] font-extrabold uppercase bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded">Social Media Exec</span>
                     </div>
                     <select 
-                      value={assignedStaff.sm} 
+                      value={assignedStaff.sm || ''} 
                       onChange={e => setAssignedStaff({...assignedStaff, sm: e.target.value})}
-                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px]"
+                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px] font-semibold"
                     >
-                      <option value="" disabled>Select Staff to Assign</option>
-                      <option value="AUTO">Auto Assign (First-In Round Robin)</option>
+                      {!assignedStaff.sm && <option value="">-- Select Social Media Exec --</option>}
+                      {pendingClientSave !== 'EDIT' && <option value="AUTO">Auto Assign (First-In Round Robin)</option>}
                       {employeesList
                         .filter(e => {
-                          const role = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
-                          return role.includes('marketing') || role.includes('social') || role.includes('digital');
+                          if (e.status === 'INACTIVE') return false;
+                          if (e.name.toLowerCase() === 'masoom') return false;
+                          const dept = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
+                          return dept.includes('marketing') || dept.includes('social') || dept.includes('digital') || dept.includes('exec') || e.name.toLowerCase() === (assignedStaff.sm || '').toLowerCase();
                         })
-                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.designation || e.department})</option>)}
+                        .map(e => <option key={e.id} value={e.name}>{e.name.toLowerCase() === (assignedStaff.sm || '').toLowerCase() ? `✓ ${e.name} (Assigned)` : `${e.name} (${e.department || 'Social Media'})`}</option>)}
                     </select>
                   </div>
                 </div>
@@ -4753,17 +4852,23 @@ export default function AdminDashboard() {
                 <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50 flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Content Poster</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Content Poster (All Staff)</span>
                       <span className="text-[8px] font-extrabold uppercase bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">Content Posting</span>
                     </div>
                     <select 
-                      value={assignedStaff.poster} 
+                      value={assignedStaff.poster || 'CREATOR'} 
                       onChange={e => setAssignedStaff({...assignedStaff, poster: e.target.value})}
-                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px]"
+                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded text-slate-900 dark:text-white focus:outline-none text-[11px] font-semibold"
                     >
-                      <option value="">-- Select Specific Content Poster --</option>
+                      <option value="CREATOR">⚡ Assign to respective creators (Graphic / Reel / AI Editors)</option>
+                      {pendingClientSave !== 'EDIT' && <option value="AUTO">Auto Assign (Default)</option>}
                       {employeesList
-                        .map(e => <option key={e.id} value={e.id}>{e.name} ({e.department})</option>)}
+                        .filter(e => e.status !== 'INACTIVE')
+                        .map(e => (
+                          <option key={e.id} value={e.name}>
+                            {e.name.toLowerCase() === (assignedStaff.poster || '').toLowerCase() ? `✓ ${e.name} (Assigned)` : `${e.name} (${e.department || 'Posting'})`}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 </div>
