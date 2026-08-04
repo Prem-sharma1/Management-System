@@ -200,40 +200,49 @@ export default function EmployeeDashboard() {
 
   const refreshData = async () => {
     try {
-      // Fetch tasks
-      const tasksRes = await fetch('/api/tasks');
-      const tasksData = await tasksRes.json();
+      const [
+        tasksRes,
+        leavesRes,
+        attRes,
+        clientsRes,
+        ctRes,
+        cdRes,
+        usersRes
+      ] = await Promise.all([
+        fetch('/api/tasks'),
+        fetch('/api/leaves'),
+        fetch('/api/attendance'),
+        fetch('/api/clients'),
+        fetch('/api/client-tasks'),
+        fetch('/api/client-deliveries'),
+        fetch('/api/users')
+      ]);
+
+      const [
+        tasksData,
+        leavesData,
+        attData,
+        clientsData,
+        ctData,
+        cdData,
+        usersData
+      ] = await Promise.all([
+        tasksRes.json(),
+        leavesRes.json(),
+        attRes.json(),
+        clientsRes.json(),
+        ctRes.json(),
+        cdRes.json(),
+        usersRes.json()
+      ]);
+
       setTasksList(tasksData.tasks || []);
-
-      // Fetch leaves
-      const leavesRes = await fetch('/api/leaves');
-      const leavesData = await leavesRes.json();
       setLeavesList(leavesData.leaves || []);
-
-      // Fetch attendance clock info
-      const attRes = await fetch('/api/attendance');
-      const attData = await attRes.json();
       setTodayLog(attData.todayLog);
       setAttendanceLogs(attData.logs || []);
-
-      // Fetch clients
-      const clientsRes = await fetch('/api/clients');
-      const clientsData = await clientsRes.json();
       setClientsList(clientsData.clients || []);
-
-      // Fetch client tasks
-      const ctRes = await fetch('/api/client-tasks');
-      const ctData = await ctRes.json();
       setAllClientTasks(ctData.tasks || []);
-
-      // Fetch client deliveries
-      const cdRes = await fetch('/api/client-deliveries');
-      const cdData = await cdRes.json();
       setAllClientDeliveries(cdData.deliveries || []);
-
-      // Fetch users
-      const usersRes = await fetch('/api/users');
-      const usersData = await usersRes.json();
       setUsersList(usersData.users || []);
     } catch (err) {
       console.error('Error refreshing employee dashboard:', err);

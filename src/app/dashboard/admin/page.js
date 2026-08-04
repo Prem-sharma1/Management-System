@@ -449,44 +449,48 @@ export default function AdminDashboard() {
 
   const refreshData = async () => {
     try {
-      // Fetch users
-      const usersRes = await fetchJson('/api/users');
+      const [
+        usersRes,
+        tasksRes,
+        leavesRes,
+        attRes,
+        clientsRes,
+        ctRes,
+        cdRes,
+        fbRes
+      ] = await Promise.all([
+        fetchJson('/api/users'),
+        fetchJson('/api/tasks'),
+        fetchJson('/api/leaves'),
+        fetchJson('/api/attendance'),
+        fetchJson('/api/clients'),
+        fetchJson('/api/client-tasks'),
+        fetchJson('/api/client-deliveries'),
+        fetchJson('/api/client/feedback')
+      ]);
+
       const fetchedUsers = usersRes.data.users || [];
       setUsersList(fetchedUsers);
 
-      // Fetch tasks
-      const tasksRes = await fetchJson('/api/tasks');
       const fetchedTasks = tasksRes.data.tasks || [];
       setTasksList(fetchedTasks);
 
-      // Fetch leaves
-      const leavesRes = await fetchJson('/api/leaves');
       const fetchedLeaves = leavesRes.data.leaves || [];
       setLeavesList(fetchedLeaves);
 
-      // Fetch attendance
-      const attRes = await fetchJson('/api/attendance');
       const fetchedAttendance = attRes.data.logs || [];
       setAttendanceLogs(fetchedAttendance);
 
-      // Fetch clients
-      const clientsRes = await fetchJson('/api/clients');
       const fetchedClients = clientsRes.data.clients || [];
       setClientsList(fetchedClients);
       // Update active client IDs set based on client.active flag
       const activeIds = fetchedClients.filter(c => c.active).map(c => c.clientId);
       setActiveClientIds(new Set(activeIds));
 
-      // Fetch global client tasks
-      const ctRes = await fetchJson('/api/client-tasks');
       setAllClientTasks(ctRes.data.tasks || []);
 
-      // Fetch global client deliveries
-      const cdRes = await fetchJson('/api/client-deliveries');
       setAllClientDeliveries(cdRes.data.deliveries || []);
 
-      // Fetch client feedbacks/concerns
-      const fbRes = await fetchJson('/api/client/feedback');
       setFeedbacksList(fbRes.data.feedbacks || []);
 
       // Calculate Metrics

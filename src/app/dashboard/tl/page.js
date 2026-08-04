@@ -192,9 +192,42 @@ export default function TLDashboard() {
 
   const refreshData = async () => {
     try {
-      // Fetch users
-      const usersRes = await fetch('/api/users');
-      const usersData = await usersRes.json();
+      const [
+        usersRes,
+        tasksRes,
+        leavesRes,
+        attRes,
+        clientsRes,
+        ctRes,
+        cdRes
+      ] = await Promise.all([
+        fetch('/api/users'),
+        fetch('/api/tasks'),
+        fetch('/api/leaves'),
+        fetch('/api/attendance'),
+        fetch('/api/clients'),
+        fetch('/api/client-tasks'),
+        fetch('/api/client-deliveries')
+      ]);
+
+      const [
+        usersData,
+        tasksData,
+        leavesData,
+        attData,
+        clientsData,
+        ctData,
+        cdData
+      ] = await Promise.all([
+        usersRes.json(),
+        tasksRes.json(),
+        leavesRes.json(),
+        attRes.json(),
+        clientsRes.json(),
+        ctRes.json(),
+        cdRes.json()
+      ]);
+
       const fetchedUsers = usersData.users || [];
       
       // Team members matching TL department or designation
@@ -214,9 +247,6 @@ export default function TLDashboard() {
         setTaskAssignee(employees[0].id.toString());
       }
 
-      // Fetch tasks
-      const tasksRes = await fetch('/api/tasks');
-      const tasksData = await tasksRes.json();
       const fetchedTasks = tasksData.tasks || [];
       setAllTasksList(fetchedTasks);
       
@@ -232,33 +262,18 @@ export default function TLDashboard() {
         completedTasks: teamTasks.filter(t => t.status === 'DONE').length
       });
 
-      // Fetch leaves
-      const leavesRes = await fetch('/api/leaves');
-      const leavesData = await leavesRes.json();
       const fetchedLeaves = leavesData.leaves || [];
       setAllLeavesList(fetchedLeaves);
       const myLeaves = fetchedLeaves.filter(l => l.userId === currentUser?.id);
       setLeavesList(myLeaves);
 
-      // Fetch attendance clock info
-      const attRes = await fetch('/api/attendance');
-      const attData = await attRes.json();
       setTodayLog(attData.todayLog);
       setAttendanceLogs(attData.logs || []);
 
-      // Fetch clients
-      const clientsRes = await fetch('/api/clients');
-      const clientsData = await clientsRes.json();
       setClientsList(clientsData.clients || []);
 
-      // Fetch client tasks
-      const ctRes = await fetch('/api/client-tasks');
-      const ctData = await ctRes.json();
       setAllClientTasks(ctData.tasks || []);
 
-      // Fetch client deliveries
-      const cdRes = await fetch('/api/client-deliveries');
-      const cdData = await cdRes.json();
       setAllClientDeliveries(cdData.deliveries || []);
 
     } catch (err) {

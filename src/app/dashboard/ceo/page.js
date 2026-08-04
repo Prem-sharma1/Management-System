@@ -176,33 +176,40 @@ export default function CeoDashboard() {
 
   const refreshData = async () => {
     try {
-      // Fetch users
-      const usersRes = await fetchJson('/api/users');
+      const [
+        usersRes,
+        auditRes,
+        tasksRes,
+        clientsRes,
+        ctRes,
+        cdRes
+      ] = await Promise.all([
+        fetchJson('/api/users'),
+        fetchJson('/api/audit-logs'),
+        fetchJson('/api/tasks'),
+        fetchJson('/api/clients'),
+        fetchJson('/api/client-tasks'),
+        fetchJson('/api/client-deliveries')
+      ]);
+
       const fetchedUsers = usersRes.data.users || [];
       setUsersList(fetchedUsers);
 
-      // Fetch audit logs
-      const auditRes = await fetchJson('/api/audit-logs');
       const auditData = auditRes.data;
       setAuditLogs(auditData.logs || []);
 
-      // Fetch tasks to calculate performance metrics
-      const tasksRes = await fetchJson('/api/tasks');
       const fetchedTasks = tasksRes.data.tasks || [];
       setTasksList(fetchedTasks);
 
-      // Fetch clients
-      const clientsRes = await fetchJson('/api/clients');
       const fetchedClients = clientsRes.data.clients || [];
+      const clientsData = clientsRes.data;
       setClientsList(fetchedClients);
 
-      // Fetch global client tasks
-      const ctRes = await fetchJson('/api/client-tasks');
-      setAllClientTasks(ctRes.data.tasks || []);
+      const ctData = ctRes.data;
+      setAllClientTasks(ctData.tasks || []);
 
-      // Fetch global client deliveries
-      const cdRes = await fetchJson('/api/client-deliveries');
-      setAllClientDeliveries(cdRes.data.deliveries || []);
+      const cdData = cdRes.data;
+      setAllClientDeliveries(cdData.deliveries || []);
 
       // Calculate Metrics
       const totalEmp = fetchedUsers.filter(u => u.role === 'EMPLOYEE').length;
