@@ -4,37 +4,23 @@ import { cookies } from 'next/headers';
 
 export async function POST(request) {
   try {
-    const { clientId } = await request.json();
+    const { email } = await request.json();
 
-    if (!clientId) {
-      return NextResponse.json({ error: 'Client ID is required' }, { status: 400 });
+    if (!email) {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    const cleanInput = clientId.trim();
+    const cleanInput = email.toLowerCase().trim();
 
     // 1. Try exact or case-insensitive match
     let client = await prisma.client.findFirst({
       where: {
-        clientId: { equals: cleanInput, mode: 'insensitive' }
+        email: { equals: cleanInput, mode: 'insensitive' }
       }
     });
 
-    // 2. Fallback: try padded ID format if user typed AID-4 or 4 (e.g., AID-0004)
     if (!client) {
-      const match = cleanInput.match(/\d+/);
-      if (match) {
-        const num = parseInt(match[0], 10);
-        const paddedId = `AID-${num.toString().padStart(4, '0')}`;
-        client = await prisma.client.findFirst({
-          where: {
-            clientId: { equals: paddedId, mode: 'insensitive' }
-          }
-        });
-      }
-    }
-
-    if (!client) {
-      return NextResponse.json({ error: 'Client ID not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Client email not found' }, { status: 404 });
     }
 
     if (!client.active) {

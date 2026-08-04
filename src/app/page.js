@@ -32,7 +32,7 @@ export default function LoginPage() {
 
   // Client states
   const [isClient, setIsClient] = useState(false);
-  const [clientId, setClientId] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
 
   const isSpecialRole = email === 'nikhil@aidigital.com' || email === 'praveen@aidigital.com' || email === 'admin@workforce.com';
 
@@ -78,8 +78,8 @@ export default function LoginPage() {
     setError('');
 
     if (isClient) {
-      if (!clientId) {
-        setError('Please enter your Client Access ID.');
+      if (!clientEmail) {
+        setError('Please enter your registered email address.');
         return;
       }
       setLoading(true);
@@ -87,11 +87,11 @@ export default function LoginPage() {
         const res = await fetch('/api/auth/client-login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ clientId })
+          body: JSON.stringify({ email: clientEmail })
         });
         const data = await res.json();
         if (!res.ok) {
-          setError(data.error || 'Client Access ID not found.');
+          setError(data.error || 'Client email not found.');
           setLoading(false);
           return;
         }
@@ -262,7 +262,7 @@ export default function LoginPage() {
               {isClient ? 'Client Portal' : isSignUp ? 'Create account' : 'Welcome back'}
             </h2>
             <p className="text-slate-500 text-sm">
-              {isClient ? 'Enter your unique Client ID to track your plan deliverables.' : isSignUp ? 'Self-register as a new employee to get started.' : 'Enter your credentials to access your dashboard.'}
+              {isClient ? 'Enter your registered email address to track your plan deliverables.' : isSignUp ? 'Self-register as a new employee to get started.' : 'Enter your credentials to access your dashboard.'}
             </p>
           </div>
 
@@ -276,15 +276,16 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-5" autoComplete="off">
             {isClient ? (
               <div className="flex flex-col gap-1.5 animate-fade-in">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Client Access ID</label>
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Registered Email ID</label>
                 <div className="relative flex items-center">
-                  <Building2 className="absolute left-3 w-5 h-5 text-slate-400" />
+                  <Mail className="absolute left-3 w-5 h-5 text-slate-400" />
                   <input
-                    type="text"
-                    value={clientId}
-                    onChange={(e) => setClientId(e.target.value)}
-                    placeholder="AID-1295"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition text-sm text-slate-900 uppercase"
+                    type="email"
+                    value={clientEmail}
+                    onChange={(e) => setClientEmail(e.target.value)}
+                    placeholder="client@company.com"
+                    autoComplete="email"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition text-sm text-slate-900"
                   />
                 </div>
               </div>
