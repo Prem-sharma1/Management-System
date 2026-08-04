@@ -105,12 +105,12 @@ export async function PUT(request, { params }) {
 
     if (body.staffAssignments && typeof body.staffAssignments === 'object') {
       const typeMap = {
-        c: ['Graphic', 'Creatives', 'C'],
-        graphic: ['Graphic', 'Creatives', 'C'],
-        r: ['Reel', 'Reels', 'Shorts', 'R'],
-        reel: ['Reel', 'Reels', 'Shorts', 'R'],
-        a: ['AI Video', 'AiVideo', 'AI', 'A'],
-        aiVideo: ['AI Video', 'AiVideo', 'AI', 'A'],
+        c: ['Graphic', 'Creatives'],
+        graphic: ['Graphic', 'Creatives'],
+        r: ['Reel', 'Reels', 'Shorts'],
+        reel: ['Reel', 'Reels', 'Shorts'],
+        a: ['AI Video', 'AiVideo'],
+        aiVideo: ['AI Video', 'AiVideo'],
         script: ['Script'],
         poster: ['Posting', 'Post', 'Poster'],
         posting: ['Posting', 'Post', 'Poster'],
@@ -136,8 +136,20 @@ export async function PUT(request, { params }) {
             ]
           };
 
-          if (key === 'c' || key === 'graphic') {
-            taskWhere.NOT = { taskTitle: { startsWith: 'Post ', mode: 'insensitive' } };
+          const deliveryWhere = {
+            clientId: updatedClient.clientId,
+            postType: { contains: pType, mode: 'insensitive' }
+          };
+
+          const notFilters = [];
+          if (!['poster', 'posting', 'sm'].includes(key)) {
+            notFilters.push({ taskTitle: { startsWith: 'Post ', mode: 'insensitive' } });
+          }
+          if (key === 'a' || key === 'aiVideo') {
+            notFilters.push({ taskTitle: { contains: 'Script', mode: 'insensitive' } });
+          }
+          if (notFilters.length > 0) {
+            taskWhere.NOT = notFilters;
           }
 
           await prisma.clientTask.updateMany({
@@ -146,16 +158,16 @@ export async function PUT(request, { params }) {
           });
 
           await prisma.clientDelivery.updateMany({
-            where: taskWhere,
+            where: deliveryWhere,
             data: { workingOn: targetName }
           });
 
           if (targetUser) {
             const matchedTasks = await prisma.clientTask.findMany({
               where: taskWhere,
-              select: { taskId: true, taskCode: true }
+              select: { taskId: true }
             });
-            const codes = matchedTasks.flatMap(t => [t.taskId, t.taskCode]).filter(Boolean);
+            const codes = matchedTasks.flatMap(t => [t.taskId]).filter(Boolean);
             if (codes.length > 0) {
               await prisma.task.updateMany({
                 where: {

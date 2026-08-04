@@ -53,18 +53,32 @@ export async function POST(request) {
     if (fromUser) taskWhere.workingOn = { equals: fromUser, mode: 'insensitive' };
     
     if (isPostingType) {
-      taskWhere.OR = [
-        { postType: { contains: 'Posting', mode: 'insensitive' } },
-        { postType: { contains: 'Post', mode: 'insensitive' } },
-        { taskTitle: { startsWith: 'Post ', mode: 'insensitive' } },
-        { taskTitle: { contains: 'Posting', mode: 'insensitive' } }
-      ];
+      if (postType.toLowerCase() === 'posting' || postType.toLowerCase() === 'post') {
+        taskWhere.OR = [
+          { postType: { contains: 'Posting', mode: 'insensitive' } },
+          { postType: { contains: 'Post', mode: 'insensitive' } },
+          { taskTitle: { startsWith: 'Post ', mode: 'insensitive' } },
+          { taskTitle: { contains: 'Posting', mode: 'insensitive' } }
+        ];
+      } else {
+        // e.g. 'Post Graphic' or 'Post Reel'
+        taskWhere.OR = [
+          { taskTitle: { contains: postType, mode: 'insensitive' } }
+        ];
+      }
     } else if (postType) {
       taskWhere.OR = [
         { postType: { contains: postType, mode: 'insensitive' } },
         { taskTitle: { contains: postType, mode: 'insensitive' } }
       ];
-      taskWhere.NOT = { taskTitle: { startsWith: 'Post ', mode: 'insensitive' } };
+      
+      const notFilters = [
+        { taskTitle: { startsWith: 'Post ', mode: 'insensitive' } }
+      ];
+      if (postType.toLowerCase() === 'ai video' || postType.toLowerCase() === 'aivideo') {
+        notFilters.push({ taskTitle: { contains: 'Script', mode: 'insensitive' } });
+      }
+      taskWhere.NOT = notFilters;
     }
 
     const updatedTasks = await prisma.clientTask.updateMany({
@@ -77,18 +91,18 @@ export async function POST(request) {
     if (fromUser) deliveryWhere.workingOn = { equals: fromUser, mode: 'insensitive' };
     
     if (isPostingType) {
-      deliveryWhere.OR = [
-        { postType: { contains: 'Posting', mode: 'insensitive' } },
-        { postType: { contains: 'Post', mode: 'insensitive' } },
-        { taskTitle: { startsWith: 'Post ', mode: 'insensitive' } },
-        { taskTitle: { contains: 'Posting', mode: 'insensitive' } }
-      ];
+      if (postType.toLowerCase() === 'posting' || postType.toLowerCase() === 'post') {
+        deliveryWhere.OR = [
+          { postType: { contains: 'Posting', mode: 'insensitive' } },
+          { postType: { contains: 'Post', mode: 'insensitive' } }
+        ];
+      } else {
+        // Since ClientDelivery doesn't have taskTitle, we can't search by it.
+        // We'll just fall back to postType if possible, or skip updating delivery
+        deliveryWhere.postType = { contains: postType, mode: 'insensitive' };
+      }
     } else if (postType) {
-      deliveryWhere.OR = [
-        { postType: { contains: postType, mode: 'insensitive' } },
-        { taskTitle: { contains: postType, mode: 'insensitive' } }
-      ];
-      deliveryWhere.NOT = { taskTitle: { startsWith: 'Post ', mode: 'insensitive' } };
+      deliveryWhere.postType = { contains: postType, mode: 'insensitive' };
     }
 
     const updatedDeliveries = await prisma.clientDelivery.updateMany({
