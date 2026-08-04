@@ -813,17 +813,7 @@ export default function EmployeeDashboard() {
               Time-Off Requests
             </button>
 
-            <button
-              onClick={() => setActiveTab('payroll')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
-                activeTab === 'payroll'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <DollarSign className="w-4 h-4" />
-              Payslips & Info
-            </button>
+
           </nav>
         </div>
 
