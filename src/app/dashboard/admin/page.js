@@ -30,8 +30,13 @@ import {
   RefreshCw,
   MessageSquare,
   CreditCard,
-  DollarSign
+  DollarSign,
+  BarChart2,
+  Edit3,
+  X,
+  UserX
 } from 'lucide-react';
+import { uploadFileAction } from '@/app/actions/uploadAction';
 
 const SERVICES_PRICING = {
   "Meta Ads Plans": [
@@ -1348,16 +1353,12 @@ export default function AdminDashboard() {
     formData.append('file', file);
     setFormLoading(true);
     try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setter(data.fileUrl);
+      const uploadData = await uploadFileAction(formData);
+      if (uploadData.success) {
+        setter(uploadData.fileUrl);
         showToast('File uploaded successfully!');
       } else {
-        alert(data.error || 'Upload failed');
+        alert(uploadData.error || 'Upload failed');
       }
     } catch (err) {
       alert('Upload failed');

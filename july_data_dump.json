@@ -1,20 +1,20 @@
 {
-  "timestamp": "2026-08-04T06:02:58.406Z",
+  "timestamp": "2026-08-04T09:47:53.453Z",
   "summary": {
-    "totalClients": 50,
-    "totalClientTasks": 1096,
+    "totalClients": 52,
+    "totalClientTasks": 1130,
     "totalClientDeliveries": 0,
     "tasksByWorkingOn": {
       "Pujan": 325,
-      "Swapnil": 133,
-      "Harshit": 72,
-      "Divyansh": 42,
-      "Sanmeet": 44,
-      "Preet": 284,
-      "Nouman": 31,
+      "Swapnil": 136,
+      "Harshit": 74,
+      "Divyansh": 44,
+      "Sanmeet": 45,
+      "Preet": 306,
+      "Nouman": 32,
       "Masoom": 33,
       "Rama": 11,
-      "Danish Khan": 121
+      "Danish Khan": 124
     }
   },
   "aiVideoBreakdown": {
@@ -44,7 +44,7 @@
       ]
     },
     "Nouman": {
-      "count": 31,
+      "count": 32,
       "clients": [
         "AID-0002 (HIT-OFFICE(Google))",
         "AID-0005 (Shree Renuka Opticals)",
@@ -65,11 +65,12 @@
         "AID-0041 (Sahyadri Realty)",
         "AID-0043 (Trending Realty)",
         "AID-0044 (Ketan Properties)",
-        "AID-0047 (Ayurmor)"
+        "AID-0047 (Ayurmor)",
+        "AID-0052 (SHARAN 360 Services OPC Pvt. Ltd.  )"
       ]
     },
     "Divyansh": {
-      "count": 42,
+      "count": 44,
       "clients": [
         "AID-0001 (HIT-OFFICE(Meta))",
         "AID-0004 (A Siddhanatth Car's)",
@@ -93,7 +94,9 @@
         "AID-0046 (PurePlush)",
         "AID-0048 (Niketh Estates)",
         "AID-0049 (Vijay Oil Mill)",
-        "AID-0034 (Peachy Clothing)"
+        "AID-0034 (Peachy Clothing)",
+        "AID-0052 (SHARAN 360 Services OPC Pvt. Ltd.  )",
+        "AID-0053 (Indecor Interior)"
       ]
     }
   },
@@ -447,6 +450,20 @@
       "joiningDate": "2026-08-03",
       "packageName": "Standard (Monthly)",
       "packageAmount": 3999
+    },
+    {
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "joiningDate": "2026-08-03",
+      "packageName": "Basic",
+      "packageAmount": 2000
+    },
+    {
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "joiningDate": "2026-08-04",
+      "packageName": "Basic",
+      "packageAmount": 2499
     }
   ],
   "clientTasks": [
@@ -4451,7 +4468,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Client Review",
       "postType": "Graphic"
     },
     {
@@ -6882,7 +6899,7 @@
       "date": "03-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Client Review",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -12503,6 +12520,380 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Pujan",
+      "status": "Not Started",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MSEA5R7M-8651-0",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Client Login / Access Collection",
+      "date": "03-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
+      "status": "Overdue",
+      "postType": "Onboarding"
+    },
+    {
+      "taskId": "AID-T-MSEA5RLO-5697-1",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Graphic 1",
+      "date": "04-Aug-2026",
+      "assignTo": "Graphic Designer",
+      "workingOn": "Swapnil",
+      "status": "Assigned",
+      "postType": "Graphic"
+    },
+    {
+      "taskId": "AID-T-MSEA5RZL-6650-2",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "AI Video Script 1",
+      "date": "04-Aug-2026",
+      "assignTo": "AI Video Lead",
+      "workingOn": "Harshit",
+      "status": "Assigned",
+      "postType": "Script"
+    },
+    {
+      "taskId": "AID-T-MSEA5SDI-8034-3",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "AI Video 1",
+      "date": "05-Aug-2026",
+      "assignTo": "Ai Video Editor",
+      "workingOn": "Divyansh",
+      "status": "Assigned",
+      "postType": "AI Video"
+    },
+    {
+      "taskId": "AID-T-MSEA5SRE-5328-4",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Ads Run",
+      "date": "05-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Ads"
+    },
+    {
+      "taskId": "AID-T-MSEA5T5A-4600-5",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Graphic 2",
+      "date": "06-Aug-2026",
+      "assignTo": "Graphic Designer",
+      "workingOn": "Swapnil",
+      "status": "Assigned",
+      "postType": "Graphic"
+    },
+    {
+      "taskId": "AID-T-MSEA5TTG-7043-6",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Post Graphic 2",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MSEA5U7D-3172-7",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Reel 1",
+      "date": "13-Aug-2026",
+      "assignTo": "Video Editor",
+      "workingOn": "Nouman",
+      "status": "Assigned",
+      "postType": "Reel"
+    },
+    {
+      "taskId": "AID-T-MSEA5ULB-9946-8",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Post Reel 1",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MSEA5UZC-2079-9",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Graphic 3",
+      "date": "20-Aug-2026",
+      "assignTo": "Graphic Designer",
+      "workingOn": "Swapnil",
+      "status": "Assigned",
+      "postType": "Graphic"
+    },
+    {
+      "taskId": "AID-T-MSEA5VD8-8567-10",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Post Graphic 3",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MSEA5VRA-3146-11",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Weekly Report 1",
+      "date": "11-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Report"
+    },
+    {
+      "taskId": "AID-T-MSEA5W56-6659-12",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Weekly Report 2",
+      "date": "19-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Report"
+    },
+    {
+      "taskId": "AID-T-MSEA5WJ7-4507-13",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Weekly Report 3",
+      "date": "27-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Report"
+    },
+    {
+      "taskId": "AID-T-MSEA5XDA-5178-14",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Weekly Report 4",
+      "date": "04-Sept-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Report"
+    },
+    {
+      "taskId": "AID-T-MSEA5RLO-5697-1-POST-MSEA6892-1562",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Post Graphic 1",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Preet",
+      "status": "Not Started",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MSEA5SDI-8034-3-POST-MSEA68FR-7900",
+      "clientId": "AID-0052",
+      "businessName": "SHARAN 360 Services OPC Pvt. Ltd.  ",
+      "taskTitle": "Post AI Video 1",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Preet",
+      "status": "Not Started",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MSEGRKI3-2407-0",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Client Login / Access Collection",
+      "date": "04-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Onboarding"
+    },
+    {
+      "taskId": "AID-T-MSEGRKUV-2733-1",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Graphic 1",
+      "date": "05-Aug-2026",
+      "assignTo": "Graphic Designer",
+      "workingOn": "Danish Khan",
+      "status": "Assigned",
+      "postType": "Graphic"
+    },
+    {
+      "taskId": "AID-T-MSEGRL7J-5331-2",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "AI Video Script 1",
+      "date": "05-Aug-2026",
+      "assignTo": "AI Video Lead",
+      "workingOn": "Harshit",
+      "status": "Assigned",
+      "postType": "Script"
+    },
+    {
+      "taskId": "AID-T-MSEGRLK7-6576-3",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "AI Video 1",
+      "date": "06-Aug-2026",
+      "assignTo": "Ai Video Editor",
+      "workingOn": "Divyansh",
+      "status": "Assigned",
+      "postType": "AI Video"
+    },
+    {
+      "taskId": "AID-T-MSEGRLWW-4625-4",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Ads Run",
+      "date": "06-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Ads"
+    },
+    {
+      "taskId": "AID-T-MSEGRM9L-3868-5",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Graphic 2",
+      "date": "07-Aug-2026",
+      "assignTo": "Graphic Designer",
+      "workingOn": "Danish Khan",
+      "status": "Assigned",
+      "postType": "Graphic"
+    },
+    {
+      "taskId": "AID-T-MSEGRMMA-3175-6",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Post Graphic 2",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MSEGRNFQ-3062-7",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Reel 1",
+      "date": "14-Aug-2026",
+      "assignTo": "Video Editor",
+      "workingOn": "Sanmeet",
+      "status": "Assigned",
+      "postType": "Reel"
+    },
+    {
+      "taskId": "AID-T-MSEGRNSE-6831-8",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Post Reel 1",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MSEGRO53-5131-9",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Graphic 3",
+      "date": "21-Aug-2026",
+      "assignTo": "Graphic Designer",
+      "workingOn": "Danish Khan",
+      "status": "Assigned",
+      "postType": "Graphic"
+    },
+    {
+      "taskId": "AID-T-MSEGROHR-8191-10",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Post Graphic 3",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MSEGROUG-2843-11",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Weekly Report 1",
+      "date": "12-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Report"
+    },
+    {
+      "taskId": "AID-T-MSEGRP75-7606-12",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Weekly Report 2",
+      "date": "20-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Report"
+    },
+    {
+      "taskId": "AID-T-MSEGRPJU-2268-13",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Weekly Report 3",
+      "date": "28-Aug-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Report"
+    },
+    {
+      "taskId": "AID-T-MSEGRPWH-9950-14",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Weekly Report 4",
+      "date": "05-Sept-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
+      "status": "Assigned",
+      "postType": "Report"
+    },
+    {
+      "taskId": "AID-T-MSEGRKUV-2733-1-POST-MSEGRVCN-7136",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Post Graphic 1",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Preet",
+      "status": "Not Started",
+      "postType": "Posting"
+    },
+    {
+      "taskId": "AID-T-MSEGRLK7-6576-3-POST-MSEGRVJM-5279",
+      "clientId": "AID-0053",
+      "businessName": "Indecor Interior",
+      "taskTitle": "Post AI Video 1",
+      "date": "Trigger on Approval",
+      "assignTo": "Content Posting",
+      "workingOn": "Preet",
       "status": "Not Started",
       "postType": "Posting"
     }

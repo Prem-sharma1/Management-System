@@ -8,6 +8,7 @@ import {
   Sun, DollarSign, TrendingUp, Download, Users, FileDown, Activity,
   BarChart2, Lock
 } from 'lucide-react';
+import { uploadFileAction } from '@/app/actions/uploadAction';
 
 const convertDbDateToIso = (dateStr) => {
   if (!dateStr) return '';
@@ -364,15 +365,10 @@ export default function TLDashboard() {
       const formData = new FormData();
       formData.append('file', fileObj);
 
-      const uploadRes = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      const uploadData = await uploadFileAction(formData);
+      const uploadedUrl = uploadData.fileUrl;
 
-      const uploadData = await uploadRes.json();
-      const uploadedUrl = uploadData.url || uploadData.fileUrl;
-
-      if (!uploadRes.ok || !uploadedUrl) {
+      if (uploadData.error || !uploadedUrl) {
         showToast(uploadData.error || 'Upload failed', 'error');
         return;
       }
@@ -424,15 +420,10 @@ export default function TLDashboard() {
       const formData = new FormData();
       formData.append('file', fileObj);
 
-      const uploadRes = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      const uploadData = await uploadFileAction(formData);
+      const uploadedUrl = uploadData.fileUrl;
 
-      const uploadData = await uploadRes.json();
-      const uploadedUrl = uploadData.url || uploadData.fileUrl;
-
-      if (!uploadRes.ok || !uploadedUrl) {
+      if (uploadData.error || !uploadedUrl) {
         showToast(uploadData.error || 'Upload failed', 'error');
         return;
       }
@@ -509,13 +500,8 @@ export default function TLDashboard() {
         const formData = new FormData();
         formData.append('file', taskFile);
 
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok) throw new Error(uploadData.error || 'Failed to upload PDF file');
+        const uploadData = await uploadFileAction(formData);
+        if (uploadData.error) throw new Error(uploadData.error || 'Failed to upload PDF file');
 
         finalDescription = uploadData.fileUrl;
       }
@@ -577,15 +563,12 @@ export default function TLDashboard() {
       if (workSampleFile) {
         const formData = new FormData();
         formData.append('file', workSampleFile);
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        });
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
+        
+        const uploadData = await uploadFileAction(formData);
+        if (uploadData.success) {
           finalWorkSampleUrl = uploadData.fileUrl;
         } else {
-          setFormError('Failed to upload work sample.');
+          setFormError(uploadData.error || 'Failed to upload work sample.');
           setFormLoading(false);
           return;
         }

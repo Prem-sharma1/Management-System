@@ -26,8 +26,11 @@ import {
   FileDown,
   User,
   ExternalLink,
-  Search
+  Search,
+  BarChart2,
+  Lock
 } from 'lucide-react';
+import { uploadFileAction } from '@/app/actions/uploadAction';
 
 const convertDbDateToIso = (dateStr) => {
   if (!dateStr) return '';
@@ -309,15 +312,10 @@ export default function EmployeeDashboard() {
       const formData = new FormData();
       formData.append('file', fileObj);
 
-      const uploadRes = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      const uploadData = await uploadFileAction(formData);
+      const uploadedUrl = uploadData.fileUrl;
 
-      const uploadData = await uploadRes.json();
-      const uploadedUrl = uploadData.url || uploadData.fileUrl;
-
-      if (!uploadRes.ok || !uploadedUrl) {
+      if (uploadData.error || !uploadedUrl) {
         showToast(uploadData.error || 'Upload failed', 'error');
         return;
       }
@@ -369,15 +367,10 @@ export default function EmployeeDashboard() {
       const formData = new FormData();
       formData.append('file', fileObj);
 
-      const uploadRes = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      const uploadData = await uploadFileAction(formData);
+      const uploadedUrl = uploadData.fileUrl;
 
-      const uploadData = await uploadRes.json();
-      const uploadedUrl = uploadData.url || uploadData.fileUrl;
-
-      if (!uploadRes.ok || !uploadedUrl) {
+      if (uploadData.error || !uploadedUrl) {
         showToast(uploadData.error || 'Upload failed', 'error');
         return;
       }
@@ -457,15 +450,11 @@ export default function EmployeeDashboard() {
       if (workSampleFile) {
         const formData = new FormData();
         formData.append('file', workSampleFile);
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        });
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
+        const uploadData = await uploadFileAction(formData);
+        if (uploadData.success) {
           finalWorkSampleUrl = uploadData.fileUrl;
         } else {
-          setFormError('Failed to upload work sample.');
+          setFormError(uploadData.error || 'Failed to upload work sample.');
           setFormLoading(false);
           return;
         }
