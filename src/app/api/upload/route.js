@@ -4,8 +4,6 @@ import path from 'path';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // 5 minutes execution limit for large uploads
 
 const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB limit
 
