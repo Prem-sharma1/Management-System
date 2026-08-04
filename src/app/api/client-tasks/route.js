@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { cookies } from 'next/headers';
-import { pruneBeforeJulyData, rebalanceAiVideoTasks } from '@/lib/prune';
+import { pruneBeforeJulyData, rebalanceAiVideoTasks, reassignMasoomAccessTasks } from '@/lib/prune';
 // Trigger HMR cache refresh
 
 export const dynamic = 'force-dynamic';
@@ -16,9 +16,6 @@ export async function GET(request) {
 
     // Auto-prune all pre-July data across the database
     await pruneBeforeJulyData();
-
-    // Auto-rebalance existing AI video tasks company-by-company across Masoom, Nouman, Divyansh
-    await rebalanceAiVideoTasks();
 
     try {
       const fs = require('fs');
@@ -132,6 +129,43 @@ export async function GET(request) {
       });
     }
 
+    // 2b. Auto-mark past incomplete tasks as 'Overdue' if scheduled date is before today
+    const todayIsoStr = now.toISOString().split('T')[0];
+    const parseDbDateToIso = (dateStr) => {
+      if (!dateStr) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const day = parts[0];
+        const monthName = parts[1];
+        const year = parts[2];
+        const months = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' };
+        const month = months[monthName.toLowerCase()];
+        if (month && day && year) return `${year}-${month}-${day.padStart(2, '0')}`;
+      }
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+      return '';
+    };
+
+    const pastOverdueIds = [];
+    tasks.forEach(t => {
+      if (t.postType === 'Posting' || (t.taskTitle && t.taskTitle.toLowerCase().startsWith('post '))) return;
+      const taskIso = parseDbDateToIso(t.date);
+      const isFinished = ['Completion', 'Completed', 'DONE', 'Done', 'Posted', 'Client Review'].includes(t.status);
+      if (taskIso && taskIso < todayIsoStr && !isFinished && t.status !== 'Overdue' && t.status !== 'OVERDUE') {
+        pastOverdueIds.push(t.id);
+        t.status = 'Overdue';
+      }
+    });
+
+    if (pastOverdueIds.length > 0) {
+      await prisma.clientTask.updateMany({
+        where: { id: { in: pastOverdueIds } },
+        data: { status: 'Overdue' }
+      });
+    }
+
     // 3. Auto-create missing posting tasks ONLY for Graphic, Reel, and AI Video content (EXCLUDING Scripts)
     const contentTasks = tasks.filter(t => {
       const titleLower = (t.taskTitle || '').toLowerCase();
@@ -155,7 +189,7 @@ export async function GET(request) {
           (t.postType === 'Posting' || (t.taskTitle && t.taskTitle.toLowerCase().startsWith('post '))) &&
           t.workingOn && t.workingOn !== 'AUTO'
         );
-        const assignedPosterName = existingPostingWithStaff ? existingPostingWithStaff.workingOn : '';
+        const assignedPosterName = existingPostingWithStaff ? existingPostingWithStaff.workingOn : 'Masoom';
 
         const uniqueSuffix = `${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
         const newTaskId = `${cTask.taskId}-POST-${uniqueSuffix}`;

@@ -25,7 +25,8 @@ import {
   Users,
   FileDown,
   User,
-  ExternalLink
+  ExternalLink,
+  Search
 } from 'lucide-react';
 
 const convertDbDateToIso = (dateStr) => {
@@ -80,6 +81,7 @@ export default function EmployeeDashboard() {
   const [allClientTasks, setAllClientTasks] = useState([]);
   const [allClientDeliveries, setAllClientDeliveries] = useState([]);
   const [usersList, setUsersList] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Timer States
   const [timeStr, setTimeStr] = useState('');
@@ -351,6 +353,66 @@ export default function EmployeeDashboard() {
     }
   };
 
+  const handleReuploadContent = async (taskId, fileObj, isClientTask = true) => {
+    if (!fileObj) return;
+    try {
+      showToast('Re-uploading content...');
+      const formData = new FormData();
+      formData.append('file', fileObj);
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const uploadData = await uploadRes.json();
+      const uploadedUrl = uploadData.url || uploadData.fileUrl;
+
+      if (!uploadRes.ok || !uploadedUrl) {
+        showToast(uploadData.error || 'Upload failed', 'error');
+        return;
+      }
+
+      if (isClientTask) {
+        const updateRes = await fetch(`/api/client-tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            workSampleUrl: uploadedUrl,
+            status: 'Completion'
+          }),
+        });
+
+        if (updateRes.ok) {
+          showToast('Content re-uploaded successfully!');
+          await refreshData();
+        } else {
+          showToast('Failed to save new content URL', 'error');
+        }
+      } else {
+        const updateRes = await fetch(`/api/tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            workSampleUrl: uploadedUrl,
+            description: uploadedUrl,
+            status: 'DONE'
+          }),
+        });
+
+        if (updateRes.ok) {
+          showToast('Content re-uploaded successfully!');
+          await refreshData();
+        } else {
+          showToast('Failed to save new content URL', 'error');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Upload error', 'error');
+    }
+  };
+
   // Task operation Modal Trigger
   const openStatusModal = (task, type = 'INTERNAL') => {
     setSelectedTaskForStatus({ ...task, type });
@@ -575,14 +637,27 @@ export default function EmployeeDashboard() {
   const formats = getFilterFormats(filterDate);
 
   const filteredTasksList = employeeTasksList.filter(task => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!task.title?.toLowerCase().includes(q) && !task.description?.toLowerCase().includes(q) && !task.createdBy?.name?.toLowerCase().includes(q)) return false;
+    }
+    const isPastOverdue = ['OVERDUE', 'Overdue', 'PENDING', 'Pending'].includes(task.status) || (task.dueDate && task.dueDate < todayIso && !['DONE', 'Completed', 'Completion'].includes(task.status));
+    if (isPastOverdue) return true;
     if (!filterDate) return true;
     return task.dueDate === formats.isoFormat;
   });
 
   const filteredClientTasks = employeeMyClientTasks.filter(ct => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!ct.taskTitle?.toLowerCase().includes(q) && !ct.businessName?.toLowerCase().includes(q) && !ct.notes?.toLowerCase().includes(q)) return false;
+    }
+    const ctIso = convertDbDateToIso(ct.date);
+    const isPastOverdue = ['Overdue', 'OVERDUE', 'Pending', 'PENDING'].includes(ct.status) || (ctIso && ctIso < todayIso && !['Completion', 'Completed', 'DONE', 'Done', 'Posted', 'Client Review'].includes(ct.status));
+    if (isPastOverdue) return true;
     if (!filterDate) return true;
     if (isTaskReadyToPostToday(ct) && filterDate === todayIso) return true;
-    return convertDbDateToIso(ct.date) === formats.isoFormat;
+    return ctIso === formats.isoFormat;
   });
 
   const myDepartmentClientTasks = allClientTasks.filter(t => {
@@ -706,17 +781,25 @@ export default function EmployeeDashboard() {
             </button>
 
 
-            <button
-              onClick={() => setActiveTab('client-tasks')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
-                activeTab === 'client-tasks'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Briefcase className="w-4 h-4" />
-              Client Deliverables
-            </button>
+            {(() => {
+              const isSocialOrDigital = currentUser && (
+                (currentUser.department && (currentUser.department.toLowerCase().includes('social media') || currentUser.department.toLowerCase().includes('digital media') || currentUser.department.toLowerCase().includes('digital marketing'))) ||
+                (currentUser.designation && (currentUser.designation.toLowerCase().includes('social media') || currentUser.designation.toLowerCase().includes('digital media') || currentUser.designation.toLowerCase().includes('digital marketing')))
+              );
+              return isSocialOrDigital ? (
+                <button
+                  onClick={() => setActiveTab('client-tasks')}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                    activeTab === 'client-tasks'
+                      ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Briefcase className="w-4 h-4" />
+                  Client Deliverables
+                </button>
+              ) : null;
+            })()}
 
             <button
               onClick={() => setActiveTab('leaves')}
@@ -730,17 +813,7 @@ export default function EmployeeDashboard() {
               Time-Off Requests
             </button>
 
-            <button
-              onClick={() => setActiveTab('payroll')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
-                activeTab === 'payroll'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <DollarSign className="w-4 h-4" />
-              Payslips & Info
-            </button>
+
           </nav>
         </div>
 
@@ -937,28 +1010,45 @@ export default function EmployeeDashboard() {
                               return (
                                 <div className="flex flex-wrap items-center gap-2 mt-1.5">
                                   {scriptUrl && (
-                                    <a 
-                                      href={scriptUrl} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer" 
-                                      className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded border border-blue-200/60 dark:border-blue-800/40"
-                                    >
-                                      <FileDown className="w-3 h-3" /> View Script PDF
-                                    </a>
+                                    <>
+                                      <a 
+                                        href={scriptUrl} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded border border-blue-200/60 dark:border-blue-800/40"
+                                      >
+                                        <FileDown className="w-3 h-3" /> {item.postType === 'Script' || (item.taskTitle && item.taskTitle.toLowerCase().includes('script')) ? 'View Script PDF' : 'View Work Sample'}
+                                      </a>
+                                      <label className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded cursor-pointer transition border border-blue-200/60 dark:border-blue-800/40">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                        Re-Upload Content
+                                        <input 
+                                          type="file" 
+                                          className="hidden"
+                                          onChange={(e) => {
+                                            if (e.target.files && e.target.files[0]) {
+                                              handleReuploadContent(item.id, e.target.files[0], item.type === 'client');
+                                            }
+                                          }}
+                                        />
+                                      </label>
+                                    </>
                                   )}
-                                  <label className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded cursor-pointer transition border border-indigo-200/60 dark:border-indigo-800/40">
-                                    <Plus className="w-3 h-3" /> {scriptUrl ? 'Change Script PDF' : 'Upload Script PDF'}
-                                    <input 
-                                      type="file" 
-                                      accept="application/pdf,video/*,.pdf,.mp4,.mov,.mkv,.avi,.doc,.docx" 
-                                      className="hidden" 
-                                      onChange={(e) => {
-                                        if (e.target.files && e.target.files[0]) {
-                                          handleDirectScriptFileUpload(item.id, e.target.files[0], item.type === 'client');
-                                        }
-                                      }}
-                                    />
-                                  </label>
+                                  {currentUser?.name?.toLowerCase().includes('harshit') && (
+                                    <label className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded cursor-pointer transition border border-indigo-200/60 dark:border-indigo-800/40">
+                                      <Plus className="w-3 h-3" /> {scriptUrl ? 'Change Script PDF' : 'Upload Script PDF'}
+                                      <input 
+                                        type="file" 
+                                        accept="application/pdf,video/*,.pdf,.mp4,.mov,.mkv,.avi,.doc,.docx" 
+                                        className="hidden" 
+                                        onChange={(e) => {
+                                          if (e.target.files && e.target.files[0]) {
+                                            handleDirectScriptFileUpload(item.id, e.target.files[0], item.type === 'client');
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                  )}
                                 </div>
                               );
                             })()}
@@ -1163,8 +1253,18 @@ export default function EmployeeDashboard() {
                   <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Assigned Duties checklist</h4>
                   <p className="text-xs text-slate-400 mt-1">Review task details and report updates by clicking status transitions.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Date:</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search tasks..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8 pr-3 py-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 w-full sm:w-48 transition"
+                    />
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider sm:ml-2">Date:</span>
                   <input
                     type="date"
                     value={filterDate}
@@ -1183,6 +1283,30 @@ export default function EmployeeDashboard() {
               </div>
 
               <div className="p-6 space-y-4">
+                {(() => {
+                  const overdueCount = [
+                    ...filteredTasksList.filter(t => ['OVERDUE', 'Overdue'].includes(t.status) || (t.dueDate && t.dueDate < todayIso && t.status !== 'DONE')),
+                    ...filteredClientTasks.filter(ct => ['Overdue', 'OVERDUE'].includes(ct.status) || (convertDbDateToIso(ct.date) && convertDbDateToIso(ct.date) < todayIso && !['Completion', 'Completed', 'DONE', 'Done', 'Posted', 'Client Review'].includes(ct.status)))
+                  ].length;
+
+                  if (overdueCount > 0) {
+                    return (
+                      <div className="p-3.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-xl flex items-center justify-between gap-3 text-red-700 dark:text-red-300 mb-2">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                          <span className="text-xs font-bold">
+                            ⚠️ You have {overdueCount} Overdue / Pending Task{overdueCount > 1 ? 's' : ''} from past days requiring immediate action!
+                          </span>
+                        </div>
+                        <span className="text-[10px] bg-red-600 text-white font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          Action Needed
+                        </span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
                 {filteredTasksList.length === 0 ? (
                   <p className="text-xs text-slate-400 text-center py-6">No tasks assigned yet for this date.</p>
                 ) : (
@@ -1205,14 +1329,29 @@ export default function EmployeeDashboard() {
                           </span>
                         </p>
                         {task.description && (task.description.startsWith('http') || task.description.startsWith('/uploads/')) ? (
-                          <a 
-                            href={task.description} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md"
-                          >
-                            <FileDown className="w-3.5 h-3.5" /> View Script PDF
-                          </a>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <a 
+                              href={task.description} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md"
+                            >
+                              <FileDown className="w-3.5 h-3.5" /> View Script PDF
+                            </a>
+                            <label className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md cursor-pointer transition border border-indigo-200/60 dark:border-indigo-800/40">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                              Re-Upload Content
+                              <input 
+                                type="file" 
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    handleReuploadContent(task.id, e.target.files[0], false);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
                         ) : (
                           <p className="text-[10px] text-slate-450 truncate mt-1">{task.description}</p>
                         )}
@@ -1331,7 +1470,7 @@ export default function EmployeeDashboard() {
                             })()}
                             {/* Display own work sample if uploaded */}
                             {ct.workSampleUrl && (
-                              <div className="mt-1.5">
+                              <div className="mt-1.5 flex flex-wrap items-center gap-2">
                                 <a 
                                   href={ct.workSampleUrl.startsWith('http://') || ct.workSampleUrl.startsWith('https://') || ct.workSampleUrl.startsWith('/') ? ct.workSampleUrl : `https://${ct.workSampleUrl}`} 
                                   target="_blank" 
@@ -1340,6 +1479,19 @@ export default function EmployeeDashboard() {
                                 >
                                   <FileDown className="w-3.5 h-3.5" /> View Work Sample
                                 </a>
+                                <label className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md cursor-pointer transition border border-blue-200/60 dark:border-blue-800/40">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                  Re-Upload Content
+                                  <input 
+                                    type="file" 
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      if (e.target.files && e.target.files[0]) {
+                                        handleReuploadContent(ct.id, e.target.files[0], true);
+                                      }
+                                    }}
+                                  />
+                                </label>
                               </div>
                             )}
                             {/* Display approved content link for Posting tasks */}
@@ -1513,10 +1665,22 @@ export default function EmployeeDashboard() {
           {/* TAB: CLIENT TASKS */}
           {activeTab === 'client-tasks' && (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-fade-in">
-              <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                   <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">CRM Deliverables</h4>
                   <p className="text-xs text-slate-400 mt-1">View and manage client tasks assigned to you or your department.</p>
+                </div>
+                <div className="relative w-full md:w-64">
+                  <input
+                    type="text"
+                    placeholder="Search tasks..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                  />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Date:</span>
@@ -1545,10 +1709,27 @@ export default function EmployeeDashboard() {
                 <div>
                   <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Client Tasks</h5>
                   <div className="space-y-4">
-                    {filteredDeptClientTasks.length === 0 ? (
+                    {filteredDeptClientTasks.filter(t => {
+                      if (!searchQuery) return true;
+                      const q = searchQuery.toLowerCase();
+                      return (
+                        (t.taskTitle && t.taskTitle.toLowerCase().includes(q)) ||
+                        (t.businessName && t.businessName.toLowerCase().includes(q)) ||
+                        (t.taskId && t.taskId.toLowerCase().includes(q))
+                      );
+                    }).length === 0 ? (
                       <p className="text-xs text-slate-400 text-center py-6">No client tasks found for this date.</p>
                     ) : (
                       filteredDeptClientTasks
+                        .filter(t => {
+                          if (!searchQuery) return true;
+                          const q = searchQuery.toLowerCase();
+                          return (
+                            (t.taskTitle && t.taskTitle.toLowerCase().includes(q)) ||
+                            (t.businessName && t.businessName.toLowerCase().includes(q)) ||
+                            (t.taskId && t.taskId.toLowerCase().includes(q))
+                          );
+                        })
                         .map((task) => (
                           <div key={task.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/20">
                             <div className="flex flex-col md:flex-row justify-between gap-4">

@@ -37,6 +37,22 @@ export async function GET() {
       });
     }
 
+    const todayIso = new Date().toISOString().split('T')[0];
+    const overdueIds = [];
+    tasks.forEach(t => {
+      if (t.dueDate && t.dueDate < todayIso && !['DONE', 'Completed', 'Completion', 'OVERDUE', 'Overdue'].includes(t.status)) {
+        overdueIds.push(t.id);
+        t.status = 'OVERDUE';
+      }
+    });
+
+    if (overdueIds.length > 0) {
+      await prisma.task.updateMany({
+        where: { id: { in: overdueIds } },
+        data: { status: 'OVERDUE' }
+      });
+    }
+
     return NextResponse.json({ tasks });
   } catch (error) {
     console.error('Tasks GET error:', error);

@@ -7,7 +7,7 @@ import { prisma } from '@/lib/db';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes execution limit for large uploads
 
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB limit
+const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB limit
 
 async function getRequester(cookieStore) {
   const userIdStr = cookieStore.get('userId')?.value;
@@ -32,7 +32,7 @@ export async function POST(request) {
     }
 
     if (file.size && file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: 'File size exceeds maximum allowed limit of 500MB' }, { status: 400 });
+      return NextResponse.json({ error: 'File size exceeds maximum allowed limit of 1GB' }, { status: 400 });
     }
 
     const bytes = await file.arrayBuffer();

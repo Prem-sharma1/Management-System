@@ -56,6 +56,7 @@ export default function TLDashboard() {
   const [usersList, setUsersList] = useState([]);
   const [employeesList, setEmployeesList] = useState([]);
   const [allLeavesList, setAllLeavesList] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // TL Metrics
   const [metrics, setMetrics] = useState({
@@ -398,6 +399,66 @@ export default function TLDashboard() {
     } catch (err) {
       console.error(err);
       showToast('Script upload error', 'error');
+    }
+  };
+
+  const handleReuploadContent = async (taskId, fileObj, isClientTask = true) => {
+    if (!fileObj) return;
+    try {
+      showToast('Re-uploading content...');
+      const formData = new FormData();
+      formData.append('file', fileObj);
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const uploadData = await uploadRes.json();
+      const uploadedUrl = uploadData.url || uploadData.fileUrl;
+
+      if (!uploadRes.ok || !uploadedUrl) {
+        showToast(uploadData.error || 'Upload failed', 'error');
+        return;
+      }
+
+      if (isClientTask) {
+        const updateRes = await fetch(`/api/client-tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            workSampleUrl: uploadedUrl,
+            status: 'Completion'
+          }),
+        });
+
+        if (updateRes.ok) {
+          showToast('Content re-uploaded successfully!');
+          await refreshData();
+        } else {
+          showToast('Failed to save new content URL', 'error');
+        }
+      } else {
+        const updateRes = await fetch(`/api/tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            workSampleUrl: uploadedUrl,
+            description: uploadedUrl,
+            status: 'DONE'
+          }),
+        });
+
+        if (updateRes.ok) {
+          showToast('Content re-uploaded successfully!');
+          await refreshData();
+        } else {
+          showToast('Failed to save new content URL', 'error');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Re-upload error', 'error');
     }
   };
 
@@ -957,17 +1018,7 @@ export default function TLDashboard() {
               Time-Off Requests
             </button>
 
-            <button
-              onClick={() => setActiveTab('payroll')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
-                activeTab === 'payroll'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <DollarSign className="w-4 h-4" />
-              Payslips & Info
-            </button>
+
             
             <p className="px-4 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 mt-6">Team Leader</p>
 
@@ -1224,19 +1275,21 @@ export default function TLDashboard() {
                                       <FileDown className="w-3 h-3" /> View Script PDF
                                     </a>
                                   )}
-                                  <label className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded cursor-pointer transition border border-indigo-200/60 dark:border-indigo-800/40">
-                                    <Plus className="w-3 h-3" /> {scriptUrl ? 'Change Script PDF' : 'Upload Script PDF'}
-                                    <input 
-                                      type="file" 
-                                      accept="application/pdf,video/*,.pdf,.mp4,.mov,.mkv,.avi,.doc,.docx" 
-                                      className="hidden" 
-                                      onChange={(e) => {
-                                        if (e.target.files && e.target.files[0]) {
-                                          handleDirectScriptFileUpload(item.id, e.target.files[0], item.type === 'client');
-                                        }
-                                      }}
-                                    />
-                                  </label>
+                                  {currentUser?.name?.toLowerCase() === 'harshit' && (
+                                    <label className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded cursor-pointer transition border border-indigo-200/60 dark:border-indigo-800/40">
+                                      <Plus className="w-3 h-3" /> {scriptUrl ? 'Change Script PDF' : 'Upload Script PDF'}
+                                      <input 
+                                        type="file" 
+                                        accept="application/pdf,video/*,.pdf,.mp4,.mov,.mkv,.avi,.doc,.docx" 
+                                        className="hidden" 
+                                        onChange={(e) => {
+                                          if (e.target.files && e.target.files[0]) {
+                                            handleDirectScriptFileUpload(item.id, e.target.files[0], item.type === 'client');
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                  )}
                                 </div>
                               );
                             })()}
@@ -1558,19 +1611,21 @@ export default function TLDashboard() {
                                     <FileDown className="w-3 h-3" /> View Script PDF
                                   </a>
                                 )}
-                                <label className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 rounded-lg cursor-pointer transition shadow-xs border border-indigo-200 dark:border-indigo-800">
-                                  <Plus className="w-3.5 h-3.5" /> {item.pdfUrl ? 'Change Script PDF' : 'Upload Script PDF'}
-                                  <input 
-                                    type="file" 
-                                    accept="application/pdf,video/*,.pdf,.mp4,.mov,.mkv,.avi,.doc,.docx" 
-                                    className="hidden" 
-                                    onChange={(e) => {
-                                      if (e.target.files && e.target.files[0]) {
-                                        handleDirectScriptFileUpload(item.id, e.target.files[0], item.isClientTask);
-                                      }
-                                    }}
-                                  />
-                                </label>
+                                {currentUser?.name?.toLowerCase() === 'harshit' && (
+                                  <label className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 rounded-lg cursor-pointer transition shadow-xs border border-indigo-200 dark:border-indigo-800">
+                                    <Plus className="w-3.5 h-3.5" /> {item.pdfUrl ? 'Change Script PDF' : 'Upload Script PDF'}
+                                    <input 
+                                      type="file" 
+                                      accept="application/pdf,video/*,.pdf,.mp4,.mov,.mkv,.avi,.doc,.docx" 
+                                      className="hidden" 
+                                      onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                          handleDirectScriptFileUpload(item.id, e.target.files[0], item.isClientTask);
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                )}
                               </div>
                             </td>
                             <td className="py-3 px-4">
@@ -1695,7 +1750,7 @@ export default function TLDashboard() {
                                 })()}
                                 {/* Display own work sample if uploaded */}
                                 {task.workSampleUrl && (
-                                  <div className="mt-1">
+                                  <div className="mt-1 flex flex-wrap items-center gap-2">
                                     <a 
                                       href={task.workSampleUrl} 
                                       target="_blank" 
@@ -1704,6 +1759,19 @@ export default function TLDashboard() {
                                     >
                                       <FileDown className="w-3 h-3" /> View Work Sample
                                     </a>
+                                    <label className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md cursor-pointer transition border border-blue-200/60 dark:border-blue-800/40">
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                      Re-Upload Content
+                                      <input 
+                                        type="file" 
+                                        className="hidden"
+                                        onChange={(e) => {
+                                          if (e.target.files && e.target.files[0]) {
+                                            handleReuploadContent(task.id, e.target.files[0], true);
+                                          }
+                                        }}
+                                      />
+                                    </label>
                                   </div>
                                 )}
                               </div>
@@ -1923,24 +1991,50 @@ export default function TLDashboard() {
           {/* TAB: EMPLOYEE DIRECTORY */}
           {activeTab === 'directory' && (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-fade-in">
-              <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Employee Directory</h4>
-                <p className="text-xs text-slate-400 mt-1">View your colleagues and their departments.</p>
+              <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Employee Directory</h4>
+                  <p className="text-xs text-slate-400 mt-1">View your colleagues and their departments.</p>
+                </div>
+                <div className="relative w-full md:w-64">
+                  <input
+                    type="text"
+                    placeholder="Search employees..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                  />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  </div>
+                </div>
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {usersList.map((u) => (
-                    <div key={u.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center gap-3 bg-slate-50 dark:bg-slate-800/20">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
-                        {u.avatar || '👤'}
+                  {usersList
+                    .filter(u => {
+                      if (!searchQuery) return true;
+                      const query = searchQuery.toLowerCase();
+                      return (
+                        u.name.toLowerCase().includes(query) ||
+                        u.email.toLowerCase().includes(query) ||
+                        (u.department && u.department.toLowerCase().includes(query)) ||
+                        (u.role && u.role.toLowerCase().includes(query)) ||
+                        (u.designation && u.designation.toLowerCase().includes(query))
+                      );
+                    })
+                    .map((u) => (
+                      <div key={u.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center gap-3 bg-slate-50 dark:bg-slate-800/20">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
+                          {u.avatar || '👤'}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">{u.name}</p>
+                          <p className="text-[10px] text-slate-500">{u.department} - {u.role}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{u.email}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">{u.name}</p>
-                        <p className="text-[10px] text-slate-500">{u.department} - {u.role}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{u.email}</p>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </div>
             </div>

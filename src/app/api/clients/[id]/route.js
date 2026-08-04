@@ -103,6 +103,139 @@ export async function PUT(request, { params }) {
       }
     });
 
+    if (body.staffAssignments && typeof body.staffAssignments === 'object') {
+      const typeMap = {
+        c: ['Graphic', 'Creatives'],
+        graphic: ['Graphic', 'Creatives'],
+        r: ['Reel', 'Reels', 'Shorts'],
+        reel: ['Reel', 'Reels', 'Shorts'],
+        a: ['AI Video', 'AiVideo'],
+        aiVideo: ['AI Video', 'AiVideo'],
+        script: ['Script'],
+        poster: ['Posting', 'Post', 'Poster'],
+        posting: ['Posting', 'Post', 'Poster'],
+        sm: ['Report', 'Weekly Report', 'Weekly Reports', 'Onboarding', 'Access', 'Setup', 'Ads']
+      };
+
+      for (const [key, toUser] of Object.entries(body.staffAssignments)) {
+        if (!toUser || toUser === 'AUTO') continue;
+        const targetUser = await prisma.user.findFirst({
+          where: { name: { equals: toUser, mode: 'insensitive' } }
+        });
+        const targetName = targetUser ? targetUser.name : toUser;
+        const postTypes = typeMap[key] || [];
+
+        if (postTypes.length === 0) continue;
+
+        for (const pType of postTypes) {
+          const taskWhere = {
+            clientId: updatedClient.clientId,
+            OR: [
+              { postType: { contains: pType, mode: 'insensitive' } },
+              { taskTitle: { contains: pType, mode: 'insensitive' } }
+            ]
+          };
+
+          const deliveryWhere = {
+            clientId: updatedClient.clientId,
+            postType: { contains: pType, mode: 'insensitive' }
+          };
+
+          const notFilters = [];
+          if (!['poster', 'posting', 'sm'].includes(key)) {
+            notFilters.push({ taskTitle: { startsWith: 'Post ', mode: 'insensitive' } });
+          }
+          if (key === 'a' || key === 'aiVideo') {
+            notFilters.push({ taskTitle: { contains: 'Script', mode: 'insensitive' } });
+          }
+          if (notFilters.length > 0) {
+            taskWhere.NOT = notFilters;
+          }
+
+          await prisma.clientTask.updateMany({
+            where: taskWhere,
+            data: { workingOn: targetName }
+          });
+
+          await prisma.clientDelivery.updateMany({
+            where: deliveryWhere,
+            data: { workingOn: targetName }
+          });
+
+          if (targetUser) {
+            const matchedTasks = await prisma.clientTask.findMany({
+              where: taskWhere,
+              select: { taskId: true }
+            });
+            const codes = matchedTasks.flatMap(t => [t.taskId]).filter(Boolean);
+            if (codes.length > 0) {
+              await prisma.task.updateMany({
+                where: {
+                  OR: [
+                    ...codes.map(c => ({ description: { contains: c } })),
+                    ...codes.map(c => ({ title: { contains: c } }))
+                  ]
+                },
+                data: { assignedToId: targetUser.id }
+              });
+            }
+          }
+        }
+      }
+    }
+
+    if (body.reassignStaff) {
+      const { fromUser, toUser, postType } = body.reassignStaff;
+      if (toUser) {
+        const targetUser = await prisma.user.findFirst({
+          where: { name: { equals: toUser, mode: 'insensitive' } }
+        });
+        const sourceUser = fromUser ? await prisma.user.findFirst({
+          where: { name: { equals: fromUser, mode: 'insensitive' } }
+        }) : null;
+
+        const targetName = targetUser ? targetUser.name : toUser;
+
+        const taskWhere = { clientId: updatedClient.clientId };
+        if (fromUser) taskWhere.workingOn = { equals: fromUser, mode: 'insensitive' };
+        if (postType) taskWhere.postType = { equals: postType, mode: 'insensitive' };
+
+        await prisma.clientTask.updateMany({
+          where: taskWhere,
+          data: { workingOn: targetName }
+        });
+
+        const deliveryWhere = { clientId: updatedClient.clientId };
+        if (fromUser) deliveryWhere.workingOn = { equals: fromUser, mode: 'insensitive' };
+
+        await prisma.clientDelivery.updateMany({
+          where: deliveryWhere,
+          data: { workingOn: targetName }
+        });
+
+        if (targetUser) {
+          if (sourceUser) {
+            await prisma.task.updateMany({
+              where: { assignedToId: sourceUser.id },
+              data: { assignedToId: targetUser.id }
+            });
+          } else {
+            const clientTasks = await prisma.clientTask.findMany({
+              where: taskWhere,
+              select: { taskId: true }
+            });
+            const tIds = clientTasks.map(t => t.taskId);
+            if (tIds.length > 0) {
+              await prisma.task.updateMany({
+                where: { OR: tIds.map(tId => ({ description: { contains: tId } })) },
+                data: { assignedToId: targetUser.id }
+              });
+            }
+          }
+        }
+      }
+    }
+
     await prisma.auditLog.create({
       data: {
         action: `Updated client profile: ${updatedClient.businessName} (${updatedClient.clientId})`,

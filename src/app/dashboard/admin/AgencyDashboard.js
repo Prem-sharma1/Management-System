@@ -26,19 +26,30 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
    */
   const parseToISO = (dateStr) => {
     if (!dateStr || typeof dateStr !== 'string') return null;
-    // Already ISO YYYY-MM-DD
-    if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return dateStr.slice(0, 10);
-    // DD-Mon-YYYY  e.g. "15-Jul-2026"
-    const monthMap = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',
-                       jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12' };
-    const parts = dateStr.split('-');
+    const clean = dateStr.trim();
+    if (clean.toLowerCase().includes('trigger') || clean.toLowerCase().includes('approval')) return null;
+
+    // ISO: YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}/.test(clean)) return clean.slice(0, 10);
+
+    // DD/MM/YYYY or DD-MM-YYYY or DD-Mon-YYYY
+    const parts = clean.split(/[\/\-]/);
     if (parts.length === 3) {
-      const [dd, mon, yyyy] = parts;
-      const mm = monthMap[mon.toLowerCase()];
-      if (mm && dd && yyyy) return `${yyyy}-${mm}-${dd.padStart(2, '0')}`;
+      const monthMap = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',
+                         jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12' };
+      const [p1, p2, p3] = parts;
+      let yyyy = p3.length === 4 ? p3 : p1.length === 4 ? p1 : '2026';
+      let mm = monthMap[p2.toLowerCase()] || p2.padStart(2, '0');
+      let dd = p1.length === 4 ? p3.padStart(2, '0') : p1.padStart(2, '0');
+      if (parseInt(mm, 10) > 12) {
+        const tmp = mm;
+        mm = dd;
+        dd = tmp;
+      }
+      return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
     }
-    // Fallback: try native parse
-    const d = new Date(dateStr);
+
+    const d = new Date(clean);
     return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
   };
 
@@ -137,6 +148,21 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
   const todayFreshCount = allTodayItems.filter(t => !t._isOverdue).length;
   const todayTotal = allTodayItems.length;
 
+  const NON_EMPLOYEE_NAMES = [
+    'auto',
+    'unassigned',
+    'unassigned staff',
+    'video editor',
+    'ai video editor',
+    'reel editor',
+    'graphic designer',
+    'ads campaign manager',
+    'script writer',
+    'social media executive',
+    'social media exec',
+    'content poster'
+  ];
+
   // Filter items based on user selection tab ('all', 'today', 'overdue')
   const filteredTodayItems = allTodayItems.filter(item => {
     if (taskFilterTab === 'today') return !item._isOverdue;
@@ -147,7 +173,9 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
   // Group items by employee
   const todayByEmployee = {};
   filteredTodayItems.forEach(t => {
-    const emp = t.assignTo;
+    const emp = t.assignTo ? t.assignTo.trim() : '';
+    if (!emp || NON_EMPLOYEE_NAMES.includes(emp.toLowerCase())) return;
+
     if (!todayByEmployee[emp]) {
       todayByEmployee[emp] = { name: emp, tasks: [], done: 0, pending: 0, overdue: 0 };
     }
@@ -159,7 +187,9 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
       todayByEmployee[emp].pending += 1;
     }
   });
-  const todayEmployeeList = Object.values(todayByEmployee).sort((a, b) => b.tasks.length - a.tasks.length);
+
+  const todayEmployeeList = Object.values(todayByEmployee)
+    .sort((a, b) => b.tasks.length - a.tasks.length);
 
   // Compute revenue/billing details dynamically from active clients
   let dynamicTotalRevenue = 0;       // Received revenue
@@ -205,7 +235,7 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
     const rawName = t.workingOn && t.workingOn.toLowerCase() !== 'auto' ? t.workingOn : (t.assignedTo?.name || t.assignTo || '');
     if (!rawName) return;
     const name = rawName.trim();
-    if (!name || name.toLowerCase() === 'unassigned') return;
+    if (!name || NON_EMPLOYEE_NAMES.includes(name.toLowerCase())) return;
     
     if (!empMap[name]) {
       empMap[name] = { name, pending: 0, done: 0, total: 0 };
@@ -223,7 +253,7 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
   deliveries.forEach(d => {
     if (!d.workingOn) return;
     const name = d.workingOn.trim();
-    if (!name || name.toLowerCase() === 'unassigned') return;
+    if (!name || NON_EMPLOYEE_NAMES.includes(name.toLowerCase())) return;
     
     if (!empMap[name]) {
       empMap[name] = { name, pending: 0, done: 0, total: 0 };
@@ -237,7 +267,9 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
     }
   });
 
-  const employeeData = Object.values(empMap).sort((a, b) => b.total - a.total);
+  const employeeData = Object.values(empMap)
+    .filter(emp => !NON_EMPLOYEE_NAMES.includes(emp.name.trim().toLowerCase()))
+    .sort((a, b) => b.total - a.total);
 
   // Sum up actual employee stats from rows
   const employeeTaskDone = employeeData.reduce((sum, emp) => sum + emp.done, 0);

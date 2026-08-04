@@ -75,7 +75,7 @@ export default function ClientDashboard() {
   };
 
   // Client Feedback & Support states
-  const [activePortalTab, setActivePortalTab] = useState('deliverables');
+  const [activePortalTab, setActivePortalTab] = useState('onboarding');
   const [feedbacks, setFeedbacks] = useState([]);
   const [feedbackType, setFeedbackType] = useState('Feedback');
   const [feedbackRating, setFeedbackRating] = useState(5);
@@ -384,6 +384,17 @@ export default function ClientDashboard() {
       {/* Subheader portal tab navigation */}
       <div className="bg-slate-900/40 border-b border-slate-800/60 px-6 flex items-center text-[10px] uppercase font-bold tracking-wider">
         <button
+          onClick={() => setActivePortalTab('onboarding')}
+          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+            activePortalTab === 'onboarding'
+              ? 'border-blue-500 text-white font-extrabold'
+              : 'border-transparent text-slate-450 hover:text-slate-200'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5 text-blue-400" />
+          <span>Brand Onboarding Form</span>
+        </button>
+        <button
           onClick={() => setActivePortalTab('deliverables')}
           className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
             activePortalTab === 'deliverables'
@@ -404,17 +415,6 @@ export default function ClientDashboard() {
         >
           <MessageSquare className="w-3.5 h-3.5" />
           <span>Submit Feedback & Concerns</span>
-        </button>
-        <button
-          onClick={() => setActivePortalTab('onboarding')}
-          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
-            activePortalTab === 'onboarding'
-              ? 'border-blue-500 text-white font-extrabold'
-              : 'border-transparent text-slate-450 hover:text-slate-200'
-          }`}
-        >
-          <FileText className="w-3.5 h-3.5 text-blue-400" />
-          <span>Brand Onboarding Form</span>
         </button>
       </div>
 
