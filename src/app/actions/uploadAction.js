@@ -16,9 +16,6 @@ export async function uploadFileAction(formData) {
       return { error: 'File size exceeds maximum allowed limit of 1GB' };
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
     // Generate a unique filename using timestamp
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     const originalName = (file.name || 'upload.ext').replace(/[^a-zA-Z0-9.-]/g, '_');
@@ -34,7 +31,21 @@ export async function uploadFileAction(formData) {
     }
 
     const filePath = path.join(uploadDir, filename);
-    await fs.writeFile(filePath, buffer);
+    
+    // Write the file to disk using streams to avoid running out of memory
+    const { createWriteStream } = await import('fs');
+    const writeStream = createWriteStream(filePath);
+    
+    for await (const chunk of file.stream()) {
+      writeStream.write(chunk);
+    }
+    writeStream.end();
+    
+    // Wait for the file to finish writing
+    await new Promise((resolve, reject) => {
+      writeStream.on('finish', resolve);
+      writeStream.on('error', reject);
+    });
 
     const fileUrl = `/uploads/${filename}`;
 
