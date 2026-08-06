@@ -32,8 +32,8 @@ export async function GET(request, context) {
 
     try {
       await fs.access(filePath);
-    } catch {
-      return NextResponse.json({ error: 'File not found' }, { status: 404 });
+    } catch (err) {
+      return NextResponse.json({ error: 'File not found', filePath, errMessage: err.message, cwd: process.cwd(), filename }, { status: 404 });
     }
 
     const fileBuffer = await fs.readFile(filePath);
