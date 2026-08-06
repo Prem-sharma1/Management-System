@@ -1,4 +1,8 @@
 const { defineConfig } = require("prisma/config");
+const { loadEnvConfig } = require("@next/env");
+
+// Automatically load variables from .env, .env.local, etc.
+loadEnvConfig(process.cwd());
 
 module.exports = defineConfig({
   schema: "prisma/schema.prisma",
