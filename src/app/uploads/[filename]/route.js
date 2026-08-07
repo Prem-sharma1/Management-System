@@ -62,6 +62,12 @@ export async function GET(request, context) {
       case '.pdf':
         contentType = 'application/pdf';
         break;
+      case '.doc':
+        contentType = 'application/msword';
+        break;
+      case '.docx':
+        contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        break;
       case '.mp4':
         contentType = 'video/mp4';
         break;

@@ -2105,11 +2105,11 @@ export default function TLDashboard() {
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Upload PDF File</label>
+                    <label className="block text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Upload Document (PDF/Word)</label>
                     <div className="flex items-center gap-3">
                       <input
                         type="file"
-                        accept="application/pdf"
+                        accept="application/pdf,.doc,.docx"
                         onChange={e => setTaskFile(e.target.files[0] || null)}
                         disabled={!!taskDesc}
                         className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
