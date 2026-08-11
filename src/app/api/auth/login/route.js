@@ -5,7 +5,9 @@ import { cookies } from 'next/headers';
 
 export async function POST(request) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const { password } = body;
+    const email = body.email?.toLowerCase().trim();
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -37,7 +39,7 @@ export async function POST(request) {
         const adminHash = await bcrypt.hash("Admin@#123", salt);
         user = await prisma.user.create({
           data: {
-            email: 'praveen@aidigital.com',
+            email: email,
             password: adminHash,
             name: 'Business Head',
             role: 'ADMIN',
@@ -89,7 +91,8 @@ export async function POST(request) {
           { name: 'Rama', department: 'Digital Marketing Executive', password: 'Rama@Ai789', email: 'rama@aidigital.com', role: 'EMPLOYEE' },
           { name: 'Pujan', department: 'Digital Marketing Executive', password: 'Pujan@Ai879', email: 'pujan@aidigital.com', role: 'EMPLOYEE' },
           { name: 'Preet', department: 'Digital Marketing Executive', password: 'Preet@Ai978', email: 'preet@aidigital.com', role: 'EMPLOYEE' },
-          { name: 'Sanmeet', department: 'Video Editor', password: 'Sanmeet@Ai901', email: 'sanmeet@aidigital.com', role: 'EMPLOYEE' }
+          { name: 'Sanmeet', department: 'Video Editor', password: 'Sanmeet@Ai901', email: 'sanmeet@aidigital.com', role: 'EMPLOYEE' },
+          { name: 'Jennifer', department: 'Sales Executive', password: 'Jennifer@Ai123', email: 'jennifer@aidigital.com', role: 'SALES' }
         ];
 
         const emp = employeesList.find(e => e.email === email);
@@ -109,6 +112,14 @@ export async function POST(request) {
             }
           });
         }
+      }
+    } else {
+      // If user exists, ensure Jennifer has the SALES role
+      if (email === 'jennifer@aidigital.com' && user.role !== 'SALES') {
+        user = await prisma.user.update({
+          where: { email },
+          data: { role: 'SALES' }
+        });
       }
     }
 

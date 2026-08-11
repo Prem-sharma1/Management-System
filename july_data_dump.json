@@ -1,20 +1,20 @@
 {
-  "timestamp": "2026-08-04T09:47:53.453Z",
+  "timestamp": "2026-08-11T10:54:46.422Z",
   "summary": {
-    "totalClients": 52,
-    "totalClientTasks": 1130,
+    "totalClients": 51,
+    "totalClientTasks": 1113,
     "totalClientDeliveries": 0,
     "tasksByWorkingOn": {
       "Pujan": 325,
-      "Swapnil": 136,
-      "Harshit": 74,
-      "Divyansh": 44,
+      "Swapnil": 139,
+      "Harshit": 73,
+      "Divyansh": 42,
       "Sanmeet": 45,
-      "Preet": 306,
+      "Preet": 295,
       "Nouman": 32,
       "Masoom": 33,
       "Rama": 11,
-      "Danish Khan": 124
+      "Danish Khan": 118
     }
   },
   "aiVideoBreakdown": {
@@ -70,7 +70,7 @@
       ]
     },
     "Divyansh": {
-      "count": 44,
+      "count": 42,
       "clients": [
         "AID-0001 (HIT-OFFICE(Meta))",
         "AID-0004 (A Siddhanatth Car's)",
@@ -88,7 +88,6 @@
         "AID-0031 (KRISH METAL CORPORATION)",
         "AID-0036 (Suman Madhav Mahila Mahavidyalay)",
         "AID-0037 (Velvet Business Group)",
-        "AID-0040 (Unique Business)",
         "AID-0043 (Trending Realty)",
         "AID-0044 (Ketan Properties)",
         "AID-0046 (PurePlush)",
@@ -375,13 +374,6 @@
       "packageAmount": 2499
     },
     {
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "joiningDate": "2026-08-02",
-      "packageName": "Basic",
-      "packageAmount": 2499
-    },
-    {
       "clientId": "AID-0041",
       "businessName": "Sahyadri Realty",
       "joiningDate": "2026-07-23",
@@ -486,7 +478,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -497,7 +489,7 @@
       "date": "04-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -508,7 +500,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -519,7 +511,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -530,7 +522,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -673,7 +665,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -684,7 +676,7 @@
       "date": "04-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -695,7 +687,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -706,7 +698,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -717,7 +709,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -739,7 +731,7 @@
       "date": "08-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Sanmeet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -871,7 +863,7 @@
       "date": "11-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -970,7 +962,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -981,7 +973,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -992,7 +984,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -1058,7 +1050,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -1157,7 +1149,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -1168,7 +1160,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -1179,7 +1171,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -1245,7 +1237,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -1388,7 +1380,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Sanmeet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -1432,7 +1424,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Rama",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -1531,7 +1523,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -1542,7 +1534,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {
@@ -1553,7 +1545,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -1619,7 +1611,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -1685,7 +1677,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -1696,7 +1688,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -1707,7 +1699,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Sanmeet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -1729,7 +1721,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -1740,7 +1732,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -1751,7 +1743,7 @@
       "date": "08-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -1762,7 +1754,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -1784,7 +1776,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -1795,7 +1787,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -2554,7 +2546,7 @@
       "date": "13-Jul-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "AI Video"
     },
     {
@@ -2664,7 +2656,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -2708,7 +2700,7 @@
       "date": "21-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Onboarding"
     },
     {
@@ -2752,7 +2744,7 @@
       "date": "23-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -2807,7 +2799,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -2818,7 +2810,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -2829,7 +2821,7 @@
       "date": "29-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -2840,7 +2832,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -2906,7 +2898,7 @@
       "date": "16-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -2917,7 +2909,7 @@
       "date": "16-Jul-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Script"
     },
     {
@@ -2950,7 +2942,7 @@
       "date": "18-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -2994,7 +2986,7 @@
       "date": "01-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -3038,7 +3030,7 @@
       "date": "08-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -3082,7 +3074,7 @@
       "date": "23-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Onboarding"
     },
     {
@@ -3092,7 +3084,7 @@
       "taskTitle": "Graphic 1",
       "date": "24-Jul-2026",
       "assignTo": "Graphic Designer",
-      "workingOn": "Danish Khan",
+      "workingOn": "Swapnil",
       "status": "Overdue",
       "postType": "Graphic"
     },
@@ -3126,7 +3118,7 @@
       "date": "25-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -3136,7 +3128,7 @@
       "taskTitle": "Graphic 2",
       "date": "27-Jul-2026",
       "assignTo": "Graphic Designer",
-      "workingOn": "Danish Khan",
+      "workingOn": "Swapnil",
       "status": "Overdue",
       "postType": "Graphic"
     },
@@ -3180,8 +3172,8 @@
       "taskTitle": "Graphic 3",
       "date": "10-Aug-2026",
       "assignTo": "Graphic Designer",
-      "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "workingOn": "Swapnil",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -3192,7 +3184,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -3214,7 +3206,7 @@
       "date": "08-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -3269,7 +3261,7 @@
       "date": "04-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Onboarding"
     },
     {
@@ -3280,7 +3272,7 @@
       "date": "06-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -3291,7 +3283,7 @@
       "date": "06-Jul-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Script"
     },
     {
@@ -3302,7 +3294,7 @@
       "date": "07-Jul-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Masoom",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "AI Video"
     },
     {
@@ -3313,7 +3305,7 @@
       "date": "07-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -3324,7 +3316,7 @@
       "date": "08-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -3335,7 +3327,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -3368,7 +3360,7 @@
       "date": "22-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -3379,7 +3371,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -3390,7 +3382,7 @@
       "date": "13-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -3401,7 +3393,7 @@
       "date": "21-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -3423,7 +3415,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -3434,7 +3426,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Not Started",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -3445,7 +3437,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Not Started",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -3456,7 +3448,7 @@
       "date": "04-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Onboarding"
     },
     {
@@ -3467,7 +3459,7 @@
       "date": "06-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -3478,7 +3470,7 @@
       "date": "06-Jul-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Script"
     },
     {
@@ -3500,7 +3492,7 @@
       "date": "07-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -3511,7 +3503,7 @@
       "date": "08-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -3522,7 +3514,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -3643,7 +3635,7 @@
       "date": "22-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -3654,7 +3646,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -3665,7 +3657,7 @@
       "date": "13-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -3676,7 +3668,7 @@
       "date": "21-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -3698,7 +3690,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -3709,7 +3701,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Not Started",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -3731,7 +3723,7 @@
       "date": "15-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Onboarding"
     },
     {
@@ -3742,7 +3734,7 @@
       "date": "16-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -3775,7 +3767,7 @@
       "date": "17-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -3786,7 +3778,7 @@
       "date": "18-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -3797,7 +3789,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -3808,7 +3800,7 @@
       "date": "01-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -3819,7 +3811,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -3830,7 +3822,7 @@
       "date": "23-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -3852,7 +3844,7 @@
       "date": "08-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -3874,7 +3866,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Not Started",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -3896,7 +3888,7 @@
       "date": "11-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Onboarding"
     },
     {
@@ -3907,7 +3899,7 @@
       "date": "13-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -3918,7 +3910,7 @@
       "date": "13-Jul-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Script"
     },
     {
@@ -3940,7 +3932,7 @@
       "date": "14-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -4017,7 +4009,7 @@
       "date": "20-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -4028,7 +4020,7 @@
       "date": "28-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -4039,7 +4031,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -4061,7 +4053,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Not Started",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -4083,7 +4075,7 @@
       "date": "28-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Onboarding"
     },
     {
@@ -4160,7 +4152,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -4204,7 +4196,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -4303,7 +4295,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "AI Video"
     },
     {
@@ -4314,7 +4306,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {
@@ -4325,7 +4317,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -4391,7 +4383,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -4468,7 +4460,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Client Review",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -4479,7 +4471,7 @@
       "date": "04-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -4490,7 +4482,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -4501,7 +4493,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -4512,7 +4504,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -4534,7 +4526,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -4688,7 +4680,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Pujan",
-      "status": "Not Started",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -4721,7 +4713,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -4732,7 +4724,7 @@
       "date": "04-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -4743,7 +4735,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -4754,7 +4746,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -4765,7 +4757,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -4787,7 +4779,7 @@
       "date": "08-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Nouman",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -5029,7 +5021,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -5040,7 +5032,7 @@
       "date": "04-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -5051,7 +5043,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -5062,7 +5054,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -5073,7 +5065,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -5139,7 +5131,7 @@
       "date": "11-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -5579,7 +5571,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -5601,7 +5593,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -5623,7 +5615,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -5656,7 +5648,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -5667,7 +5659,7 @@
       "date": "04-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -5678,7 +5670,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -5689,7 +5681,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {
@@ -5700,7 +5692,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -5843,7 +5835,7 @@
       "date": "14-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -5854,7 +5846,7 @@
       "date": "14-Jul-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Script"
     },
     {
@@ -5887,7 +5879,7 @@
       "date": "16-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -5909,7 +5901,7 @@
       "date": "18-Jul-2026",
       "assignTo": "Video Editor",
       "workingOn": "Nouman",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Reel"
     },
     {
@@ -5931,7 +5923,7 @@
       "date": "21-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -5964,7 +5956,7 @@
       "date": "24-Jul-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "AI Video"
     },
     {
@@ -5986,7 +5978,7 @@
       "date": "25-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -6030,7 +6022,7 @@
       "date": "30-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -6096,7 +6088,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -6151,7 +6143,7 @@
       "date": "28-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -6195,7 +6187,7 @@
       "date": "30-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -6217,7 +6209,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -6261,7 +6253,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -6426,7 +6418,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -6459,7 +6451,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -6547,7 +6539,7 @@
       "date": "21-Jul-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "AI Video"
     },
     {
@@ -6613,7 +6605,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -6646,7 +6638,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -6701,7 +6693,7 @@
       "date": "21-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Onboarding"
     },
     {
@@ -6745,7 +6737,7 @@
       "date": "23-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -6800,7 +6792,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -6811,7 +6803,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -6822,7 +6814,7 @@
       "date": "29-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -6833,7 +6825,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -6921,7 +6913,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -6932,7 +6924,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {
@@ -6943,7 +6935,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -6954,7 +6946,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -6965,7 +6957,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -6987,7 +6979,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -7009,7 +7001,7 @@
       "date": "08-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -7020,7 +7012,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -7042,7 +7034,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -7218,7 +7210,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -7262,7 +7254,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Not Started",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -7416,7 +7408,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -7438,7 +7430,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -7460,7 +7452,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Sanmeet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -7482,7 +7474,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -7537,7 +7529,7 @@
       "date": "08-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -7603,7 +7595,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -7614,7 +7606,7 @@
       "date": "04-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -7625,7 +7617,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -7636,7 +7628,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -7647,7 +7639,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -7713,7 +7705,7 @@
       "date": "11-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -7779,7 +7771,7 @@
       "date": "03-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Onboarding"
     },
     {
@@ -7790,7 +7782,7 @@
       "date": "04-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -7801,7 +7793,7 @@
       "date": "04-Jul-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Script"
     },
     {
@@ -7823,7 +7815,7 @@
       "date": "06-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -7834,7 +7826,7 @@
       "date": "07-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -7845,7 +7837,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -7878,7 +7870,7 @@
       "date": "21-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -7889,7 +7881,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -7900,7 +7892,7 @@
       "date": "11-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -7911,7 +7903,7 @@
       "date": "20-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -7922,7 +7914,7 @@
       "date": "28-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -7933,7 +7925,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -7944,7 +7936,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Preet",
-      "status": "Not Started",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -7977,7 +7969,7 @@
       "date": "10-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -7988,7 +7980,7 @@
       "date": "10-Jul-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Script"
     },
     {
@@ -8021,7 +8013,7 @@
       "date": "13-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -8043,7 +8035,7 @@
       "date": "14-Jul-2026",
       "assignTo": "Video Editor",
       "workingOn": "Sanmeet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Reel"
     },
     {
@@ -8065,7 +8057,7 @@
       "date": "15-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -8098,7 +8090,7 @@
       "date": "17-Jul-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "AI Video"
     },
     {
@@ -8120,7 +8112,7 @@
       "date": "17-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -8142,7 +8134,7 @@
       "date": "18-Jul-2026",
       "assignTo": "Video Editor",
       "workingOn": "Sanmeet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Reel"
     },
     {
@@ -8164,7 +8156,7 @@
       "date": "20-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -8186,7 +8178,7 @@
       "date": "21-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -8230,7 +8222,7 @@
       "date": "23-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -8373,7 +8365,7 @@
       "date": "14-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -8384,7 +8376,7 @@
       "date": "14-Jul-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Script"
     },
     {
@@ -8417,7 +8409,7 @@
       "date": "16-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -8461,7 +8453,7 @@
       "date": "30-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -8505,7 +8497,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -8560,7 +8552,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -8571,7 +8563,7 @@
       "date": "04-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -8582,7 +8574,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -8593,7 +8585,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {
@@ -8604,7 +8596,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -8835,7 +8827,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -9000,7 +8992,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Sanmeet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -9044,7 +9036,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -9121,7 +9113,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -9132,7 +9124,7 @@
       "date": "04-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -9143,7 +9135,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -9154,7 +9146,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -9165,7 +9157,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -9231,7 +9223,7 @@
       "date": "11-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -9297,7 +9289,7 @@
       "date": "22-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Onboarding"
     },
     {
@@ -9341,7 +9333,7 @@
       "date": "24-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -9396,7 +9388,7 @@
       "date": "08-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -9429,7 +9421,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -9477,193 +9469,6 @@
       "postType": "Posting"
     },
     {
-      "taskId": "AID-T-MSC4D9T9-4975-0",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Client Login / Access Collection",
-      "date": "03-Aug-2026",
-      "assignTo": "Digital Marketing Executive",
-      "workingOn": "Preet",
-      "status": "Completion",
-      "postType": "Onboarding"
-    },
-    {
-      "taskId": "AID-T-MSC4DA70-8470-1",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Graphic 1",
-      "date": "04-Aug-2026",
-      "assignTo": "Graphic Designer",
-      "workingOn": "Danish Khan",
-      "status": "Assigned",
-      "postType": "Graphic"
-    },
-    {
-      "taskId": "AID-T-MSC4DAK6-6390-2",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "AI Video Script 1",
-      "date": "04-Aug-2026",
-      "assignTo": "AI Video Lead",
-      "workingOn": "Harshit",
-      "status": "Assigned",
-      "postType": "Script"
-    },
-    {
-      "taskId": "AID-T-MSC4DAXE-3417-3",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "AI Video 1",
-      "date": "05-Aug-2026",
-      "assignTo": "Ai Video Editor",
-      "workingOn": "Divyansh",
-      "status": "Assigned",
-      "postType": "AI Video"
-    },
-    {
-      "taskId": "AID-T-MSC4DBAJ-9907-4",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Ads Run",
-      "date": "05-Aug-2026",
-      "assignTo": "Digital Marketing Executive",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Ads"
-    },
-    {
-      "taskId": "AID-T-MSC4DBQZ-5251-5",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Graphic 2",
-      "date": "06-Aug-2026",
-      "assignTo": "Graphic Designer",
-      "workingOn": "Danish Khan",
-      "status": "Assigned",
-      "postType": "Graphic"
-    },
-    {
-      "taskId": "AID-T-MSC4DC46-5675-6",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Post Graphic 2",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MSC4DCHB-3817-7",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Reel 1",
-      "date": "13-Aug-2026",
-      "assignTo": "Video Editor",
-      "workingOn": "Divyansh",
-      "status": "Assigned",
-      "postType": "Reel"
-    },
-    {
-      "taskId": "AID-T-MSC4DD4K-2137-8",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Post Reel 1",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MSC4DDHP-1629-9",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Graphic 3",
-      "date": "20-Aug-2026",
-      "assignTo": "Graphic Designer",
-      "workingOn": "Danish Khan",
-      "status": "Assigned",
-      "postType": "Graphic"
-    },
-    {
-      "taskId": "AID-T-MSC4DDUV-3261-10",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Post Graphic 3",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MSC4DEDW-7526-11",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Weekly Report 1",
-      "date": "11-Aug-2026",
-      "assignTo": "Digital Marketing Executive",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Report"
-    },
-    {
-      "taskId": "AID-T-MSC4DER0-8418-12",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Weekly Report 2",
-      "date": "19-Aug-2026",
-      "assignTo": "Digital Marketing Executive",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Report"
-    },
-    {
-      "taskId": "AID-T-MSC4DF46-6235-13",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Weekly Report 3",
-      "date": "27-Aug-2026",
-      "assignTo": "Digital Marketing Executive",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Report"
-    },
-    {
-      "taskId": "AID-T-MSC4DFHC-7199-14",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Weekly Report 4",
-      "date": "04-Sept-2026",
-      "assignTo": "Digital Marketing Executive",
-      "workingOn": "Preet",
-      "status": "Assigned",
-      "postType": "Report"
-    },
-    {
-      "taskId": "AID-T-MSC4DA70-8470-1-POST-MSC4DP34-8361",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Post Graphic 1",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Preet",
-      "status": "Not Started",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MSC4DAXE-3417-3-POST-MSC4DP9W-2205",
-      "clientId": "AID-0040",
-      "businessName": "Unique Business",
-      "taskTitle": "Post AI Video 1",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Preet",
-      "status": "Not Started",
-      "postType": "Posting"
-    },
-    {
       "taskId": "AID-T-MSC4H7LK-5599-0",
       "clientId": "AID-0041",
       "businessName": "Sahyadri Realty",
@@ -9671,7 +9476,7 @@
       "date": "23-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Onboarding"
     },
     {
@@ -9715,7 +9520,7 @@
       "date": "25-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -9770,7 +9575,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -9803,7 +9608,7 @@
       "date": "08-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -9869,7 +9674,7 @@
       "date": "25-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -9913,7 +9718,7 @@
       "date": "28-Jul-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -9935,7 +9740,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -9990,7 +9795,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -10045,7 +9850,7 @@
       "date": "25-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Onboarding"
     },
     {
@@ -10089,7 +9894,7 @@
       "date": "28-Jul-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -10122,7 +9927,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Nouman",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -10177,7 +9982,7 @@
       "date": "11-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -10331,7 +10136,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -10353,7 +10158,7 @@
       "date": "07-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -10364,7 +10169,7 @@
       "date": "08-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -10386,7 +10191,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -10474,7 +10279,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -10617,7 +10422,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Sanmeet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -10661,7 +10466,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Rama",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -10727,7 +10532,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Onboarding"
     },
     {
@@ -10738,7 +10543,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -10749,7 +10554,7 @@
       "date": "05-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -10760,7 +10565,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -10771,7 +10576,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {
@@ -10782,7 +10587,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -10914,7 +10719,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Onboarding"
     },
     {
@@ -10925,7 +10730,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -10936,7 +10741,7 @@
       "date": "06-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -10947,7 +10752,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -10958,7 +10763,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {
@@ -10969,7 +10774,7 @@
       "date": "08-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -11112,7 +10917,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -11123,7 +10928,7 @@
       "date": "04-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -11134,7 +10939,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -11145,7 +10950,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {
@@ -11156,7 +10961,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -11178,7 +10983,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -11200,7 +11005,7 @@
       "date": "08-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -11222,7 +11027,7 @@
       "date": "10-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -11508,7 +11313,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -11519,7 +11324,7 @@
       "date": "04-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -11530,7 +11335,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -11541,7 +11346,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {
@@ -11552,7 +11357,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -11684,7 +11489,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Graphic"
     },
     {
@@ -11695,7 +11500,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -11706,7 +11511,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -11728,7 +11533,7 @@
       "date": "08-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -11739,7 +11544,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -11761,7 +11566,7 @@
       "date": "10-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -12234,7 +12039,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -12245,7 +12050,7 @@
       "date": "04-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -12256,7 +12061,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -12267,7 +12072,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {
@@ -12278,7 +12083,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -12300,7 +12105,7 @@
       "date": "08-Aug-2026",
       "assignTo": "Video Editor",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -12542,7 +12347,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -12553,7 +12358,7 @@
       "date": "04-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -12564,7 +12369,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -12575,7 +12380,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {
@@ -12586,7 +12391,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -12652,7 +12457,7 @@
       "date": "11-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Report"
     },
     {
@@ -12718,7 +12523,7 @@
       "date": "04-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Onboarding"
     },
     {
@@ -12729,7 +12534,7 @@
       "date": "05-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -12740,7 +12545,7 @@
       "date": "05-Aug-2026",
       "assignTo": "AI Video Lead",
       "workingOn": "Harshit",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Script"
     },
     {
@@ -12751,7 +12556,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Divyansh",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -12762,7 +12567,7 @@
       "date": "06-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Completion",
       "postType": "Ads"
     },
     {
@@ -12773,7 +12578,7 @@
       "date": "07-Aug-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {

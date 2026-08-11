@@ -27,7 +27,7 @@ export async function GET() {
     });
 
     let logs;
-    if (requester.role === 'EMPLOYEE') {
+    if (requester.role === 'EMPLOYEE' || requester.role === 'SALES') {
       logs = await prisma.attendance.findMany({
         where: { userId: requester.id },
         include: { user: { select: { name: true, department: true } } },

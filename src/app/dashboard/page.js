@@ -28,6 +28,8 @@ export default function DashboardGate() {
           router.push('/dashboard/tl');
         } else if (role === 'CLIENT') {
           router.push('/dashboard/client');
+        } else if (role === 'SALES') {
+          router.push('/dashboard/sales');
         } else {
           router.push('/');
         }

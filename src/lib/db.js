@@ -1,21 +1,15 @@
-import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
-
-let prisma;
+import { PrismaClient } from '@prisma/client';
 
 function initPrisma() {
   const dbUrl = process.env.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder';
-
-  const pool = new pg.Pool({
-    connectionString: dbUrl,
-    connectionTimeoutMillis: 5000,
-    ssl: dbUrl.includes('sslmode=') || dbUrl.includes('prisma.io') ? { rejectUnauthorized: false } : false
-  });
-
+  const pool = new Pool({ connectionString: dbUrl });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 }
+
+let prisma;
 
 if (process.env.NODE_ENV === 'production') {
   prisma = initPrisma();

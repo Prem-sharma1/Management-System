@@ -14,7 +14,7 @@ if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres'))
 
 async function main() {
   console.log('=== REMOVING CAMPAIGN DELIVERIES DATA ===');
-  
+
   const deliveryResult = await prisma.clientDelivery.deleteMany({});
   console.log(`Deleted ${deliveryResult.count} records from ClientDelivery table.`);
 

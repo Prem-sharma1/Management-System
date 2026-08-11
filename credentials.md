@@ -80,6 +80,11 @@ Use the email addresses and passwords below to log in as specific members of the
   - **Email:** `sanmeet@aidigital.com`
   - **Password:** `Sanmeet@Ai901`
 
+### Sales Executive
+- **Jennifer** (SALES)
+  - **Email:** `jennifer@aidigital.com`
+  - **Password:** `Jennifer@Ai123`
+
 ---
 
 > [!WARNING]

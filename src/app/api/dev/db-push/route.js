@@ -8,10 +8,10 @@ const execPromise = util.promisify(exec);
 
 export async function GET() {
   try {
-    const { stdout, stderr } = await execPromise('node fetch-tasks.js', { cwd: process.cwd() });
+    const { stdout, stderr } = await execPromise('npx prisma db push', { cwd: process.cwd() });
 
     return NextResponse.json({ 
-      message: 'Seed executed',
+      message: 'Schema pushed successfully',
       stdout,
       stderr
     });

@@ -268,16 +268,33 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
+    const userOrConditions = [{ department: targetClient.clientId }];
+    if (targetClient.email) {
+      userOrConditions.push({ email: targetClient.email });
+    }
+
     // 1. Delete associated client portal user accounts if any
-    await prisma.user.deleteMany({
+    const usersToDelete = await prisma.user.findMany({
       where: {
         role: 'CLIENT',
-        OR: [
-          { department: targetClient.clientId },
-          { email: targetClient.email || undefined }
-        ]
-      }
+        OR: userOrConditions
+      },
+      select: { id: true }
     });
+
+    if (usersToDelete.length > 0) {
+      const userIds = usersToDelete.map(u => u.id);
+      
+      // Clean up CallRecords to prevent foreign key constraint violations
+      await prisma.callRecord.deleteMany({
+        where: { salesPersonId: { in: userIds } }
+      });
+
+      // Delete the user accounts
+      await prisma.user.deleteMany({
+        where: { id: { in: userIds } }
+      });
+    }
 
     // 2. Delete internal employee tasks referencing this client
     await prisma.task.deleteMany({
@@ -303,6 +320,10 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Client DELETE error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error.message,
+      stack: error.stack 
+    }, { status: 500 });
   }
 }

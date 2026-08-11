@@ -35,6 +35,7 @@ model User {
   leaveRequests LeaveRequest[]
   assignedTasks Task[]         @relation("AssignedTasks")
   createdTasks  Task[]         @relation("CreatedTasks")
+  callRecords   CallRecord[]
 }
 
 model Attendance {
@@ -166,4 +167,15 @@ model ClientFeedback {
   status       String   @default("Pending") // "Pending", "Reviewed"
   createdAt    DateTime @default(now())
   Client       Client   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+}
+
+model CallRecord {
+  id             Int      @id @default(autoincrement())
+  clientName     String
+  phoneNumber    String
+  status         String   @default("PENDING")
+  notes          String?
+  callDate       DateTime @default(now())
+  salesPersonId  Int
+  salesPerson    User     @relation(fields: [salesPersonId], references: [id])
 }
