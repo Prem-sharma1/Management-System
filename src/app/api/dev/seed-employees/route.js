@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 const employeesList = [
   { name: 'Danish Khan', department: 'Graphic Designer', password: 'Danish@Ai123', email: 'danish@aidigital.com', role: 'EMPLOYEE' },
   { name: 'Swapnil', department: 'Graphic Designer', password: 'Swapnil@Ai231', email: 'swapnil@aidigital.com', role: 'EMPLOYEE' },
-  { name: 'Harshit', department: 'Ai Video Lead', password: 'Harshit@Ai456', email: 'harshit@aidigital.com', role: 'TL' },
+  { name: 'Harshit', department: 'Social Media Marketing', password: 'Harshit@Ai456', email: 'harshit@aidigital.com', role: 'EMPLOYEE' },
   { name: 'Divyansh', department: 'Ai Video Editor', password: 'Divyansh@Ai546', email: 'divyansh@aidigital.com', role: 'EMPLOYEE' },
   { name: 'Nouman', department: 'Ai Video Editor', password: 'Nouman@Ai645', email: 'nouman@aidigital.com', role: 'EMPLOYEE' },
   { name: 'Masoom', department: 'Ai Video Editor', password: 'Masoom@Ai564', email: 'masoom@aidigital.com', role: 'EMPLOYEE' },

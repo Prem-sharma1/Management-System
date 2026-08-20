@@ -1273,21 +1273,7 @@ export default function TLDashboard() {
                                       <FileDown className="w-3 h-3" /> View Script PDF
                                     </a>
                                   )}
-                                  {currentUser?.name?.toLowerCase() === 'harshit' && (
-                                    <label className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded cursor-pointer transition border border-indigo-200/60 dark:border-indigo-800/40">
-                                      <Plus className="w-3 h-3" /> {scriptUrl ? 'Change Script PDF' : 'Upload Script PDF'}
-                                      <input 
-                                        type="file" 
-                                        accept="application/pdf,video/*,.pdf,.mp4,.mov,.mkv,.avi,.doc,.docx" 
-                                        className="hidden" 
-                                        onChange={(e) => {
-                                          if (e.target.files && e.target.files[0]) {
-                                            handleDirectScriptFileUpload(item.id, e.target.files[0], item.type === 'client');
-                                          }
-                                        }}
-                                      />
-                                    </label>
-                                  )}
+
                                 </div>
                               );
                             })()}
@@ -1609,21 +1595,7 @@ export default function TLDashboard() {
                                     <FileDown className="w-3 h-3" /> View Script PDF
                                   </a>
                                 )}
-                                {currentUser?.name?.toLowerCase() === 'harshit' && (
-                                  <label className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 rounded-lg cursor-pointer transition shadow-xs border border-indigo-200 dark:border-indigo-800">
-                                    <Plus className="w-3.5 h-3.5" /> {item.pdfUrl ? 'Change Script PDF' : 'Upload Script PDF'}
-                                    <input 
-                                      type="file" 
-                                      accept="application/pdf,video/*,.pdf,.mp4,.mov,.mkv,.avi,.doc,.docx" 
-                                      className="hidden" 
-                                      onChange={(e) => {
-                                        if (e.target.files && e.target.files[0]) {
-                                          handleDirectScriptFileUpload(item.id, e.target.files[0], item.isClientTask);
-                                        }
-                                      }}
-                                    />
-                                  </label>
-                                )}
+
                               </div>
                             </td>
                             <td className="py-3 px-4">

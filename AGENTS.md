@@ -16,5 +16,5 @@ This version has breaking changes — APIs, conventions, and file structure may 
    - Deliverable task dates MUST NEVER fall on a Sunday. If a calculated date lands on Sunday, automatically advance it to Monday.
 
 3. **Dedicated Staff Ownership**:
-   - **AI Video Scripts**: ALWAYS assigned to **Harshit** (`AI Video Lead`).
+   - **AI Video Maker**: The AI Video Editor assigned will make the script and work on it directly. No TL handles scripts.
    - **Account Management & Reports**: The dedicated Social Media Executive handles Access Collection, Page/Account Setup, Ads Run, and ALL Weekly Reports for that account.

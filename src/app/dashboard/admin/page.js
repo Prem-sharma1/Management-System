@@ -77,7 +77,7 @@ const SERVICES_PRICING = {
 const parseReqStringToCounts = (reqStr) => {
   let c = 5, r = 3, a = 2; // defaults
   if (!reqStr) return { c, r, a };
-
+ 
   const cMatch = reqStr.match(/Creative\s*-\s*(\d+)/i) || reqStr.match(/(\d+)\s*Creative/i);
   const rMatch = reqStr.match(/Reel[s\/Shorts]*\s*-\s*(\d+)/i) || reqStr.match(/(\d+)\s*Reel/i);
   const aMatch = reqStr.match(/AI\s*Video[s]?\s*-\s*(\d+)/i) || reqStr.match(/(\d+)\s*AI\s*Video/i);
@@ -131,6 +131,7 @@ export default function AdminDashboard() {
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formDept, setFormDept] = useState('Social Media Marketing');
+  const [formWorks, setFormWorks] = useState([]);
   const [formAvatar, setFormAvatar] = useState('👤');
   const [formStatus, setFormStatus] = useState('ACTIVE');
   
@@ -744,16 +745,19 @@ export default function AdminDashboard() {
             return fullRole.includes('ai video') || fullRole.includes('video editor') || ['masoom', 'divyansh', 'nouman'].includes(e.name.toLowerCase());
           }
           if (targetLower.includes('graphic')) {
-            return fullRole.includes('graphic') || fullRole.includes('design') || e.name.toLowerCase() === 'swapnil';
+            return fullRole.includes('graphic') || fullRole.includes('design') || ['swapnil', 'danish', 'sanmeet'].includes(e.name.toLowerCase());
           }
           if (targetLower.includes('digital marketing') || targetLower.includes('social media')) {
-            return fullRole.includes('marketing') || fullRole.includes('social') || fullRole.includes('digital');
+            return fullRole.includes('marketing') || fullRole.includes('social') || fullRole.includes('digital') || ['harshit', 'pujan', 'preet'].includes(e.name.toLowerCase());
           }
           if (targetLower.includes('video editor') || targetLower.includes('reel')) {
-            return e.name.toLowerCase() === 'sanmeet';
+            return fullRole.includes('video editor') || fullRole.includes('reel') || ['swapnil', 'danish', 'sanmeet'].includes(e.name.toLowerCase());
           }
           if (targetLower.includes('posting') || targetLower.includes('poster')) {
-            return fullRole.includes('posting') || e.name.toLowerCase() === 'masoom';
+            return fullRole.includes('posting') || ['harshit', 'pujan', 'preet'].includes(e.name.toLowerCase());
+          }
+          if (targetLower.includes('tl') || targetLower.includes('team lead')) {
+            return false;
           }
           return fullRole.includes(targetLower) || targetLower.includes(deptLower);
         });
@@ -1384,6 +1388,7 @@ export default function AdminDashboard() {
     setFormEmail('');
     setFormPassword('');
     setFormDept('Social Media Marketing');
+    setFormWorks([]);
     setFormAvatar('👤');
     setFormStatus('ACTIVE');
     setFormError('');
@@ -1414,6 +1419,11 @@ export default function AdminDashboard() {
     setFormEmail(user.email);
     setFormPassword('');
     setFormDept(user.department);
+    try {
+      setFormWorks(user.works ? JSON.parse(user.works) : []);
+    } catch(e) {
+      setFormWorks([]);
+    }
     setFormAvatar(user.avatar || '👤');
     setFormStatus(user.status);
     setFormAddress(user.address || '');
@@ -1468,7 +1478,8 @@ export default function AdminDashboard() {
           marksheet10,
           marksheet12,
           graduation,
-          otherDoc
+          otherDoc,
+          works: JSON.stringify(formWorks)
         })
       });
 
@@ -1523,7 +1534,8 @@ export default function AdminDashboard() {
           marksheet10,
           marksheet12,
           graduation,
-          otherDoc
+          otherDoc,
+          works: JSON.stringify(formWorks)
         })
       });
 
@@ -3900,6 +3912,23 @@ export default function AdminDashboard() {
               </div>
 
               <div>
+                <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">Work Assignments</h4>
+                <div className="flex flex-wrap gap-2">
+                  {(() => {
+                    let worksArr = [];
+                    try {
+                      worksArr = selectedUser.works ? JSON.parse(selectedUser.works) : [];
+                    } catch(e) {}
+                    return worksArr.length > 0 ? worksArr.map(w => (
+                      <span key={w} className="px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold rounded-lg border border-blue-200 dark:border-blue-800">
+                        {w}
+                      </span>
+                    )) : <span className="text-slate-400 italic">No specific work assigned</span>;
+                  })()}
+                </div>
+              </div>
+
+              <div>
                 <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">Documents</h4>
                 <div className="grid grid-cols-2 gap-4">
                   {[
@@ -4012,6 +4041,26 @@ export default function AdminDashboard() {
                       <label className="font-bold text-slate-700 dark:text-slate-300">Date of Joining</label>
                       <input type="date" value={formDateOfJoining} onChange={(e) => setFormDateOfJoining(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
                     </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">Work Assignments</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {['Ai video', 'Reels', 'Graphics', 'Social media work', 'reporting', 'Posting'].map(work => (
+                      <label key={work} className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300 font-medium">
+                        <input 
+                          type="checkbox" 
+                          checked={formWorks.includes(work)} 
+                          onChange={(e) => {
+                            if (e.target.checked) setFormWorks([...formWorks, work]);
+                            else setFormWorks(formWorks.filter(w => w !== work));
+                          }}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        {work}
+                      </label>
+                    ))}
                   </div>
                 </div>
 
@@ -4170,6 +4219,26 @@ export default function AdminDashboard() {
                       <label className="font-bold text-slate-700 dark:text-slate-300">Date of Joining</label>
                       <input type="date" value={formDateOfJoining} onChange={(e) => setFormDateOfJoining(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none" />
                     </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">Work Assignments</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {['Ai video', 'Reels', 'Graphics', 'Social media work', 'reporting', 'Posting'].map(work => (
+                      <label key={work} className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300 font-medium">
+                        <input 
+                          type="checkbox" 
+                          checked={formWorks.includes(work)} 
+                          onChange={(e) => {
+                            if (e.target.checked) setFormWorks([...formWorks, work]);
+                            else setFormWorks(formWorks.filter(w => w !== work));
+                          }}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        {work}
+                      </label>
+                    ))}
                   </div>
                 </div>
 
@@ -4763,9 +4832,12 @@ export default function AdminDashboard() {
                       {employeesList
                         .filter(e => {
                           if (e.status === 'INACTIVE') return false;
-                          if (e.name.toLowerCase() === 'masoom') return false;
+                          const nameLower = e.name.toLowerCase();
                           const dept = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
-                          return dept.includes('graphic') || dept.includes('design') || e.name.toLowerCase() === (assignedStaff.c || '').toLowerCase();
+                          let worksArr = [];
+                          try { worksArr = e.works ? JSON.parse(e.works).map(w => w.toLowerCase()) : []; } catch(err){}
+                          const hasWork = worksArr.some(w => w.includes('graphic'));
+                          return hasWork || dept.includes('graphic') || dept.includes('design') || ['swapnil', 'danish', 'sanmeet'].includes(nameLower) || nameLower === (assignedStaff.c || '').toLowerCase();
                         })
                         .map(e => <option key={e.id} value={e.name}>{e.name.toLowerCase() === (assignedStaff.c || '').toLowerCase() ? `✓ ${e.name} (Assigned)` : `${e.name} (${e.department || 'Graphic'})`}</option>)}
                     </select>
@@ -4790,10 +4862,12 @@ export default function AdminDashboard() {
                       {employeesList
                         .filter(e => {
                           if (e.status === 'INACTIVE') return false;
-                          if (e.name.toLowerCase() === 'masoom') return false;
                           const nameLower = e.name.toLowerCase();
                           const dept = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
-                          return nameLower === 'sanmeet' || dept.includes('reel') || nameLower === (assignedStaff.r || '').toLowerCase();
+                          let worksArr = [];
+                          try { worksArr = e.works ? JSON.parse(e.works).map(w => w.toLowerCase()) : []; } catch(err){}
+                          const hasWork = worksArr.some(w => w.includes('reel'));
+                          return hasWork || dept.includes('reel') || ['swapnil', 'danish', 'sanmeet'].includes(nameLower) || nameLower === (assignedStaff.r || '').toLowerCase();
                         })
                         .map(e => <option key={e.id} value={e.name}>{e.name.toLowerCase() === (assignedStaff.r || '').toLowerCase() ? `✓ ${e.name} (Assigned)` : `${e.name} (${e.department || 'Reel Editor'})`}</option>)}
                     </select>
@@ -4818,10 +4892,12 @@ export default function AdminDashboard() {
                       {employeesList
                         .filter(e => {
                           if (e.status === 'INACTIVE') return false;
-                          if (e.name.toLowerCase() === 'sanmeet') return false;
                           const nameLower = e.name.toLowerCase();
                           const dept = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
-                          return dept.includes('ai video') || dept.includes('video') || ['masoom', 'divyansh', 'nouman'].includes(nameLower) || nameLower === (assignedStaff.a || '').toLowerCase();
+                          let worksArr = [];
+                          try { worksArr = e.works ? JSON.parse(e.works).map(w => w.toLowerCase()) : []; } catch(err){}
+                          const hasWork = worksArr.some(w => w.includes('ai video'));
+                          return hasWork || dept.includes('ai video') || dept.includes('video') || ['masoom', 'divyansh', 'nouman'].includes(nameLower) || nameLower === (assignedStaff.a || '').toLowerCase();
                         })
                         .map(e => <option key={e.id} value={e.name}>{e.name.toLowerCase() === (assignedStaff.a || '').toLowerCase() ? `✓ ${e.name} (Assigned)` : `${e.name} (${e.department || 'AI Video'})`}</option>)}
                     </select>
@@ -4846,9 +4922,12 @@ export default function AdminDashboard() {
                       {employeesList
                         .filter(e => {
                           if (e.status === 'INACTIVE') return false;
-                          if (e.name.toLowerCase() === 'masoom') return false;
+                          const nameLower = e.name.toLowerCase();
                           const dept = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
-                          return dept.includes('marketing') || dept.includes('social') || dept.includes('digital') || dept.includes('exec') || e.name.toLowerCase() === (assignedStaff.sm || '').toLowerCase();
+                          let worksArr = [];
+                          try { worksArr = e.works ? JSON.parse(e.works).map(w => w.toLowerCase()) : []; } catch(err){}
+                          const hasWork = worksArr.some(w => w.includes('report') || w.includes('social media'));
+                          return hasWork || dept.includes('marketing') || dept.includes('social') || dept.includes('digital') || dept.includes('exec') || ['harshit', 'pujan', 'preet'].includes(nameLower) || nameLower === (assignedStaff.sm || '').toLowerCase();
                         })
                         .map(e => <option key={e.id} value={e.name}>{e.name.toLowerCase() === (assignedStaff.sm || '').toLowerCase() ? `✓ ${e.name} (Assigned)` : `${e.name} (${e.department || 'Social Media'})`}</option>)}
                     </select>
@@ -5479,6 +5558,11 @@ export default function AdminDashboard() {
                           {usersList.filter(e => (e.role === 'EMPLOYEE' || e.role === 'TL')).filter(e => {
                             const role = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
                             const target = (clientTaskFormAssignTo || '').toLowerCase();
+                            let worksArr = [];
+                            try { worksArr = e.works ? JSON.parse(e.works).map(w => w.toLowerCase()) : []; } catch(err){}
+                            
+                            if (worksArr.some(w => target.includes(w) || w.includes(target.replace(' designer', '').replace(' executive', '').replace(' lead', '')))) return true;
+
                             if (target.includes('graphic')) return role.includes('graphic');
                             if (target.includes('video editor')) return role.includes('video editor');
                             if (target.includes('ai video lead') || target.includes('ai video editor') || target.includes('ai video')) return role.includes('ai video') || role.includes('video editor');
@@ -5492,12 +5576,18 @@ export default function AdminDashboard() {
                           {usersList.filter(e => (e.role === 'EMPLOYEE' || e.role === 'TL')).filter(e => {
                             const role = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
                             const target = (clientTaskFormAssignTo || '').toLowerCase();
-                            let isMatched = false;
-                            if (target.includes('graphic')) isMatched = role.includes('graphic');
-                            else if (target.includes('video editor')) isMatched = role.includes('video editor');
-                            else if (target.includes('ai video lead') || target.includes('ai video editor') || target.includes('ai video')) isMatched = role.includes('ai video') || role.includes('video editor');
-                            else if (target.includes('digital marketing') || target.includes('social media')) isMatched = role.includes('marketing') || role.includes('social') || role.includes('digital');
-                            else isMatched = role.includes(target) || target.includes((e.department || '').toLowerCase());
+                            let worksArr = [];
+                            try { worksArr = e.works ? JSON.parse(e.works).map(w => w.toLowerCase()) : []; } catch(err){}
+                            
+                            let isMatched = worksArr.some(w => target.includes(w) || w.includes(target.replace(' designer', '').replace(' executive', '').replace(' lead', '')));
+
+                            if (!isMatched) {
+                              if (target.includes('graphic')) isMatched = role.includes('graphic');
+                              else if (target.includes('video editor')) isMatched = role.includes('video editor');
+                              else if (target.includes('ai video lead') || target.includes('ai video editor') || target.includes('ai video')) isMatched = role.includes('ai video') || role.includes('video editor');
+                              else if (target.includes('digital marketing') || target.includes('social media')) isMatched = role.includes('marketing') || role.includes('social') || role.includes('digital');
+                              else isMatched = role.includes(target) || target.includes((e.department || '').toLowerCase());
+                            }
                             return !isMatched;
                           }).map(e => (
                             <option key={e.id} value={e.name}>{e.name} ({e.designation || e.department || 'No Dept'} - {e.role})</option>

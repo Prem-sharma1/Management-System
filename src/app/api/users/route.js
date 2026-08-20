@@ -43,6 +43,7 @@ export async function GET() {
         marksheet12: true,
         graduation: true,
         otherDoc: true,
+        works: true,
         createdAt: true
       },
       orderBy: { id: 'desc' }
@@ -67,7 +68,7 @@ export async function POST(request) {
     const { 
       name, email, password, role, department, salary, avatar,
       address, dob, exp, designation, mobile, lastSalary, dateOfJoining,
-      passportPhoto, aadharCard, panCard, marksheet10, marksheet12, graduation, otherDoc
+      passportPhoto, aadharCard, panCard, marksheet10, marksheet12, graduation, otherDoc, works
     } = await request.json();
 
     if (!name || !email || !password || !role || !department) {
@@ -109,7 +110,8 @@ export async function POST(request) {
         marksheet10,
         marksheet12,
         graduation,
-        otherDoc
+        otherDoc,
+        works
       }
     });
 

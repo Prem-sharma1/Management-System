@@ -31,7 +31,7 @@ export async function PUT(request, { params }) {
     const { 
       name, email, password, role, department, salary, status, avatar,
       address, dob, exp, designation, mobile, lastSalary, dateOfJoining,
-      passportPhoto, aadharCard, panCard, marksheet10, marksheet12, graduation, otherDoc
+      passportPhoto, aadharCard, panCard, marksheet10, marksheet12, graduation, otherDoc, works
     } = body;
 
     const targetUser = await prisma.user.findUnique({ where: { id } });
@@ -79,6 +79,7 @@ export async function PUT(request, { params }) {
     if (marksheet12 !== undefined) data.marksheet12 = marksheet12;
     if (graduation !== undefined) data.graduation = graduation;
     if (otherDoc !== undefined) data.otherDoc = otherDoc;
+    if (works !== undefined) data.works = works;
     
     if (salary !== undefined) {
       if (requester.role === 'CEO') {

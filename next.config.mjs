@@ -8,3 +8,4 @@ const nextConfig = {
 };
 
 export default nextConfig; // trigger reload
+// Force restart to fix Next.js API route 404 caching issue
