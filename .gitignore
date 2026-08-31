@@ -55,3 +55,9 @@ public/uploads/*
 # sensitive files
 credentials.md
 
+# AI Agent files
+/.agents/
+/.claude/
+/skills-lock.json
+
+
