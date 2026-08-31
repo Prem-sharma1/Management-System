@@ -279,6 +279,22 @@ export default function SalesDashboard() {
     }
   };
 
+  const handleWhatsAppClick = async (call) => {
+    try {
+      const res = await fetch(`/api/whatsapp/verify?phone=${encodeURIComponent(call.phoneNumber)}`);
+      const data = await res.json();
+      if (data.exists) {
+        const cleanPhone = call.phoneNumber.replace(/\D/g, '');
+        const finalPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+        window.open(`https://wa.me/${finalPhone}`, '_blank');
+      } else {
+        showToast('WhatsApp is not found / invalid number!', 'error');
+      }
+    } catch (err) {
+      showToast('Connection error checking WhatsApp.', 'error');
+    }
+  };
+
   const getCampaign = (call) => {
     if (call.leadSource) return call.leadSource;
     if (call.notes && call.notes.includes('[Campaign: Facebook Campaign]')) return 'Facebook Campaign';
@@ -840,7 +856,7 @@ export default function SalesDashboard() {
           <button onClick={() => handleStartCall(activeCall)} className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 active:scale-95 transition" title="Start Call"><PhoneCall className="w-5 h-5" /></button>
           <button onClick={() => handleStartCall(activeCall)} className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 active:scale-95 transition" title="Start Call"><Phone className="w-5 h-5" /></button>
           <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><Mail className="w-5 h-5" /></button>
-          <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><MessageCircle className="w-5 h-5" /></button>
+          <button onClick={() => handleWhatsAppClick(activeCall)} className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 active:scale-95 transition" title="WhatsApp"><MessageCircle className="w-5 h-5" /></button>
           <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><Search className="w-5 h-5" /></button>
           <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><Clock className="w-5 h-5" /></button>
           <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><FileText className="w-5 h-5" /></button>
