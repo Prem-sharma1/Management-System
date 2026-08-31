@@ -30,6 +30,7 @@ export default function SalesDashboard() {
   const [todayLog, setTodayLog] = useState(null);
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [callsList, setCallsList] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
   const [otherOption, setOtherOption] = useState('Switch Off');
 
   // Timer States
@@ -177,18 +178,20 @@ export default function SalesDashboard() {
 
   const refreshData = async (userId) => {
     try {
-      const [tasksRes, attRes, callsRes] = await Promise.all([
+      const [tasksRes, attRes, callsRes, campaignsRes] = await Promise.all([
         fetch('/api/tasks'),
         fetch('/api/attendance'),
-        fetch(`/api/calls?salesPersonId=${userId || currentUser?.id}`)
+        fetch(`/api/calls?salesPersonId=${userId || currentUser?.id}`),
+        fetch('/api/campaigns')
       ]);
-      const [tasksData, attData, callsData] = await Promise.all([
-        tasksRes.json(), attRes.json(), callsRes.json()
+      const [tasksData, attData, callsData, campaignsData] = await Promise.all([
+        tasksRes.json(), attRes.json(), callsRes.json(), campaignsRes.json()
       ]);
       setTasksList(tasksData.tasks || []);
       setTodayLog(attData.todayLog);
       setAttendanceLogs(attData.logs || []);
       setCallsList(callsData.calls || []);
+      setCampaigns(campaignsData.campaigns || []);
     } catch (err) {
       console.error('Error refreshing data:', err);
     }
@@ -1022,6 +1025,9 @@ export default function SalesDashboard() {
                     className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm outline-none focus:ring-2 focus:ring-blue-500 transition-shadow cursor-pointer"
                   >
                     <option value="All Campaigns">All Campaigns</option>
+                    {campaigns.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
                     <option value="Facebook Campaign">Facebook Campaign</option>
                     <option value="LinkedIn Campaign">LinkedIn Campaign</option>
                     <option value="Google Campaign">Google Campaign</option>
@@ -1113,7 +1119,7 @@ export default function SalesDashboard() {
                       onClick={() => handleStatusFilterClick('UNUSUAL')}
                       className={getCardClassName('UNUSUAL', 'bg-red-500 dark:bg-red-600 p-3 rounded-xl border border-red-600 dark:border-red-700 flex flex-col justify-center text-white shadow-sm shadow-red-500/20', 'ring-red-400')}
                     >
-                      <span className="text-[10px] font-bold text-red-100 uppercase tracking-wider mb-1">Unusual</span>
+                      <span className="text-[10px] font-bold text-red-100 uppercase tracking-wider mb-1">Not Interested</span>
                       <div className="text-2xl font-black text-white">
                         {filteredCalls.filter(c => c.status === 'NOT_INTERESTED' || c.status === 'NOT_ANSWERED').length}
                       </div>
@@ -1121,6 +1127,47 @@ export default function SalesDashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* Box 3: Meta Marketing Insights */}
+              {selectedCampaign !== 'All Campaigns' && (() => {
+                const activeCamp = campaigns.find(c => c.name === selectedCampaign);
+                if (!activeCamp) return null;
+                return (
+                  <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4 animate-fade-in mt-2 shrink-0">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <span className="text-blue-500">📊</span> Live Meta Ads Performance
+                      </h4>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${activeCamp.status === 'ACTIVE' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+                        {activeCamp.status}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-850 flex flex-col justify-center">
+                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Ad Spend</span>
+                        <div className="text-xl font-black text-slate-900 dark:text-white">₹{activeCamp.spend.toLocaleString()}</div>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-850 flex flex-col justify-center">
+                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Cost Per Lead (CPL)</span>
+                        <div className="text-xl font-black text-blue-600 dark:text-blue-400">₹{activeCamp.costPerLead}</div>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-850 flex flex-col justify-center">
+                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Reach / Impressions</span>
+                        <div className="text-xl font-black text-slate-900 dark:text-white">{activeCamp.reach.toLocaleString()} / {activeCamp.impressions.toLocaleString()}</div>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-850 flex flex-col justify-center">
+                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Clicks (CTR)</span>
+                        <div className="text-xl font-black text-slate-900 dark:text-white">
+                          {activeCamp.clicks.toLocaleString()}
+                          <span className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">
+                            ({activeCamp.impressions > 0 ? ((activeCamp.clicks / activeCamp.impressions) * 100).toFixed(1) : 0}%)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="flex justify-between items-center mt-4">
                 <div className="flex items-center gap-3">
