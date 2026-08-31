@@ -779,23 +779,7 @@ export default function SalesDashboard() {
             </div>
           </div>
 
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Score(%)</label>
-              <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded">
-                [ {followUpData.score.toFixed(2)} ]
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              value={followUpData.score}
-              onChange={(e) => setFollowUpData({ ...followUpData, score: Number(e.target.value) })}
-              className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
-            />
-          </div>
+
 
           <div className="flex gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
             <button
