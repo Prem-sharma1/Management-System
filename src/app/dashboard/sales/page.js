@@ -60,8 +60,8 @@ export default function SalesDashboard() {
     nextRemark: '',
     nextAction: 'Follow-Up Scheduled',
     scheduleDate: '',
-    score: 100,
-    interestedIn: []
+    interestedIn: [],
+    classification: 'Hot Lead'
   });
 
   useEffect(() => {
@@ -75,10 +75,10 @@ export default function SalesDashboard() {
           scheduleDate: activeCall.followUpDate 
             ? new Date(activeCall.followUpDate).toISOString().slice(0, 16) 
             : new Date().toISOString().slice(0, 16),
-          score: 100,
           interestedIn: activeCall.notes && activeCall.notes.includes('[Campaign:')
             ? [getCampaign(activeCall)]
-            : []
+            : [],
+          classification: 'Hot Lead'
         });
       }
     }
@@ -407,39 +407,25 @@ export default function SalesDashboard() {
     }
 
     let dbStatus = 'PENDING';
-    switch (followUpData.currentUpdate) {
-      case 'Conversation done':
-      case 'Conversation done(via WhatsApp)':
-        dbStatus = 'ANSWERED';
-        break;
-      case 'Phone not reachable':
-        dbStatus = 'NOT_REACHABLE';
-        break;
-      case 'Phone is ringing':
-        dbStatus = 'RINGING';
-        break;
-      case 'Disconnecting call':
-        dbStatus = 'NOT_ANSWERED';
-        break;
-      case 'Call me later':
-      case 'Reschedule Follow-up':
-        dbStatus = 'CALLBACK';
-        break;
-      case 'Switch Off':
-        dbStatus = 'SWITCH_OFF';
-        break;
-      case 'Busy':
-        dbStatus = 'BUSY';
-        break;
-      case 'Invalid Number':
-        dbStatus = 'INVALID_NUMBER';
-        break;
-      default:
-        dbStatus = 'PENDING';
+    if (followUpData.classification === 'Hot Lead') {
+      dbStatus = 'INTERESTED';
+    } else if (followUpData.classification === 'Follow up') {
+      dbStatus = 'CALLBACK';
+    } else if (followUpData.classification === 'Unusual') {
+      dbStatus = 'NOT_INTERESTED';
+    } else if (followUpData.classification === 'Cold Lead') {
+      dbStatus = 'NOT_ANSWERED';
+    } else if (followUpData.classification === 'Other') {
+      dbStatus = 'PENDING';
+    }
+
+    // Override to ANSWERED if conversation was successful
+    if (followUpData.currentUpdate === 'Conversation done' || followUpData.currentUpdate === 'Conversation done(via WhatsApp)') {
+      dbStatus = 'ANSWERED';
     }
 
     const activeCall = callsList.find(c => c.id === callId);
-    let noteText = `[Update: ${followUpData.currentUpdate}] ${followUpData.nextRemark}`;
+    let noteText = `[Classification: ${followUpData.classification}] [Update: ${followUpData.currentUpdate}] ${followUpData.nextRemark}`;
     if (followUpData.interestedIn.length > 0) {
       noteText = `[Interested: ${followUpData.interestedIn.join(', ')}] ` + noteText;
     }
@@ -779,7 +765,21 @@ export default function SalesDashboard() {
             </div>
           </div>
 
-
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Lead Classification*</label>
+            <select
+              required
+              value={followUpData.classification}
+              onChange={(e) => setFollowUpData({ ...followUpData, classification: e.target.value })}
+              className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 transition cursor-pointer"
+            >
+              <option value="Hot Lead">🔥 Hot Lead</option>
+              <option value="Cold Lead">❄️ Cold Lead</option>
+              <option value="Follow up">⏰ Follow Up</option>
+              <option value="Unusual">⚠️ Unusual</option>
+              <option value="Other">📁 Other</option>
+            </select>
+          </div>
 
           <div className="flex gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
             <button
