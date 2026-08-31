@@ -177,6 +177,9 @@ model CallRecord {
   status         String   @default("PENDING")
   notes          String?
   callDate       DateTime @default(now())
+  followUpDate   DateTime?
+  expectedValue  Float?
+  leadSource     String?
   salesPersonId  Int
   salesPerson    User     @relation(fields: [salesPersonId], references: [id])
 }

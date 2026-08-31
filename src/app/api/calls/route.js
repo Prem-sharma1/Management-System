@@ -10,6 +10,14 @@ export async function GET(req) {
 
     const calls = await prisma.callRecord.findMany({
       where: whereClause,
+      include: {
+        salesPerson: {
+          select: {
+            name: true,
+            email: true
+          }
+        }
+      },
       orderBy: { callDate: 'desc' }
     });
 
@@ -23,7 +31,7 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { clientName, phoneNumber, salesPersonId, notes, status } = body;
+    const { clientName, phoneNumber, salesPersonId, notes, status, followUpDate, expectedValue, leadSource } = body;
 
     if (!clientName || !phoneNumber || !salesPersonId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -35,7 +43,10 @@ export async function POST(req) {
         phoneNumber,
         salesPersonId: parseInt(salesPersonId, 10),
         notes: notes || '',
-        status: status || 'PENDING'
+        status: status || 'PENDING',
+        followUpDate: followUpDate ? new Date(followUpDate) : null,
+        expectedValue: expectedValue ? parseFloat(expectedValue) : null,
+        leadSource: leadSource || null
       }
     });
 

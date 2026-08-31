@@ -449,7 +449,7 @@ export default function AdminDashboard() {
       }
     };
 
-    const interval = setInterval(checkRecentClockIns, 10000);
+    const interval = setInterval(checkRecentClockIns, 30000);
     return () => clearInterval(interval);
   }, []);
 

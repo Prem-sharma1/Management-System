@@ -4,7 +4,11 @@ import { PrismaClient } from '@prisma/client';
 
 function initPrisma() {
   const dbUrl = process.env.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder';
-  const pool = new Pool({ connectionString: dbUrl });
+  const pool = new Pool({ 
+    connectionString: dbUrl,
+    connectionTimeoutMillis: 10000, // wait 10s for the db to wake up
+    max: 10 // avoid exhausting pool limits
+  });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 }

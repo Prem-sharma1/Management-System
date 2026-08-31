@@ -44,12 +44,78 @@ export default function SalesDashboard() {
     clientName: '',
     phoneNumber: '',
     status: 'PENDING',
-    campaign: 'Facebook Campaign',
-    notes: ''
+    requirement: '',
+    notes: '',
+    followUpDate: '',
+    expectedValue: ''
   });
 
   const [selectedCampaign, setSelectedCampaign] = useState('All Campaigns');
   const [selectedLeadId, setSelectedLeadId] = useState(null);
+  const [activeStatusFilter, setActiveStatusFilter] = useState(null);
+  const [showFollowUpForm, setShowFollowUpForm] = useState(false);
+  const [followUpData, setFollowUpData] = useState({
+    currentUpdate: 'Select',
+    nextRemark: '',
+    nextAction: 'Follow-Up Scheduled',
+    scheduleDate: '',
+    score: 100,
+    interestedIn: []
+  });
+
+  useEffect(() => {
+    if (selectedLeadId) {
+      const activeCall = callsList.find(c => c.id === selectedLeadId);
+      if (activeCall) {
+        setFollowUpData({
+          currentUpdate: 'Select',
+          nextRemark: '',
+          nextAction: 'Follow-Up Scheduled',
+          scheduleDate: activeCall.followUpDate 
+            ? new Date(activeCall.followUpDate).toISOString().slice(0, 16) 
+            : new Date().toISOString().slice(0, 16),
+          score: 100,
+          interestedIn: activeCall.notes && activeCall.notes.includes('[Campaign:')
+            ? [getCampaign(activeCall)]
+            : []
+        });
+      }
+    }
+    setShowFollowUpForm(false);
+  }, [selectedLeadId]);
+
+  const [softphone, setSoftphone] = useState({
+    active: false,
+    status: 'calling',
+    seconds: 0,
+    clientName: '',
+    phoneNumber: '',
+    leadId: null,
+    muted: false,
+    speaker: false
+  });
+
+  useEffect(() => {
+    let timeout = null;
+    if (softphone.active && softphone.status === 'calling') {
+      timeout = setTimeout(() => {
+        setSoftphone(prev => ({ ...prev, status: 'connected' }));
+      }, 3000);
+    }
+    return () => clearTimeout(timeout);
+  }, [softphone.active, softphone.status]);
+
+  useEffect(() => {
+    let interval = null;
+    if (softphone.active && softphone.status === 'connected') {
+      interval = setInterval(() => {
+        setSoftphone(prev => ({ ...prev, seconds: prev.seconds + 1 }));
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [softphone.active, softphone.status]);
 
   useEffect(() => {
     const isDark = localStorage.getItem('theme') === 'dark' ||
@@ -166,8 +232,13 @@ export default function SalesDashboard() {
     e.preventDefault();
     try {
       const payload = {
-        ...newCallData,
-        notes: `[Campaign: ${newCallData.campaign || 'Facebook Campaign'}] ${newCallData.notes || ''}`,
+        clientName: newCallData.clientName,
+        phoneNumber: newCallData.phoneNumber,
+        status: newCallData.status,
+        notes: newCallData.notes || '',
+        followUpDate: newCallData.followUpDate ? new Date(newCallData.followUpDate).toISOString() : null,
+        expectedValue: newCallData.expectedValue ? parseFloat(newCallData.expectedValue) : null,
+        leadSource: newCallData.requirement || '',
         salesPersonId: currentUser.id
       };
 
@@ -179,8 +250,8 @@ export default function SalesDashboard() {
       if (res.ok) {
         showToast('Call logged successfully!');
         setShowCallModal(false);
-        setNewCallData({ clientName: '', phoneNumber: '', status: 'PENDING', campaign: 'Facebook Campaign', notes: '' });
-        await refreshData();
+        setNewCallData({ clientName: '', phoneNumber: '', status: 'PENDING', requirement: '', notes: '', followUpDate: '', expectedValue: '' });
+        await refreshData(currentUser.id);
       } else {
         showToast('Failed to log call', 'error');
       }
@@ -206,6 +277,7 @@ export default function SalesDashboard() {
   };
 
   const getCampaign = (call) => {
+    if (call.leadSource) return call.leadSource;
     if (call.notes && call.notes.includes('[Campaign: Facebook Campaign]')) return 'Facebook Campaign';
     if (call.notes && call.notes.includes('[Campaign: LinkedIn Campaign]')) return 'LinkedIn Campaign';
     if (call.notes && call.notes.includes('[Campaign: Google Campaign]')) return 'Google Campaign';
@@ -217,6 +289,7 @@ export default function SalesDashboard() {
   const [sortBy, setSortBy] = useState('DEFAULT');
   const [orderBy, setOrderBy] = useState('PRIORITY');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [viewMode, setViewMode] = useState('KANBAN');
 
   const getStatusWeight = (status) => {
     switch (status) {
@@ -276,6 +349,173 @@ export default function SalesDashboard() {
     });
   }
 
+  const displayedCalls = filteredCalls.filter(c => {
+    if (!activeStatusFilter) return true;
+    switch (activeStatusFilter) {
+      case 'ANSWER':
+        return c.status === 'ANSWERED' || c.status === 'INTERESTED';
+      case 'RINGING':
+        return c.status === 'RINGING' || c.status === 'CALLBACK';
+      case 'OTHER':
+        return c.status === otherOption.toUpperCase().replace(' ', '_');
+      case 'FOLLOW_UP':
+        return c.status === 'CALLBACK' || c.status === 'RINGING';
+      case 'HOT_LEAD':
+        return c.status === 'INTERESTED';
+      case 'DONE':
+        return c.status === 'ANSWERED';
+      case 'UNUSUAL':
+        return c.status === 'NOT_INTERESTED' || c.status === 'NOT_ANSWERED';
+      default:
+        return true;
+    }
+  });
+
+  const handleStatusFilterClick = (filterKey) => {
+    setActiveStatusFilter(prev => prev === filterKey ? null : filterKey);
+  };
+
+  const handleOtherOptionChange = (val) => {
+    setOtherOption(val);
+    setActiveStatusFilter('OTHER');
+  };
+
+  const handleSaveFollowUp = async (e, callId) => {
+    e.preventDefault();
+    if (followUpData.currentUpdate === 'Select') {
+      showToast('Please select a current update status.', 'error');
+      return;
+    }
+
+    let dbStatus = 'PENDING';
+    switch (followUpData.currentUpdate) {
+      case 'Conversation done':
+      case 'Conversation done(via WhatsApp)':
+        dbStatus = 'ANSWERED';
+        break;
+      case 'Phone not reachable':
+        dbStatus = 'NOT_REACHABLE';
+        break;
+      case 'Phone is ringing':
+        dbStatus = 'RINGING';
+        break;
+      case 'Disconnecting call':
+        dbStatus = 'NOT_ANSWERED';
+        break;
+      case 'Call me later':
+      case 'Reschedule Follow-up':
+        dbStatus = 'CALLBACK';
+        break;
+      case 'Switch Off':
+        dbStatus = 'SWITCH_OFF';
+        break;
+      case 'Busy':
+        dbStatus = 'BUSY';
+        break;
+      case 'Invalid Number':
+        dbStatus = 'INVALID_NUMBER';
+        break;
+      default:
+        dbStatus = 'PENDING';
+    }
+
+    const activeCall = callsList.find(c => c.id === callId);
+    let noteText = `[Update: ${followUpData.currentUpdate}] ${followUpData.nextRemark}`;
+    if (followUpData.interestedIn.length > 0) {
+      noteText = `[Interested: ${followUpData.interestedIn.join(', ')}] ` + noteText;
+    }
+    const updatedNotes = activeCall.notes ? `${activeCall.notes}\n${noteText}` : noteText;
+
+    try {
+      const res = await fetch(`/api/calls/${callId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: dbStatus,
+          notes: updatedNotes,
+          followUpDate: followUpData.scheduleDate ? new Date(followUpData.scheduleDate).toISOString() : null,
+          expectedValue: activeCall.expectedValue,
+          leadSource: followUpData.interestedIn.join(', ')
+        })
+      });
+
+      if (res.ok) {
+        showToast('Follow-up logged successfully!');
+        setShowFollowUpForm(false);
+        await refreshData();
+      } else {
+        showToast('Failed to save follow-up', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Connection error', 'error');
+    }
+  };
+
+  const handleStartCall = async (activeCall) => {
+    window.location.href = `tel:${activeCall.phoneNumber}`;
+    setShowFollowUpForm(true);
+    setSoftphone({
+      active: true,
+      status: 'calling',
+      seconds: 0,
+      clientName: activeCall.clientName,
+      phoneNumber: activeCall.phoneNumber,
+      leadId: activeCall.id,
+      muted: false,
+      speaker: false
+    });
+
+    try {
+      const res = await fetch('/api/calls/dial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: activeCall.phoneNumber,
+          salesPersonId: currentUser?.id
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Initiating outbound call... Check your phone!', 'success');
+      } else {
+        console.warn('Click-to-call not configured or profile missing mobile number:', data.error);
+      }
+    } catch (err) {
+      console.error('Telephony dial API call error:', err);
+    }
+  };
+
+  const handleEndCall = () => {
+    if (softphone.status === 'calling') {
+      setFollowUpData(prev => ({
+        ...prev,
+        currentUpdate: 'Phone not reachable',
+        nextRemark: prev.nextRemark ? `${prev.nextRemark} (Dial ended without answer)` : 'Dialed, client was not reachable.'
+      }));
+      showToast('Call cancelled.');
+    } else {
+      const mins = Math.floor(softphone.seconds / 60);
+      const secs = softphone.seconds % 60;
+      const durationText = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+      
+      setFollowUpData(prev => ({
+        ...prev,
+        currentUpdate: 'Conversation done',
+        nextRemark: prev.nextRemark 
+          ? `${prev.nextRemark} (Call duration: ${durationText})`
+          : `Call completed. Duration: ${durationText}`
+      }));
+      showToast(`Call ended. Duration: ${durationText}`);
+    }
+
+    setSoftphone(prev => ({
+      ...prev,
+      status: 'ended',
+      active: false
+    }));
+  };
+
   const getStatusStyle = (status, isSelected) => {
     let base = "p-4 border-b border-r-0 border-t-0 border-slate-200 dark:border-slate-800 cursor-pointer transition-colors flex gap-4 border-l-4 ";
     if (isSelected) {
@@ -318,6 +558,293 @@ export default function SalesDashboard() {
       case 'NOT_ANSWERED': return classes + 'bg-red-500 text-white border border-red-600 shadow-sm dark:bg-red-600 dark:border-red-700';
       default: return classes + 'bg-slate-500 text-white border border-slate-600 shadow-sm dark:bg-slate-600 dark:border-slate-700';
     }
+  };
+
+  const getActionText = (status) => {
+    switch (status) {
+      case 'CALLBACK':
+      case 'RINGING':
+        return 'Follow-Up Scheduled';
+      case 'ANSWERED':
+        return 'Conversation Converted';
+      case 'INTERESTED':
+        return 'Hot Lead Active';
+      case 'NOT_INTERESTED':
+        return 'Not Interested';
+      case 'NOT_ANSWERED':
+        return 'Call Disconnected';
+      case 'SWITCH_OFF':
+        return 'Switch Off';
+      case 'BUSY':
+        return 'Line Busy';
+      case 'INVALID_NUMBER':
+        return 'Invalid Number';
+      case 'NOT_REACHABLE':
+        return 'Not Reachable';
+      default:
+        return 'Status Updated';
+    }
+  };
+
+  const getCategoryBadgeText = (status) => {
+    switch (status) {
+      case 'PENDING':
+        return 'New';
+      case 'CALLBACK':
+      case 'RINGING':
+        return 'Follow-up';
+      case 'INTERESTED':
+        return 'Hot';
+      case 'ANSWERED':
+        return 'Converted';
+      case 'NOT_INTERESTED':
+      case 'NOT_ANSWERED':
+        return 'Dead';
+      default:
+        return status.toLowerCase().replace('_', ' ');
+    }
+  };
+
+
+  const getCardClassName = (filterKey, baseClasses, activeRingClass) => {
+    const isActive = activeStatusFilter === filterKey;
+    const isAnyActive = activeStatusFilter !== null;
+    
+    let classes = `${baseClasses} cursor-pointer select-none transition-all duration-200 `;
+    
+    if (isActive) {
+      classes += `opacity-100 scale-[1.02] z-10 ring-2 ring-offset-2 dark:ring-offset-slate-900 ${activeRingClass}`;
+    } else if (isAnyActive) {
+      classes += `opacity-40 hover:opacity-80 hover:scale-[1.01] scale-95`;
+    } else {
+      classes += `opacity-100 hover:scale-[1.03] hover:shadow-md`;
+    }
+    
+    return classes;
+  };
+
+  const renderRightPaneContent = (activeCall, camp) => {
+    if (showFollowUpForm) {
+      return (
+        <form onSubmit={(e) => handleSaveFollowUp(e, activeCall.id)} className="w-full text-left flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+            <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+              Next followup for <span className="text-blue-600 dark:text-blue-400 font-extrabold">{activeCall.clientName}</span>
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowFollowUpForm(false)}
+              className="px-3 py-1 text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 transition"
+            >
+              BACK
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Current Update*</label>
+            <select
+              required
+              value={followUpData.currentUpdate}
+              onChange={(e) => {
+                const val = e.target.value;
+                let nextAct = 'Follow-Up Scheduled';
+                if (['Conversation done', 'Conversation done(via WhatsApp)', 'Phone not reachable', 'Disconnecting call', 'Switch Off', 'Busy', 'Invalid Number'].includes(val)) {
+                  nextAct = 'None';
+                }
+                setFollowUpData({
+                  ...followUpData,
+                  currentUpdate: val,
+                  nextAction: nextAct,
+                  scheduleDate: nextAct === 'None' ? '' : followUpData.scheduleDate
+                });
+              }}
+              className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 transition cursor-pointer"
+            >
+              <option value="Select" disabled>Select</option>
+              <option value="Conversation done">Conversation done</option>
+              <option value="Conversation done(via WhatsApp)">Conversation done(via WhatsApp)</option>
+              <option value="Phone not reachable">Phone not reachable</option>
+              <option value="Phone is ringing">Phone is ringing</option>
+              <option value="Disconnecting call">Disconnecting call</option>
+              <option value="Call me later">Call me later</option>
+              <option value="Reschedule Follow-up">Reschedule Follow-up</option>
+              <option value="Switch Off">Switch Off</option>
+              <option value="Busy">Busy</option>
+              <option value="Invalid Number">Invalid Number</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Next Remark*</label>
+            <textarea
+              required
+              rows="3"
+              value={followUpData.nextRemark}
+              onChange={(e) => setFollowUpData({ ...followUpData, nextRemark: e.target.value })}
+              placeholder="e.g. call on wednesday call closed"
+              className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 transition"
+            ></textarea>
+            {activeCall.notes && (
+              <p className="text-[10px] font-bold text-yellow-600 dark:text-yellow-400/80 mt-1 flex items-center gap-1">
+                <span>🔔 Please avoid repeating previous remarks.</span>
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Next Actions*</label>
+              <select
+                required
+                value={followUpData.nextAction}
+                onChange={(e) => setFollowUpData({ ...followUpData, nextAction: e.target.value })}
+                className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 transition cursor-pointer"
+              >
+                <option value="Follow-Up Scheduled">Follow-Up Scheduled</option>
+                <option value="None">None</option>
+                <option value="Callback">Callback</option>
+                <option value="Meeting Scheduled">Meeting Scheduled</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+                {followUpData.nextAction === 'None' ? 'Schedule Date (Optional)' : 'Schedule Date*'}
+              </label>
+              <input
+                required={followUpData.nextAction !== 'None'}
+                type="datetime-local"
+                value={followUpData.scheduleDate}
+                onChange={(e) => setFollowUpData({ ...followUpData, scheduleDate: e.target.value })}
+                className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 transition"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Interested in</label>
+            <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
+              {followUpData.interestedIn.map((tag, idx) => (
+                <span key={idx} className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase px-2 py-0.5 rounded-md flex items-center gap-1 border border-blue-100 dark:border-blue-900/50 shadow-sm">
+                  <span>{tag.replace(' Campaign', '')}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = followUpData.interestedIn.filter((_, i) => i !== idx);
+                      setFollowUpData({ ...followUpData, interestedIn: updated });
+                    }}
+                    className="text-slate-400 hover:text-slate-600 font-extrabold"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              <input
+                type="text"
+                placeholder="+ Add tag..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const val = e.target.value.trim();
+                    if (val && !followUpData.interestedIn.includes(val)) {
+                      setFollowUpData({
+                        ...followUpData,
+                        interestedIn: [...followUpData.interestedIn, val]
+                      });
+                      e.target.value = '';
+                    }
+                  }
+                }}
+                className="bg-transparent text-xs outline-none px-2 py-0.5 w-24 placeholder-slate-400 text-slate-700 dark:text-slate-200"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Score(%)</label>
+              <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded">
+                [ {followUpData.score.toFixed(2)} ]
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={followUpData.score}
+              onChange={(e) => setFollowUpData({ ...followUpData, score: Number(e.target.value) })}
+              className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            />
+          </div>
+
+          <div className="flex gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setShowFollowUpForm(false)}
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-sm text-slate-600 dark:text-slate-300 transition text-center"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-2.5 rounded-xl bg-[#0f4ca8] hover:bg-blue-800 text-white font-bold text-sm transition shadow-md text-center"
+            >
+              Save Follow-up
+            </button>
+          </div>
+        </form>
+      );
+    }
+
+    return (
+      <>
+        <div className="w-24 h-24 bg-slate-300 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4 shadow-inner shrink-0">
+          <svg className="w-14 h-14 text-slate-500 dark:text-slate-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
+        </div>
+        <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-1">{activeCall.clientName}</h2>
+        <p className="text-slate-600 dark:text-slate-400 font-mono text-lg mb-3">{activeCall.phoneNumber}</p>
+
+        <p className="text-sm font-semibold text-slate-500 mb-1.5 flex items-center gap-1 flex-wrap justify-center">
+          Last assigned was <span className="text-red-500 bg-red-50 dark:bg-red-950/30 px-1.5 py-0.5 rounded text-xs font-bold">2 days</span> ago, Total call duration <span className="text-red-500 bg-red-50 dark:bg-red-950/30 px-1.5 py-0.5 rounded text-xs font-bold">0 minutes</span>
+        </p>
+        <p className="text-xs font-bold text-slate-400 flex items-center gap-1 mb-5">
+          <Clock className="w-3 h-3" /> Scheduled Follow-up: {activeCall.followUpDate ? new Date(activeCall.followUpDate).toLocaleString() : new Date(activeCall.callDate).toLocaleDateString()}
+        </p>
+
+        <div className="flex flex-wrap justify-center gap-2 mb-6">
+          <button
+            type="button"
+            onClick={() => setShowFollowUpForm(true)}
+            className={`${getStatusBadge(activeCall.status, false, true)} cursor-pointer hover:opacity-90 active:scale-95 transition-all outline-none`}
+          >
+            {getStatusDisplayText(activeCall.status)}
+          </button>
+          <span className="bg-blue-600 text-white text-[10px] font-bold uppercase px-3 py-1.5 rounded-lg flex items-center gap-1">⚑ New</span>
+          <span className="bg-slate-700 text-white text-[10px] font-bold uppercase px-3 py-1.5 rounded-lg flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg> Customer</span>
+          <span className="bg-slate-700 text-white text-[10px] font-bold uppercase px-3 py-1.5 rounded-lg flex items-center gap-1">🔒 Private</span>
+          <span className="bg-slate-700 text-white text-[10px] font-bold uppercase px-3 py-1.5 rounded-lg flex items-center gap-1">🏷️ {camp.replace(' Campaign', '')}</span>
+        </div>
+
+        {activeCall.notes && (
+          <div className="w-full text-left bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800 mb-6 max-h-40 overflow-y-auto">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Previous Remarks</h4>
+            <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">{activeCall.notes}</p>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center justify-center gap-3 w-full max-w-md mt-2">
+          <button onClick={() => handleStartCall(activeCall)} className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 active:scale-95 transition" title="Start Call"><PhoneCall className="w-5 h-5" /></button>
+          <button onClick={() => handleStartCall(activeCall)} className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 active:scale-95 transition" title="Start Call"><Phone className="w-5 h-5" /></button>
+          <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><Mail className="w-5 h-5" /></button>
+          <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><MessageCircle className="w-5 h-5" /></button>
+          <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><Search className="w-5 h-5" /></button>
+          <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><Clock className="w-5 h-5" /></button>
+          <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><FileText className="w-5 h-5" /></button>
+          <button className="w-14 h-14 rounded-full bg-blue-700 text-white flex items-center justify-center shadow-lg hover:bg-blue-600 transition ml-2"><MessageSquare className="w-6 h-6" fill="currentColor" /></button>
+        </div>
+      </>
+    );
   };
 
   if (loading) {
@@ -380,7 +907,10 @@ export default function SalesDashboard() {
               <Clock className="w-4 h-4" /> Clock
             </button>
             <button onClick={() => { setActiveTab('tasks'); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${activeTab === 'tasks' ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
-              <CheckSquare className="w-4 h-4" /> Overview
+              <CheckSquare className="w-4 h-4" /> CRM Dashboard
+            </button>
+            <button onClick={() => { setActiveTab('followups'); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${activeTab === 'followups' ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+              <Calendar className="w-4 h-4" /> Today's Followup
             </button>
           </nav>
         </div>
@@ -396,7 +926,7 @@ export default function SalesDashboard() {
       <main className="flex-1 overflow-y-auto relative h-[calc(100vh-73px)] md:h-screen w-full">
         <header className="sticky top-0 z-10 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between shrink-0">
           <h1 className="text-xl font-bold capitalize">
-            {activeTab === 'tasks' ? 'Overview' : 'Clock'}
+            {activeTab === 'tasks' ? 'Overview' : activeTab === 'followups' ? "Today's Followup" : 'Clock'}
           </h1>
           <div className="font-mono text-base font-semibold bg-slate-100 dark:bg-slate-900 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-800">
             {timeStr}
@@ -505,31 +1035,41 @@ export default function SalesDashboard() {
                 <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4">
                   <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Call Status</h4>
                   <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-emerald-500 dark:bg-emerald-600 p-3 rounded-xl border border-emerald-600 dark:border-emerald-700 flex flex-col justify-center text-white shadow-sm shadow-emerald-500/20">
+                    <div
+                      onClick={() => handleStatusFilterClick('ANSWER')}
+                      className={getCardClassName('ANSWER', 'bg-emerald-500 dark:bg-emerald-600 p-3 rounded-xl border border-emerald-600 dark:border-emerald-700 flex flex-col justify-center text-white shadow-sm shadow-emerald-500/20', 'ring-emerald-400')}
+                    >
                       <span className="text-[10px] font-bold text-emerald-100 uppercase tracking-wider mb-1">Answer</span>
                       <div className="text-2xl font-black text-white">
                         {filteredCalls.filter(c => c.status === 'ANSWERED' || c.status === 'INTERESTED').length}
                       </div>
                     </div>
-                    <div className="bg-yellow-500 dark:bg-yellow-600 p-3 rounded-xl border border-yellow-600 dark:border-yellow-700 flex flex-col justify-center text-white shadow-sm shadow-yellow-500/20">
+                    <div
+                      onClick={() => handleStatusFilterClick('RINGING')}
+                      className={getCardClassName('RINGING', 'bg-yellow-500 dark:bg-yellow-600 p-3 rounded-xl border border-yellow-600 dark:border-yellow-700 flex flex-col justify-center text-white shadow-sm shadow-yellow-500/20', 'ring-yellow-400')}
+                    >
                       <span className="text-[10px] font-bold text-yellow-100 uppercase tracking-wider mb-1">Ringing</span>
                       <div className="text-2xl font-black text-white">
                         {filteredCalls.filter(c => c.status === 'RINGING' || c.status === 'CALLBACK').length}
                       </div>
                     </div>
-                    <div className="bg-slate-700 dark:bg-slate-800 p-3 rounded-xl border border-slate-800 dark:border-slate-900 flex flex-col justify-center relative text-white shadow-sm shadow-slate-700/20">
+                    <div
+                      onClick={() => handleStatusFilterClick('OTHER')}
+                      className={getCardClassName('OTHER', 'bg-slate-700 dark:bg-slate-800 p-3 rounded-xl border border-slate-800 dark:border-slate-900 flex flex-col justify-center relative text-white shadow-sm shadow-slate-700/20', 'ring-slate-400')}
+                    >
                       <div className="flex items-center justify-between mb-1">
                         <select
                           value={otherOption}
-                          onChange={(e) => setOtherOption(e.target.value)}
-                          className="text-[10px] font-bold text-slate-300 uppercase tracking-wider bg-transparent outline-none cursor-pointer appearance-none pr-3 w-full"
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => handleOtherOptionChange(e.target.value)}
+                          className="text-xs font-bold text-slate-300 uppercase tracking-wider bg-transparent outline-none cursor-pointer appearance-none pr-5 w-full"
                         >
                           <option className="text-slate-800" value="Switch Off">Switch Off</option>
                           <option className="text-slate-800" value="Not Reachable">Not Reachable</option>
                           <option className="text-slate-800" value="Busy">Busy</option>
                           <option className="text-slate-800" value="Invalid Number">Invalid Number</option>
                         </select>
-                        <div className="absolute right-3 top-3.5 pointer-events-none text-slate-400 text-[8px]">▼</div>
+                        <div className="absolute right-3 top-3.5 pointer-events-none text-slate-400 text-[10px]">▼</div>
                       </div>
                       <div className="text-2xl font-black text-white">
                         {filteredCalls.filter(c => c.status === otherOption.toUpperCase().replace(' ', '_')).length}
@@ -542,25 +1082,37 @@ export default function SalesDashboard() {
                 <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4">
                   <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Lead Categories</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-yellow-500 dark:bg-yellow-600 p-3 rounded-xl border border-yellow-600 dark:border-yellow-700 flex flex-col justify-center text-white shadow-sm shadow-yellow-500/20">
+                    <div
+                      onClick={() => handleStatusFilterClick('FOLLOW_UP')}
+                      className={getCardClassName('FOLLOW_UP', 'bg-yellow-500 dark:bg-yellow-600 p-3 rounded-xl border border-yellow-600 dark:border-yellow-700 flex flex-col justify-center text-white shadow-sm shadow-yellow-500/20', 'ring-yellow-400')}
+                    >
                       <span className="text-[10px] font-bold text-yellow-100 uppercase tracking-wider mb-1">Follow-up</span>
                       <div className="text-2xl font-black text-white">
                         {filteredCalls.filter(c => c.status === 'CALLBACK' || c.status === 'RINGING').length}
                       </div>
                     </div>
-                    <div className="bg-blue-600 dark:bg-blue-700 p-3 rounded-xl border border-blue-700 dark:border-blue-800 flex flex-col justify-center text-white shadow-sm shadow-blue-600/20">
+                    <div
+                      onClick={() => handleStatusFilterClick('HOT_LEAD')}
+                      className={getCardClassName('HOT_LEAD', 'bg-blue-600 dark:bg-blue-700 p-3 rounded-xl border border-blue-700 dark:border-blue-800 flex flex-col justify-center text-white shadow-sm shadow-blue-600/20', 'ring-blue-400')}
+                    >
                       <span className="text-[10px] font-bold text-blue-100 uppercase tracking-wider mb-1">Hot-Lead</span>
                       <div className="text-2xl font-black text-white">
                         {filteredCalls.filter(c => c.status === 'INTERESTED').length}
                       </div>
                     </div>
-                    <div className="bg-emerald-500 dark:bg-emerald-600 p-3 rounded-xl border border-emerald-600 dark:border-emerald-700 flex flex-col justify-center text-white shadow-sm shadow-emerald-500/20">
+                    <div
+                      onClick={() => handleStatusFilterClick('DONE')}
+                      className={getCardClassName('DONE', 'bg-emerald-500 dark:bg-emerald-600 p-3 rounded-xl border border-emerald-600 dark:border-emerald-700 flex flex-col justify-center text-white shadow-sm shadow-emerald-500/20', 'ring-emerald-400')}
+                    >
                       <span className="text-[10px] font-bold text-emerald-100 uppercase tracking-wider mb-1">Done</span>
                       <div className="text-2xl font-black text-white">
                         {filteredCalls.filter(c => c.status === 'ANSWERED').length}
                       </div>
                     </div>
-                    <div className="bg-red-500 dark:bg-red-600 p-3 rounded-xl border border-red-600 dark:border-red-700 flex flex-col justify-center text-white shadow-sm shadow-red-500/20">
+                    <div
+                      onClick={() => handleStatusFilterClick('UNUSUAL')}
+                      className={getCardClassName('UNUSUAL', 'bg-red-500 dark:bg-red-600 p-3 rounded-xl border border-red-600 dark:border-red-700 flex flex-col justify-center text-white shadow-sm shadow-red-500/20', 'ring-red-400')}
+                    >
                       <span className="text-[10px] font-bold text-red-100 uppercase tracking-wider mb-1">Unusual</span>
                       <div className="text-2xl font-black text-white">
                         {filteredCalls.filter(c => c.status === 'NOT_INTERESTED' || c.status === 'NOT_ANSWERED').length}
@@ -570,15 +1122,35 @@ export default function SalesDashboard() {
                 </div>
               </div>
 
-              {/* Split-pane CRM Layout */}
-              <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex justify-between items-center mt-4">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Lead Pipeline</h3>
+                  {activeStatusFilter && (
+                    <button
+                      onClick={() => setActiveStatusFilter(null)}
+                      className="text-[11px] font-bold bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-md transition flex items-center gap-1 shadow-sm"
+                    >
+                      Filtered: {activeStatusFilter.replace('_', ' ')}
+                      <span className="text-slate-400 dark:text-slate-500 font-normal">×</span>
+                    </button>
+                  )}
+                </div>
+                <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-lg">
+                  <button onClick={() => setViewMode('KANBAN')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition ${viewMode === 'KANBAN' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>KANBAN</button>
+                  <button onClick={() => setViewMode('LIST')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition ${viewMode === 'LIST' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>LIST VIEW</button>
+                </div>
+              </div>
+
+              {/* View Modes */}
+              {viewMode === 'LIST' ? (
+              <div className="flex flex-col md:flex-row gap-4 mt-2">
                 {/* Left Pane: Leads List */}
                 <div className={`w-full ${selectedLeadId ? 'hidden md:flex md:w-2/5 lg:w-[45%]' : 'flex'} flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm transition-all duration-300`}>
                   <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col gap-4 shrink-0">
                     <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                       <div>
                         <h3 className="font-bold text-lg text-slate-900 dark:text-white leading-tight">My Leads</h3>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 font-bold mt-1">Total Records: {filteredCalls.length}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 font-bold mt-1">Total Records: {displayedCalls.length}</p>
                       </div>
                       <div className="flex flex-wrap gap-2 w-full xl:w-auto">
                         <div className="flex flex-wrap gap-2">
@@ -625,17 +1197,17 @@ export default function SalesDashboard() {
                   </div>
 
                   <div className="bg-white dark:bg-slate-900">
-                    {filteredCalls.length === 0 ? (
+                    {displayedCalls.length === 0 ? (
                       <div className="p-8 text-center text-slate-500 text-sm">No leads available.</div>
                     ) : (
-                      filteredCalls.map(call => {
+                      displayedCalls.map(call => {
                         const isSelected = selectedLeadId === call.id;
                         const campaign = getCampaign(call);
 
-                        // Format date like 08-Aug-2026
-                        const dateObj = new Date(call.callDate);
-                        const dateString = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
-                        const timeString = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        // Use followUpDate if scheduled, otherwise fallback to callDate
+                        const displayDateObj = call.followUpDate ? new Date(call.followUpDate) : new Date(call.callDate);
+                        const dateString = displayDateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
+                        const timeString = displayDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                         return (
                           <div
@@ -668,7 +1240,7 @@ export default function SalesDashboard() {
                                   </div>
                                   <div className="flex items-center gap-1 shrink-0">
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                                    Follow-Up Scheduled
+                                    {getActionText(call.status)}
                                   </div>
                                 </div>
                               </div>
@@ -676,8 +1248,18 @@ export default function SalesDashboard() {
                                 <span className={`text-[10px] font-semibold ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
                                   {dateString}
                                 </span>
-                                <span className={`text-[9px] px-3 py-0.5 rounded-full font-bold uppercase border ${isSelected ? 'border-blue-300 text-blue-100' : 'border-blue-500 text-blue-600 dark:text-blue-400'}`}>
-                                  New
+                                <span className={`text-[9px] px-3 py-0.5 rounded-full font-bold uppercase border ${
+                                  isSelected 
+                                    ? 'border-white/40 text-white bg-white/10' 
+                                    : (call.status === 'ANSWERED' || call.status === 'INTERESTED')
+                                      ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20'
+                                      : (call.status === 'CALLBACK' || call.status === 'RINGING')
+                                        ? 'border-yellow-500 text-yellow-600 dark:text-yellow-400 bg-yellow-50/50 dark:bg-yellow-950/20'
+                                        : (call.status === 'NOT_INTERESTED' || call.status === 'NOT_ANSWERED')
+                                          ? 'border-red-500 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20'
+                                          : 'border-slate-300 text-slate-500 bg-slate-50/50 dark:bg-slate-900/30'
+                                }`}>
+                                  {getCategoryBadgeText(call.status)}
                                 </span>
                                 <span className={`text-[9px] px-2 py-0.5 rounded font-bold capitalize ${isSelected ? 'bg-slate-900 text-white' : 'bg-slate-800 text-white'}`}>
                                   {campaign.replace(' Campaign', '')}
@@ -693,53 +1275,162 @@ export default function SalesDashboard() {
 
                 {/* Right Pane: Detail View */}
                 {selectedLeadId && (
-                  <div className="w-full md:w-3/5 lg:w-[55%] bg-slate-50/50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col relative shadow-sm animate-fade-in self-start sticky top-24">
+                  <div className="w-full md:w-3/5 lg:w-[55%] bg-slate-50/50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col relative shadow-sm animate-fade-in self-start sticky top-24 h-auto max-h-[85vh] overflow-y-auto">
                     <div onClick={() => setSelectedLeadId(null)} className="absolute top-4 right-4 text-slate-400 cursor-pointer hover:text-slate-600 z-10"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></div>
                     <div className="p-4 sm:p-6 flex flex-col items-center text-center mt-2">
                       {(() => {
-                        const activeCall = filteredCalls.find(c => c.id === selectedLeadId);
+                        const activeCall = callsList.find(c => c.id === selectedLeadId);
                         if (!activeCall) return <div className="text-slate-400 mt-20">No lead selected.</div>;
                         const camp = getCampaign(activeCall);
-                        return (
-                          <>
-                            <div className="w-24 h-24 bg-slate-300 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4 shadow-inner shrink-0">
-                              <svg className="w-14 h-14 text-slate-500 dark:text-slate-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
-                            </div>
-                            <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-1">{activeCall.clientName}</h2>
-                            <p className="text-slate-600 dark:text-slate-400 font-mono text-lg mb-3">{activeCall.phoneNumber}</p>
-
-                            <p className="text-sm font-semibold text-slate-500 mb-1.5 flex items-center gap-1 flex-wrap justify-center">
-                              Last assigned was <span className="text-red-500 bg-red-50 dark:bg-red-950/30 px-1.5 py-0.5 rounded text-xs font-bold">2 days</span> ago, Total call duration <span className="text-red-500 bg-red-50 dark:bg-red-950/30 px-1.5 py-0.5 rounded text-xs font-bold">0 minutes</span>
-                            </p>
-                            <p className="text-xs font-bold text-slate-400 flex items-center gap-1 mb-5">
-                              <Clock className="w-3 h-3" /> Next follow-up: {new Date(activeCall.callDate).toLocaleDateString()} by {currentUser?.name}
-                            </p>
-
-                            <div className="flex flex-wrap justify-center gap-2 mb-6">
-                              <span className={getStatusBadge(activeCall.status, false, true)}>{getStatusDisplayText(activeCall.status)}</span>
-                              <span className="bg-blue-600 text-white text-[10px] font-bold uppercase px-3 py-1.5 rounded-lg flex items-center gap-1">⚑ New</span>
-                              <span className="bg-slate-700 text-white text-[10px] font-bold uppercase px-3 py-1.5 rounded-lg flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg> Customer</span>
-                              <span className="bg-slate-700 text-white text-[10px] font-bold uppercase px-3 py-1.5 rounded-lg flex items-center gap-1">🔒 Private</span>
-                              <span className="bg-slate-700 text-white text-[10px] font-bold uppercase px-3 py-1.5 rounded-lg flex items-center gap-1">🏷️ {camp.replace(' Campaign', '')}</span>
-                            </div>
-
-                            <div className="flex flex-wrap items-center justify-center gap-3 w-full max-w-md mt-2">
-                              <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><PhoneCall className="w-5 h-5" /></button>
-                              <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><Phone className="w-5 h-5" /></button>
-                              <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><Mail className="w-5 h-5" /></button>
-                              <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><MessageCircle className="w-5 h-5" /></button>
-                              <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><Search className="w-5 h-5" /></button>
-                              <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><Clock className="w-5 h-5" /></button>
-                              <button className="w-12 h-12 rounded-full border-2 border-blue-600 text-blue-600 flex items-center justify-center hover:bg-blue-50 transition"><FileText className="w-5 h-5" /></button>
-                              <button className="w-14 h-14 rounded-full bg-blue-700 text-white flex items-center justify-center shadow-lg hover:bg-blue-600 transition ml-2"><MessageSquare className="w-6 h-6" fill="currentColor" /></button>
-                            </div>
-                          </>
-                        );
+                        return renderRightPaneContent(activeCall, camp);
                       })()}
                     </div>
                   </div>
                 )}
               </div>
+              ) : (
+                <div className="flex gap-4 overflow-x-auto pb-4 mt-2 min-h-[500px]">
+                  {/* Kanban Columns */}
+                  {[
+                    { id: 'PENDING', title: 'New Leads', color: 'bg-slate-500', bg: 'bg-slate-50 dark:bg-slate-900', border: 'border-slate-200 dark:border-slate-800' },
+                    { id: 'CALLBACK', title: 'Follow-up', color: 'bg-yellow-500', bg: 'bg-yellow-50/50 dark:bg-yellow-900/10', border: 'border-yellow-200 dark:border-yellow-900/50' },
+                    { id: 'INTERESTED', title: 'Hot Leads', color: 'bg-blue-600', bg: 'bg-blue-50/50 dark:bg-blue-900/10', border: 'border-blue-200 dark:border-blue-900/50' },
+                    { id: 'ANSWERED', title: 'Converted', color: 'bg-emerald-500', bg: 'bg-emerald-50/50 dark:bg-emerald-900/10', border: 'border-emerald-200 dark:border-emerald-900/50' },
+                    { id: 'NOT_INTERESTED', title: 'Dead', color: 'bg-red-500', bg: 'bg-red-50/50 dark:bg-red-900/10', border: 'border-red-200 dark:border-red-900/50' }
+                  ].map(col => (
+                    <div key={col.id} className={`w-80 shrink-0 rounded-xl border ${col.border} ${col.bg} flex flex-col shadow-sm`}>
+                      <div className={`p-3 border-b ${col.border} flex justify-between items-center`}>
+                        <h4 className="font-bold text-sm flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${col.color}`}></span>
+                          {col.title}
+                        </h4>
+                        <span className="text-xs font-bold text-slate-500 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full shadow-sm">
+                          {displayedCalls.filter(c => col.id === 'CALLBACK' ? (c.status === 'CALLBACK' || c.status === 'RINGING') : (col.id === 'NOT_INTERESTED' ? (c.status === 'NOT_INTERESTED' || c.status === 'NOT_ANSWERED') : c.status === col.id)).length}
+                        </span>
+                      </div>
+                      <div className="p-3 flex-1 overflow-y-auto space-y-3">
+                        {displayedCalls
+                          .filter(c => col.id === 'CALLBACK' ? (c.status === 'CALLBACK' || c.status === 'RINGING') : (col.id === 'NOT_INTERESTED' ? (c.status === 'NOT_INTERESTED' || c.status === 'NOT_ANSWERED') : c.status === col.id))
+                          .map(call => (
+                            <div key={call.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-lg shadow-sm hover:shadow-md transition cursor-pointer" onClick={() => { setSelectedLeadId(call.id); setViewMode('LIST'); }}>
+                              <h5 className="font-bold text-sm text-slate-800 dark:text-white truncate mb-1">{call.clientName}</h5>
+                              <p className="text-xs font-mono text-slate-500 mb-2">{call.phoneNumber}</p>
+                              {call.followUpDate && (
+                                <div className="text-[10px] font-bold bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 px-2 py-1 rounded-md mb-2 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" /> {new Date(call.followUpDate).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              )}
+                              {call.expectedValue && (
+                                <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mb-2">
+                                  Expected: ₹{call.expectedValue}
+                                </div>
+                              )}
+                              <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100 dark:border-slate-700/50">
+                                <span className="text-[9px] uppercase font-bold text-slate-400">{getCampaign(call).replace(' Campaign', '')}</span>
+                                <button className="text-blue-500 hover:text-blue-700"><PhoneCall className="w-3.5 h-3.5" /></button>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'followups' && (
+            <div className="flex flex-col gap-4 animate-fade-in">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between shrink-0 gap-4">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">Today's Follow-ups</h3>
+                  <p className="text-slate-500 text-xs mt-1">Leads scheduled for call follow-up on {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}.</p>
+                </div>
+              </div>
+
+              {(() => {
+                const todayFollowups = callsList
+                  .filter(call => {
+                    if (!call.followUpDate) return false;
+                    const d = new Date(call.followUpDate);
+                    const today = new Date();
+                    return d.getDate() === today.getDate() &&
+                      d.getMonth() === today.getMonth() &&
+                      d.getFullYear() === today.getFullYear();
+                  })
+                  .sort((a, b) => new Date(a.followUpDate) - new Date(b.followUpDate));
+
+                return (
+                  <div className="flex flex-col md:flex-row gap-6 items-start mt-2">
+                    {/* Left Pane: Follow-up Leads List */}
+                    <div className={`w-full ${selectedLeadId ? 'hidden md:flex md:w-2/5 lg:w-[45%]' : 'flex'} flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm transition-all duration-300`}>
+                      <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-center">
+                        <h3 className="font-bold text-base text-slate-900 dark:text-white leading-tight">Follow-up Queue</h3>
+                        <span className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">{todayFollowups.length} scheduled</span>
+                      </div>
+
+                      <div className="bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 max-h-[600px] overflow-y-auto">
+                        {todayFollowups.length === 0 ? (
+                          <div className="p-8 text-center text-slate-500 text-sm flex flex-col items-center justify-center gap-3">
+                            <span className="text-3xl">🎉</span>
+                            <div>No follow-ups scheduled for today.</div>
+                          </div>
+                        ) : (
+                          todayFollowups.map(call => {
+                            const isSelected = selectedLeadId === call.id;
+                            const campaign = getCampaign(call);
+                            const timeString = new Date(call.followUpDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                            return (
+                              <div
+                                key={call.id}
+                                onClick={() => setSelectedLeadId(call.id)}
+                                className={getStatusStyle(call.status, isSelected)}
+                              >
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isSelected ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                                  <svg className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-slate-400'}`} fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
+                                </div>
+                                <div className="flex-1 flex justify-between min-w-0">
+                                  <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <h4 className="font-bold text-sm truncate" title={call.clientName}>{call.clientName}</h4>
+                                      <span className={getStatusBadge(call.status, isSelected) + " shrink-0"}>
+                                        {getStatusDisplayText(call.status)}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs font-semibold">
+                                      <span className={isSelected ? 'text-white/80' : 'text-slate-500 dark:text-slate-400 font-mono'}>{call.phoneNumber}</span>
+                                      <span className={isSelected ? 'text-white/60' : 'text-slate-400'}>•</span>
+                                      <span className={`flex items-center gap-1 font-bold ${isSelected ? 'text-yellow-200' : 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/20 px-1.5 py-0.5 rounded'}`}>
+                                        <Clock className="w-3 h-3" /> {timeString}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right Pane: Detail View */}
+                    {selectedLeadId && (() => {
+                      const activeCall = callsList.find(c => c.id === selectedLeadId);
+                      if (!activeCall) return null;
+                      const camp = getCampaign(activeCall);
+                      return (
+                        <div className="w-full md:w-3/5 lg:w-[55%] bg-slate-50/50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col relative shadow-sm animate-fade-in self-start sticky top-24">
+                          <div onClick={() => setSelectedLeadId(null)} className="absolute top-4 right-4 text-slate-400 cursor-pointer hover:text-slate-600 z-10"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></div>
+                          <div className="p-4 sm:p-6 flex flex-col items-center text-center mt-2">
+                            {renderRightPaneContent(activeCall, camp)}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -777,16 +1468,26 @@ export default function SalesDashboard() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1">Campaign</label>
-                <select
-                  className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
-                  value={newCallData.campaign || 'Facebook Campaign'}
-                  onChange={e => setNewCallData({ ...newCallData, campaign: e.target.value })}
-                >
-                  <option value="Facebook Campaign">Facebook Campaign</option>
-                  <option value="LinkedIn Campaign">LinkedIn Campaign</option>
-                  <option value="Google Campaign">Google Campaign</option>
-                </select>
+                <label className="block text-sm font-semibold mb-1">Customer Requirement</label>
+                <textarea
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-transparent rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                  rows="3"
+                  placeholder="e.g. looking for dynamic website plan..."
+                  value={newCallData.requirement}
+                  onChange={e => setNewCallData({ ...newCallData, requirement: e.target.value })}
+                ></textarea>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-1">Follow-up Date</label>
+                  <input type="datetime-local" className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                    value={newCallData.followUpDate} onChange={e => setNewCallData({ ...newCallData, followUpDate: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1">Expected Value (₹)</label>
+                  <input type="number" className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                    placeholder="0.00" value={newCallData.expectedValue} onChange={e => setNewCallData({ ...newCallData, expectedValue: e.target.value })} />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1">Notes</label>
@@ -802,6 +1503,86 @@ export default function SalesDashboard() {
                 <button type="submit" className="w-full sm:w-auto px-4 py-2 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-500 rounded-lg transition shadow-md text-center">Save Call Record</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Softphone Dialer Overlay */}
+      {softphone.active && (
+        <div className="fixed bottom-6 right-6 z-50 w-80 bg-slate-900/95 dark:bg-slate-950/95 text-white border border-slate-700/50 dark:border-slate-800 rounded-2xl shadow-2xl p-4 flex flex-col gap-4 backdrop-blur-md animate-slide-up">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">AiDigital Telephony</span>
+            <div className="flex items-center gap-1">
+              <span className={`w-2 h-2 rounded-full ${softphone.status === 'calling' ? 'bg-yellow-400 animate-ping' : 'bg-emerald-500'}`}></span>
+              <span className="text-[10px] font-bold uppercase text-slate-300">
+                {softphone.status === 'calling' ? 'Calling...' : 'Connected'}
+              </span>
+            </div>
+          </div>
+
+          {/* Client Details */}
+          <div className="flex items-center gap-3 py-1">
+            <div className="w-12 h-12 bg-slate-800 dark:bg-slate-900 rounded-full flex items-center justify-center border border-slate-700">
+              <svg className="w-6 h-6 text-slate-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-bold text-sm truncate text-white">{softphone.clientName}</h4>
+              <p className="text-xs text-slate-400 font-mono">{softphone.phoneNumber}</p>
+            </div>
+          </div>
+
+          {/* Call Status & Timer */}
+          <div className="flex flex-col items-center justify-center py-2 bg-slate-800/40 dark:bg-slate-900/30 rounded-xl border border-slate-850">
+            {softphone.status === 'calling' ? (
+              <p className="text-xs text-yellow-400 animate-pulse font-semibold">Simulating outgoing connection...</p>
+            ) : (
+              <div className="flex flex-col items-center">
+                <p className="text-xs text-emerald-400 font-semibold mb-0.5">Call Active</p>
+                <p className="text-2xl font-black font-mono tracking-wider text-slate-100">
+                  {Math.floor(softphone.seconds / 60).toString().padStart(2, '0')}:
+                  {(softphone.seconds % 60).toString().padStart(2, '0')}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Controls & End Call */}
+          <div className="flex items-center justify-around mt-1">
+            <button
+              onClick={() => setSoftphone(p => ({ ...p, muted: !p.muted }))}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition border ${
+                softphone.muted 
+                  ? 'bg-red-500/20 border-red-500/30 text-red-400' 
+                  : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+              }`}
+              title={softphone.muted ? 'Unmute' : 'Mute'}
+            >
+              {softphone.muted ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+              )}
+            </button>
+
+            <button
+              onClick={handleEndCall}
+              className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-lg shadow-red-600/30 transition transform hover:scale-105 active:scale-95"
+              title="Hang Up"
+            >
+              <svg className="w-6 h-6 rotate-[135deg]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 8l2 2 4-4M5 3h4l2 5-2.5 2.5a11.022 11.022 0 005 5l2.5-2.5 5 2V19a2 2 0 01-2 2c-9.5 0-17-7.5-17-17a2 2 0 012-2z"></path></svg>
+            </button>
+
+            <button
+              onClick={() => setSoftphone(p => ({ ...p, speaker: !p.speaker }))}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition border ${
+                softphone.speaker 
+                  ? 'bg-blue-500/20 border-blue-500/30 text-blue-400' 
+                  : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+              }`}
+              title="Speakerphone"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+            </button>
           </div>
         </div>
       )}

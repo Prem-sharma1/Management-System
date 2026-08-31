@@ -3,13 +3,16 @@ import { prisma } from '@/lib/db';
 
 export async function PUT(req, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
-    const { status, notes } = body;
+    const { status, notes, followUpDate, expectedValue, leadSource } = body;
 
     const updateData = {};
     if (status !== undefined) updateData.status = status;
     if (notes !== undefined) updateData.notes = notes;
+    if (followUpDate !== undefined) updateData.followUpDate = followUpDate ? new Date(followUpDate) : null;
+    if (expectedValue !== undefined) updateData.expectedValue = expectedValue ? parseFloat(expectedValue) : null;
+    if (leadSource !== undefined) updateData.leadSource = leadSource;
 
     const updatedCall = await prisma.callRecord.update({
       where: { id: parseInt(id, 10) },
@@ -25,7 +28,7 @@ export async function PUT(req, { params }) {
 
 export async function DELETE(req, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     await prisma.callRecord.delete({
       where: { id: parseInt(id, 10) }
