@@ -1,16 +1,21 @@
 import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
+import { promises as fs, createWriteStream } from 'fs';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
 import path from 'path';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // 5 minutes timeout for large video uploads
+export const runtime = 'nodejs';
 
 const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB limit
 
 async function getRequester(cookieStore) {
   const userIdStr = cookieStore.get('userId')?.value;
   if (!userIdStr) return null;
-  return await prisma.user.findUnique({ where: { id: parseInt(userIdStr) } });
+  return await prisma.user.findUnique({ where: { id: parseInt(userIdStr, 10) } });
 }
 
 export async function POST(request) {
@@ -33,10 +38,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'File size exceeds maximum allowed limit of 1GB' }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Generate a unique filename using timestamp
+    // Generate a unique filename
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const filename = `${uniqueSuffix}-${originalName}`;
@@ -51,7 +53,18 @@ export async function POST(request) {
     }
 
     const filePath = path.join(uploadDir, filename);
-    await fs.writeFile(filePath, buffer);
+
+    // Optimized Stream-to-Disk for large files (videos/PDFs) to prevent memory allocation bottlenecks
+    if (typeof file.stream === 'function' && typeof Readable.fromWeb === 'function') {
+      const nodeReadableStream = Readable.fromWeb(file.stream());
+      const destinationStream = createWriteStream(filePath, { highWaterMark: 1024 * 1024 * 4 }); // 4MB buffer chunks
+      await pipeline(nodeReadableStream, destinationStream);
+    } else {
+      // Fallback if streaming is unavailable
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      await fs.writeFile(filePath, buffer);
+    }
 
     const fileUrl = `/uploads/${filename}`;
 
