@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-01T05:41:27.702Z",
+  "timestamp": "2026-09-01T05:58:44.110Z",
   "summary": {
     "totalClients": 56,
     "totalClientTasks": 1255,
@@ -2576,7 +2576,7 @@
       "date": "17-Jul-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "AI Video"
     },
     {
@@ -6987,7 +6987,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Pujan",
-      "status": "Not Started",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -7042,7 +7042,7 @@
       "date": "15-Jul-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Overdue",
+      "status": "Completion",
       "postType": "AI Video"
     },
     {
@@ -9352,7 +9352,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Pujan",
-      "status": "Not Started",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -10474,7 +10474,7 @@
       "date": "01-Sept-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Overdue",
+      "status": "Client Review",
       "postType": "Graphic"
     },
     {
@@ -11871,7 +11871,7 @@
       "date": "28-Aug-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
