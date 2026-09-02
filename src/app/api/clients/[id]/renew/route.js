@@ -180,12 +180,7 @@ export async function POST(request, { params }) {
       const count = aCount || 5;
       for (let i = 1; i <= count; i++) {
         const base = 1 + (i - 1) * 4;
-        tasksToCreate.push({
-          taskTitle: `AI Video Script ${i}`,
-          assignTo: 'AI Video Lead',
-          postType: 'Script',
-          offset: base
-        });
+
         tasksToCreate.push({
           taskTitle: `AI Video ${i}`,
           assignTo: 'Ai Video Editor',
@@ -235,12 +230,7 @@ export async function POST(request, { params }) {
       balanced.forEach((item, index) => {
         const offset = index * stepDays;
         if (item.type === 'AI Video') {
-          tasksToCreate.push({
-            taskTitle: `AI Video Script ${item.num}`,
-            assignTo: 'AI Video Lead',
-            postType: 'Script',
-            offset: offset
-          });
+
           tasksToCreate.push({
             taskTitle: item.title,
             assignTo: item.assignTo,

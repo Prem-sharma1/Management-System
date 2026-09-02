@@ -28,19 +28,19 @@ DEL-AID-0004-SM-REELS-5	AID-0004	Shree Broadband	Reel	28-Feb-2026	Pending	AID-00
 DEL-AID-0006-SM-GRAPHIC-2	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Graphic	01-Mar-2026	Pending	AID-0006-SM-GRAPHIC-2	Sanmeet	
 DEL-AID-0006-SM-AI-VIDEOS-1	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	AI Video	04-Mar-2026	Pending	AID-0006-SM-AI-VIDEOS-1	Masoom	
 DEL-AID-0006-SM-GRAPHIC-3	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Graphic	05-Mar-2026	Pending	AID-0006-SM-GRAPHIC-3	Pujan	
-DEL-AID-0007-SM-GRAPHIC-1	AID-0007	Shree Renuka Opticals	Graphic	05-Mar-2026	Pending	AID-0007-SM-GRAPHIC-1	Harshit	
-DEL-AID-0006-SM-REELS-2	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Reel	07-Mar-2026	Pending	AID-0006-SM-REELS-2	Harshit	
-DEL-AID-0007-SM-REELS-1	AID-0007	Shree Renuka Opticals	Reel	07-Mar-2026	Pending	AID-0007-SM-REELS-1	Harshit	
-DEL-AID-0006-SM-GRAPHIC-4	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Graphic	09-Mar-2026	Pending	AID-0006-SM-GRAPHIC-4	Harshit	
-DEL-AID-0007-SM-GRAPHIC-2	AID-0007	Shree Renuka Opticals	Graphic	09-Mar-2026	Pending	AID-0007-SM-GRAPHIC-2	Harshit	
-DEL-AID-0006-SM-AI-VIDEOS-2	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	AI Video	12-Mar-2026	Pending	AID-0006-SM-AI-VIDEOS-2	Harshit	
-DEL-AID-0007-SM-AI-VIDEOS-1	AID-0007	Shree Renuka Opticals	AI Video	12-Mar-2026	Pending	AID-0007-SM-AI-VIDEOS-1	Harshit	
-DEL-AID-0006-SM-GRAPHIC-5	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Graphic	13-Mar-2026	Pending	AID-0006-SM-GRAPHIC-5	Harshit	
-DEL-AID-0007-SM-GRAPHIC-3	AID-0007	Shree Renuka Opticals	Graphic	13-Mar-2026	Pending	AID-0007-SM-GRAPHIC-3	Harshit	
-DEL-AID-0009-SM-POST-1	AID-0009	Prash Ayurveda	Graphic	14-Mar-2026	Pending	AID-0009-SM-POST-1	Harshit	
-DEL-AID-0006-SM-REELS-3	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Reel	15-Mar-2026	Pending	AID-0006-SM-REELS-3	Harshit	
-DEL-AID-0007-SM-REELS-2	AID-0007	Shree Renuka Opticals	Reel	15-Mar-2026	Pending	AID-0007-SM-REELS-2	Harshit	
-DEL-AID-0009-SM-POST-2	AID-0009	Prash Ayurveda	Graphic	16-Mar-2026	Pending	AID-0009-SM-POST-2	Harshit	
+DEL-AID-0007-SM-GRAPHIC-1	AID-0007	Shree Renuka Opticals	Graphic	05-Mar-2026	Pending	AID-0007-SM-GRAPHIC-1	AUTO	
+DEL-AID-0006-SM-REELS-2	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Reel	07-Mar-2026	Pending	AID-0006-SM-REELS-2	AUTO	
+DEL-AID-0007-SM-REELS-1	AID-0007	Shree Renuka Opticals	Reel	07-Mar-2026	Pending	AID-0007-SM-REELS-1	AUTO	
+DEL-AID-0006-SM-GRAPHIC-4	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Graphic	09-Mar-2026	Pending	AID-0006-SM-GRAPHIC-4	AUTO	
+DEL-AID-0007-SM-GRAPHIC-2	AID-0007	Shree Renuka Opticals	Graphic	09-Mar-2026	Pending	AID-0007-SM-GRAPHIC-2	AUTO	
+DEL-AID-0006-SM-AI-VIDEOS-2	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	AI Video	12-Mar-2026	Pending	AID-0006-SM-AI-VIDEOS-2	AUTO	
+DEL-AID-0007-SM-AI-VIDEOS-1	AID-0007	Shree Renuka Opticals	AI Video	12-Mar-2026	Pending	AID-0007-SM-AI-VIDEOS-1	AUTO	
+DEL-AID-0006-SM-GRAPHIC-5	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Graphic	13-Mar-2026	Pending	AID-0006-SM-GRAPHIC-5	AUTO	
+DEL-AID-0007-SM-GRAPHIC-3	AID-0007	Shree Renuka Opticals	Graphic	13-Mar-2026	Pending	AID-0007-SM-GRAPHIC-3	AUTO	
+DEL-AID-0009-SM-POST-1	AID-0009	Prash Ayurveda	Graphic	14-Mar-2026	Pending	AID-0009-SM-POST-1	AUTO	
+DEL-AID-0006-SM-REELS-3	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Reel	15-Mar-2026	Pending	AID-0006-SM-REELS-3	AUTO	
+DEL-AID-0007-SM-REELS-2	AID-0007	Shree Renuka Opticals	Reel	15-Mar-2026	Pending	AID-0007-SM-REELS-2	AUTO	
+DEL-AID-0009-SM-POST-2	AID-0009	Prash Ayurveda	Graphic	16-Mar-2026	Pending	AID-0009-SM-POST-2	AUTO	
 DEL-AID-0010-SM-POST-1	AID-0010	Socio-Political	Graphic	16-Mar-2026	Pending	AID-0010-SM-POST-1	Danish	
 DEL-AID-0008-SM-GRAPHIC-1	AID-0008	Vidhivihan Agro Product	Graphic	17-Mar-2026	Pending	AID-0008-SM-GRAPHIC-1	Danish	
 DEL-AID-0006-SM-GRAPHIC-6	AID-0006	TravMore Exploring Made Easy(Sachin Parde)	Graphic	17-Mar-2026	Pending	AID-0006-SM-GRAPHIC-6	Danish	

@@ -5,8 +5,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const harshit = await prisma.user.findFirst({ where: { name: 'Harshit' } });
-    if (!harshit) return NextResponse.json({ error: 'Harshit not found' });
+    const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+    if (!admin) return NextResponse.json({ error: 'Admin not found' });
 
     const masoom = await prisma.user.findFirst({ where: { name: 'Masoom' } });
     const nouman = await prisma.user.findFirst({ where: { name: 'Nouman' } });
@@ -27,7 +27,7 @@ export async function GET() {
             title: assign.title,
             description: assign.desc,
             assignedToId: assign.user.id,
-            createdById: harshit.id,
+            createdById: admin.id,
             status: 'TODO',
             dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 7 days from now
           }
@@ -40,8 +40,8 @@ export async function GET() {
     await prisma.auditLog.create({
       data: {
         action: `Assigned scripts to ${createdCount} employees`,
-        performedByName: harshit.name,
-        performedByRole: harshit.role
+        performedByName: admin.name,
+        performedByRole: admin.role
       }
     });
 

@@ -1032,7 +1032,7 @@ export default function EmployeeDashboard() {
                                       </label>
                                     </>
                                   )}
-                                  {currentUser?.name?.toLowerCase().includes('harshit') && (
+                                  {(currentUser?.department?.toLowerCase().includes('ai video') || currentUser?.role === 'ADMIN' || currentUser?.role === 'TL' || currentUser?.name?.toLowerCase().includes('masoom') || currentUser?.name?.toLowerCase().includes('divyansh') || currentUser?.name?.toLowerCase().includes('nouman')) && (
                                     <label className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded cursor-pointer transition border border-indigo-200/60 dark:border-indigo-800/40">
                                       <Plus className="w-3 h-3" /> {scriptUrl ? 'Change Script PDF' : 'Upload Script PDF'}
                                       <input 
@@ -1145,7 +1145,7 @@ export default function EmployeeDashboard() {
                       {leavesList.filter(l => l.status === 'APPROVED').length}
                     </h3>
                   </div>
-                  <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center">
+                  <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:emerald-400 rounded-xl flex items-center justify-center">
                     <Calendar className="w-5 h-5" />
                   </div>
                 </div>
@@ -1170,7 +1170,7 @@ export default function EmployeeDashboard() {
                           .filter(t => t.status !== 'DONE' && t.dueDate && t.dueDate <= todayIso)
                           .map(t => ({ ...t, type: 'internal', isOverdue: t.dueDate < todayIso })),
                         ...employeeMyClientTasks
-                          .filter(ct => ct.status !== 'Completed' && ct.status !== 'Done' && ct.status !== 'Posted' && convertDbDateToIso(ct.date) && convertDbDateToIso(ct.date) <= todayIso)
+                          .filter(ct => !['Completed', 'Done', 'DONE', 'Posted', 'Completion'].includes(ct.status) && convertDbDateToIso(ct.date) && convertDbDateToIso(ct.date) <= todayIso)
                           .map(ct => ({ ...ct, type: 'client', isOverdue: convertDbDateToIso(ct.date) < todayIso }))
                       ];
                       
@@ -1449,7 +1449,7 @@ export default function EmployeeDashboard() {
                                         rel="noopener noreferrer"
                                         className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md w-fit"
                                       >
-                                        <FileText className="w-3.5 h-3.5" /> View Script from Harshit
+                                        <FileText className="w-3.5 h-3.5" /> View Script
                                       </a>
                                     )}
                                     {scriptTask.notes && (
@@ -1462,7 +1462,7 @@ export default function EmployeeDashboard() {
                               }
                               return (
                                 <span className="inline-block mt-1.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-955/30 px-2 py-0.5 rounded border border-amber-200/50">
-                                  ⏳ Script Pending from Harshit
+                                  ⏳ Script Pending
                                 </span>
                               );
                             })()}
@@ -1518,14 +1518,14 @@ export default function EmployeeDashboard() {
                           </div>
                           
                           <div className="shrink-0 flex items-center gap-2">
-                             {ct.status !== 'Completion' && (
+                             {!['Completion', 'Completed', 'DONE', 'Done', 'Posted'].includes(ct.status) && (
                                <button onClick={() => openStatusModal(ct, 'CLIENT')} className="py-1 px-3 border border-blue-200 text-blue-600 dark:border-blue-800 dark:text-blue-400 rounded-lg text-[9px] font-bold hover:bg-blue-50 dark:hover:bg-blue-950/20 transition flex items-center gap-1 shrink-0">
                                  <Play className="w-2.5 h-2.5" /> Update Status
                                </button>
                              )}
-                             {ct.status === 'Completion' && (
-                               <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 text-[9px] font-bold rounded-lg uppercase tracking-wider">
-                                 Completed
+                             {['Completion', 'Completed', 'DONE', 'Done', 'Posted'].includes(ct.status) && (
+                               <span className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-[9px] font-extrabold rounded-lg uppercase tracking-wider flex items-center gap-1">
+                                 ✓ {ct.status === 'Posted' ? 'Posted (Done)' : 'Completed'}
                                </span>
                              )}
                           </div>

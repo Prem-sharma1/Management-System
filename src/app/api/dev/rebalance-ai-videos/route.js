@@ -67,6 +67,30 @@ export async function GET() {
         });
         updatedDeliveries++;
       }
+    // 3. Fetch all Script ClientTasks and rebalance to AI Video Editor
+    const scriptTasks = await prisma.clientTask.findMany({
+      where: {
+        OR: [
+          { postType: { contains: 'Script', mode: 'insensitive' } },
+          { taskTitle: { contains: 'Script', mode: 'insensitive' } },
+          { assignTo: { contains: 'AI Video Lead', mode: 'insensitive' } }
+        ]
+      }
+    });
+
+    let updatedScriptTasks = 0;
+    for (const task of scriptTasks) {
+      const match = (task.clientId || '').match(/\d+/);
+      const num = match ? parseInt(match[0], 10) : 1;
+      const assignedName = teamList[Math.abs(num - 1) % teamList.length];
+
+      if (task.workingOn !== assignedName || task.assignTo !== 'AI Video Editor') {
+        await prisma.clientTask.update({
+          where: { id: task.id },
+          data: { workingOn: assignedName, assignTo: 'AI Video Editor' }
+        });
+        updatedScriptTasks++;
+      }
     }
 
     const taskCounts = {};

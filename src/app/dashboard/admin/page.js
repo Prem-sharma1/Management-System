@@ -748,13 +748,13 @@ export default function AdminDashboard() {
             return fullRole.includes('graphic') || fullRole.includes('design') || ['swapnil', 'danish', 'sanmeet'].includes(e.name.toLowerCase());
           }
           if (targetLower.includes('digital marketing') || targetLower.includes('social media')) {
-            return fullRole.includes('marketing') || fullRole.includes('social') || fullRole.includes('digital') || ['harshit', 'pujan', 'preet'].includes(e.name.toLowerCase());
+            return fullRole.includes('marketing') || fullRole.includes('social') || fullRole.includes('digital') || ['pujan', 'preet'].includes(e.name.toLowerCase());
           }
           if (targetLower.includes('video editor') || targetLower.includes('reel')) {
             return fullRole.includes('video editor') || fullRole.includes('reel') || ['swapnil', 'danish', 'sanmeet'].includes(e.name.toLowerCase());
           }
           if (targetLower.includes('posting') || targetLower.includes('poster')) {
-            return fullRole.includes('posting') || ['harshit', 'pujan', 'preet'].includes(e.name.toLowerCase());
+            return fullRole.includes('posting') || ['pujan', 'preet'].includes(e.name.toLowerCase());
           }
           if (targetLower.includes('tl') || targetLower.includes('team lead')) {
             return false;
@@ -792,11 +792,7 @@ export default function AdminDashboard() {
           })()
         : { assignTo: 'Content Posting', workingOn: 'CREATOR' };
 
-      const scriptLead = employeesList.find(e => {
-        const fullRole = ((e.department || '') + ' ' + (e.designation || '')).toLowerCase();
-        return fullRole.includes('ai video lead') || e.name.toLowerCase() === 'harshit';
-      });
-      const scriptStaff = { assignTo: 'AI Video Lead', workingOn: scriptLead ? scriptLead.name : 'Harshit' };
+      const scriptStaff = aStaff ? { assignTo: 'AI Video Editor', workingOn: aStaff.workingOn } : { assignTo: 'AI Video Editor', workingOn: '' };
 
       const resolvedStaffMap = {
         c: cStaff.workingOn,
@@ -908,13 +904,7 @@ export default function AdminDashboard() {
         const count = aCount || 5;
         for (let i = 1; i <= count; i++) {
           const base = 1 + (i - 1) * 4;
-          tasksToCreate.push({
-            taskTitle: `AI Video Script ${i}`,
-            assignTo: 'AI Video Lead',
-            workingOn: 'Harshit',
-            postType: 'Script',
-            date: getFormattedDate(base)
-          });
+
           tasksToCreate.push({
             taskTitle: `AI Video ${i}`,
             assignTo: 'AI Video Editor',
@@ -932,7 +922,7 @@ export default function AdminDashboard() {
             { title: 'Create Accounts', day: 0, staff: onboardingSetupStaff, type: 'Onboarding' },
             { title: 'Graphic 1', day: 1, staff: cStaff, type: 'Graphic' },
             { title: 'Create Page', day: 2, staff: onboardingSetupStaff, type: 'Onboarding' },
-            { title: 'AI Video Script 1', day: 3, staff: scriptStaff, type: 'Script' },
+
             { title: 'AI Video 1', day: 4, staff: aStaff, type: 'AI Video' },
             { title: 'Ads Run', day: 5, staff: onboardingSetupStaff, type: 'Ads' }
           );
@@ -941,7 +931,7 @@ export default function AdminDashboard() {
           onboardingTasks.push(
             { title: 'Client Login / Access Collection', day: 0, staff: onboardingSetupStaff, type: 'Onboarding' },
             { title: 'Graphic 1', day: 1, staff: cStaff, type: 'Graphic' },
-            { title: 'AI Video Script 1', day: 1, staff: scriptStaff, type: 'Script' },
+
             { title: 'AI Video 1', day: 2, staff: aStaff, type: 'AI Video' },
             { title: 'Ads Run', day: 2, staff: onboardingSetupStaff, type: 'Ads' }
           );
@@ -988,13 +978,7 @@ export default function AdminDashboard() {
 
           if (item[2]) {
             if (isAIVideo) {
-              tasksToCreate.push({
-                taskTitle: `AI Video Script ${item[1]}`,
-                assignTo: 'AI Video Lead',
-                workingOn: 'Harshit',
-                postType: 'Script',
-                date: getFormattedDate(offset)
-              });
+
               tasksToCreate.push({
                 taskTitle: `AI Video ${item[1]}`,
                 assignTo: item[2].assignTo,
@@ -2309,7 +2293,7 @@ export default function AdminDashboard() {
               if (taskStaffFilter === 'ALL') return true;
               const worker = ((t.workingOn || '') + ' ' + (t.assignedTo?.name || '') + ' ' + (t.assignTo || '')).toLowerCase();
               if (taskStaffFilter === 'SANMEET') return worker.includes('sanmeet');
-              if (taskStaffFilter === 'AI_VIDEO') return worker.includes('harshit') || worker.includes('ai video') || worker.includes('video editor') || worker.includes('reel');
+              if (taskStaffFilter === 'AI_VIDEO') return worker.includes('ai video') || worker.includes('video editor') || worker.includes('reel');
               return worker.includes(taskStaffFilter.toLowerCase());
             });
 
@@ -2318,7 +2302,7 @@ export default function AdminDashboard() {
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <div>
                     <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Department Duties Allocation</h4>
-                    <p className="text-xs text-slate-400 mt-1">Filter and track tasks for Sanmeet, Harshit, AI Video Leads, and Executives.</p>
+                    <p className="text-xs text-slate-400 mt-1">Filter and track tasks for Sanmeet, AI Video Leads, and Executives.</p>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
@@ -2332,7 +2316,7 @@ export default function AdminDashboard() {
                       >
                         <option value="ALL">All Staff & Employees ({tasksList.length})</option>
                         <option value="SANMEET">★ Sanmeet (Reels & Social Media Lead)</option>
-                        <option value="AI_VIDEO">🎬 AI Video Team (Harshit & Video Editors)</option>
+                        <option value="AI_VIDEO">🎬 AI Video Team (Video Editors)</option>
                         {usersList.filter(u => u.role === 'EMPLOYEE' || u.role === 'TL').map(emp => (
                           <option key={emp.id} value={emp.name.toUpperCase()}>👤 {emp.name} ({emp.designation || emp.department || 'Staff'})</option>
                         ))}
@@ -4927,7 +4911,7 @@ export default function AdminDashboard() {
                           let worksArr = [];
                           try { worksArr = e.works ? JSON.parse(e.works).map(w => w.toLowerCase()) : []; } catch(err){}
                           const hasWork = worksArr.some(w => w.includes('report') || w.includes('social media'));
-                          return hasWork || dept.includes('marketing') || dept.includes('social') || dept.includes('digital') || dept.includes('exec') || ['harshit', 'pujan', 'preet'].includes(nameLower) || nameLower === (assignedStaff.sm || '').toLowerCase();
+                          return hasWork || dept.includes('marketing') || dept.includes('social') || dept.includes('digital') || dept.includes('exec') || ['pujan', 'preet'].includes(nameLower) || nameLower === (assignedStaff.sm || '').toLowerCase();
                         })
                         .map(e => <option key={e.id} value={e.name}>{e.name.toLowerCase() === (assignedStaff.sm || '').toLowerCase() ? `✓ ${e.name} (Assigned)` : `${e.name} (${e.department || 'Social Media'})`}</option>)}
                     </select>

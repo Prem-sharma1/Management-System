@@ -113,14 +113,14 @@ export async function GET(request) {
       });
     }
 
-    // 5. Scripts
-    if (harshitUser) {
+    // 5. Scripts (Assigned to AI Video Editor)
+    if (aiUser) {
       await prisma.clientTask.updateMany({
         where: {
           clientId: targetClientId,
           postType: 'Script'
         },
-        data: { workingOn: harshitUser.name }
+        data: { workingOn: aiUser.name }
       });
     }
 

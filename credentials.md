@@ -2,7 +2,7 @@
 
 This file contains the email IDs and passwords for all user accounts configured in the system. Use these credentials to log in on the main login screen.
 
----
+--- 
 
 ## 1. CEO Account
 - **Role:** CEO
@@ -20,11 +20,6 @@ This file contains the email IDs and passwords for all user accounts configured 
 
 ---
 
-## 3. Team Leader Account (Demo)
-- **Role:** TL (Team Leader)
-- **Department:** Content
-- **Email:** `tl@workforce.com`
-- **Password:** `tl123`
 
 ---
 
@@ -47,9 +42,8 @@ Use the email addresses and passwords below to log in as specific members of the
 - **Swapnil** (EMPLOYEE)
   - **Email:** `swapnil@aidigital.com`
   - **Password:** `Swapnil@Ai231`
-
-### AI Video Lead (Team Leader)
-- **Harshit** (TL)
+### Social Media Executive
+- **Harshit Gajbhiye** (EMPLOYEE)
   - **Email:** `harshit@aidigital.com`
   - **Password:** `Harshit@Ai456`
 

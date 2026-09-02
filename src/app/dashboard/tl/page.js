@@ -1,4 +1,4 @@
-'use client';
+// Harshit TL dashboard removed
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -1712,7 +1712,7 @@ export default function TLDashboard() {
                                         rel="noopener noreferrer"
                                         className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md"
                                       >
-                                        <FileText className="w-3 h-3" /> View Script from Harshit
+                                        <FileText className="w-3 h-3" /> View Script
                                       </a>
                                     );
                                   }

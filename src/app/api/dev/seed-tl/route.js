@@ -8,21 +8,7 @@ export async function GET() {
     const hashedPassword = await bcrypt.hash('tl123', salt);
     const empHashedPassword = await bcrypt.hash('emp123', salt);
 
-    // Create TL Harshit
-    const tl = await prisma.user.upsert({
-      where: { email: 'tl@workforce.com' },
-      update: {},
-      create: {
-        name: 'Harshit',
-        email: 'tl@workforce.com',
-        password: hashedPassword,
-        role: 'TL',
-        department: 'Content',
-        salary: 80000,
-        avatar: '👨‍💼',
-        status: 'ACTIVE'
-      }
-    });
+
 
     const employees = ['Divyansh', 'Nouman', 'Masoom'];
     const created = [];

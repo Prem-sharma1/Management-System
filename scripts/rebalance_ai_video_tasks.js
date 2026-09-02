@@ -75,7 +75,35 @@ async function main() {
       updatedDeliveries++;
     }
   }
-  console.log(`Updated ${updatedDeliveries} ClientDeliveries to company-by-company assigned editor.`);
+  // 3. Fetch all Script ClientTasks and rebalance to AI Video Editor
+  const scriptTasks = await prisma.clientTask.findMany({
+    where: {
+      OR: [
+        { postType: { contains: 'Script', mode: 'insensitive' } },
+        { taskTitle: { contains: 'Script', mode: 'insensitive' } },
+        { assignTo: { contains: 'AI Video Lead', mode: 'insensitive' } },
+        { workingOn: { contains: 'Harshit', mode: 'insensitive' } }
+      ]
+    }
+  });
+
+  console.log(`Found ${scriptTasks.length} total Script ClientTasks.`);
+
+  let updatedScriptTasks = 0;
+  for (const task of scriptTasks) {
+    const match = (task.clientId || '').match(/\d+/);
+    const num = match ? parseInt(match[0], 10) : 1;
+    const assignedName = teamList[Math.abs(num - 1) % teamList.length];
+
+    if (task.workingOn !== assignedName || task.assignTo !== 'AI Video Editor') {
+      await prisma.clientTask.update({
+        where: { id: task.id },
+        data: { workingOn: assignedName, assignTo: 'AI Video Editor' }
+      });
+      updatedScriptTasks++;
+    }
+  }
+  console.log(`Updated ${updatedScriptTasks} Script ClientTasks to assigned AI Video Editor.`);
 
   // Print Summary per Editor
   const taskCounts = {};

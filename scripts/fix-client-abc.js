@@ -24,10 +24,10 @@ async function main() {
     data: { workingOn: 'Divyansh' }
   });
 
-  // 4. Script tasks -> Harshit
+  // 4. Script tasks -> Divyansh (AI Video Editor)
   await prisma.clientTask.updateMany({
     where: { clientId, postType: { contains: 'Script', mode: 'insensitive' } },
-    data: { workingOn: 'Harshit' }
+    data: { workingOn: 'Divyansh' }
   });
 
   // 5. Onboarding / Access / Ads -> Rama
