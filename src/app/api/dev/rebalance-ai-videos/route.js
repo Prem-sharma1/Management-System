@@ -67,6 +67,7 @@ export async function GET() {
         });
         updatedDeliveries++;
       }
+    }
     // 3. Fetch all Script ClientTasks and rebalance to AI Video Editor
     const scriptTasks = await prisma.clientTask.findMany({
       where: {

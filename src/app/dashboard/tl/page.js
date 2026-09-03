@@ -1,3 +1,5 @@
+'use client';
+
 // Harshit TL dashboard removed
 
 import { useState, useEffect } from 'react';

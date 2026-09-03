@@ -1,21 +1,21 @@
 {
-  "timestamp": "2026-09-02T12:05:15.663Z",
+  "timestamp": "2026-09-03T06:02:19.211Z",
   "summary": {
-    "totalClients": 58,
-    "totalClientTasks": 1255,
+    "totalClients": 57,
+    "totalClientTasks": 1233,
     "totalClientDeliveries": 0,
     "tasksByWorkingOn": {
-      "Pujan": 273,
-      "Swapnil": 113,
-      "Divyansh": 84,
-      "Sanmeet": 76,
-      "Preet": 324,
-      "Nouman": 115,
+      "Pujan": 275,
+      "Swapnil": 114,
+      "Divyansh": 85,
+      "Sanmeet": 65,
+      "Preet": 325,
+      "Nouman": 112,
       "Masoom": 99,
-      "Danish Khan": 137,
-      "Rama": 10,
-      "UNASSIGNED": 3,
-      "Harshit Gajbhiye": 21
+      "Danish Khan": 138,
+      "Rama": 13,
+      "UNASSIGNED": 5,
+      "Harshit Gajbhiye": 2
     }
   },
   "aiVideoBreakdown": {
@@ -48,7 +48,7 @@
       ]
     },
     "Nouman": {
-      "count": 115,
+      "count": 112,
       "clients": [
         "AID-0002 (HIT-OFFICE(Google))",
         "AID-0008 (Mountain Bliss)",
@@ -74,12 +74,11 @@
         "AID-0059 (LIC)",
         "AID-0060 (Tradewise)",
         "AID-0061 (KreerKraft)",
-        "AID-0067 (\t Peachy Clothing)",
-        "AID-0068 (aaa)"
+        "AID-0067 (\t Peachy Clothing)"
       ]
     },
     "Divyansh": {
-      "count": 84,
+      "count": 85,
       "clients": [
         "AID-0001 (HIT-OFFICE(Meta))",
         "AID-0007 (Sanskruti Pre School)",
@@ -99,7 +98,8 @@
         "AID-0055 (Color N Craft)",
         "AID-0056 (Timeer's Badminton Academy)",
         "AID-0057 (Eliteyatra)",
-        "AID-0058 (Prajakta W Makeup Artist)"
+        "AID-0058 (Prajakta W Makeup Artist)",
+        "AID-0004 (A Siddhanatth Car's)"
       ]
     }
   },
@@ -121,7 +121,7 @@
     {
       "clientId": "AID-0004",
       "businessName": "A Siddhanatth Car's",
-      "joiningDate": "2026-08-01",
+      "joiningDate": "02-Sept-2026",
       "packageName": "Basic",
       "packageAmount": 2499
     },
@@ -502,13 +502,6 @@
       "joiningDate": "2026-08-17",
       "packageName": "Social Media Custom Plan",
       "packageAmount": 3000
-    },
-    {
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "joiningDate": "2026-09-02",
-      "packageName": "Standard Plan",
-      "packageAmount": 13499
     }
   ],
   "clientTasks": [
@@ -1093,17 +1086,6 @@
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
       "status": "Completion",
-      "postType": "Report"
-    },
-    {
-      "taskId": "AID-T-MS8XAYM1-7551-14",
-      "clientId": "AID-0004",
-      "businessName": "A Siddhanatth Car's",
-      "taskTitle": "Weekly Report 4",
-      "date": "03-Sept-2026",
-      "assignTo": "Digital Marketing Executive",
-      "workingOn": "Preet",
-      "status": "Assigned",
       "postType": "Report"
     },
     {
@@ -1862,7 +1844,7 @@
       "date": "03-Sept-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -4480,7 +4462,7 @@
       "date": "Trigger on Approval",
       "assignTo": "Content Posting",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Posted",
       "postType": "Posting"
     },
     {
@@ -5624,7 +5606,7 @@
       "date": "03-Sept-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -10783,7 +10765,7 @@
       "date": "03-Sept-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -11179,7 +11161,7 @@
       "date": "03-Sept-2026",
       "assignTo": "Graphics",
       "workingOn": "Sanmeet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -11795,7 +11777,7 @@
       "date": "03-Sept-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {
@@ -12598,7 +12580,7 @@
       "date": "03-Sept-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -13038,7 +13020,7 @@
       "date": "03-Sept-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -13049,7 +13031,7 @@
       "date": "03-Sept-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {
@@ -13434,7 +13416,7 @@
       "date": "03-Sept-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Nouman",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -13456,7 +13438,7 @@
       "date": "03-Sept-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Danish Khan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -13922,400 +13904,169 @@
       "postType": "Posting"
     },
     {
-      "taskId": "AID-T-MTK1S9QW-9093-0",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Client Login / Access Collection",
-      "date": "02-Sept-2026",
-      "assignTo": "Social Media Marketing",
-      "workingOn": "Harshit Gajbhiye",
-      "status": "Overdue",
-      "postType": "Onboarding"
-    },
-    {
-      "taskId": "AID-T-MTK1S9V4-5259-1",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
+      "taskId": "AID-T-MTK2B9I2-6667-0",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
       "taskTitle": "Graphic 1",
+      "date": "02-Sept-2026",
+      "assignTo": "Graphic Designer",
+      "workingOn": "Danish Khan",
+      "status": "Overdue",
+      "postType": "Graphic"
+    },
+    {
+      "taskId": "AID-T-MTK2B9W1-7263-1",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
+      "taskTitle": "Post Graphic 1",
       "date": "03-Sept-2026",
-      "assignTo": "Graphics",
-      "workingOn": "Sanmeet",
-      "status": "Assigned",
-      "postType": "Graphic"
-    },
-    {
-      "taskId": "AID-T-MTK1SA05-3357-2",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "AI Video 1",
-      "date": "04-Sept-2026",
-      "assignTo": "Ai Video Editor",
-      "workingOn": "Nouman",
-      "status": "Assigned",
-      "postType": "AI Video"
-    },
-    {
-      "taskId": "AID-T-MTK1SA51-4429-3",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Ads Run",
-      "date": "04-Sept-2026",
-      "assignTo": "Social Media Marketing",
-      "workingOn": "Harshit Gajbhiye",
-      "status": "Assigned",
-      "postType": "Ads"
-    },
-    {
-      "taskId": "AID-T-MTK1SAAF-8373-4",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Graphic 2",
-      "date": "05-Sept-2026",
-      "assignTo": "Graphics",
-      "workingOn": "Sanmeet",
-      "status": "Assigned",
-      "postType": "Graphic"
-    },
-    {
-      "taskId": "AID-T-MTK1SAFT-6328-5",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post Graphic 2",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Rama",
       "status": "Assigned",
       "postType": "Posting"
     },
     {
-      "taskId": "AID-T-MTK1SAKO-8809-6",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
+      "taskId": "AID-T-MTK2BA2R-9995-2",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
       "taskTitle": "Reel 1",
       "date": "07-Sept-2026",
-      "assignTo": "Graphics",
-      "workingOn": "Sanmeet",
-      "status": "Assigned",
+      "assignTo": "Video Editor",
+      "workingOn": "",
+      "status": "Not Started",
       "postType": "Reel"
     },
     {
-      "taskId": "AID-T-MTK1SAPQ-5860-7",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
+      "taskId": "AID-T-MTK2BAG4-9972-3",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
       "taskTitle": "Post Reel 1",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MTK1SAUP-4284-8",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Graphic 3",
       "date": "08-Sept-2026",
-      "assignTo": "Graphics",
-      "workingOn": "Sanmeet",
-      "status": "Assigned",
-      "postType": "Graphic"
-    },
-    {
-      "taskId": "AID-T-MTK1SB04-5756-9",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post Graphic 3",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Pujan",
       "status": "Assigned",
       "postType": "Posting"
     },
     {
-      "taskId": "AID-T-MTK1SB57-3847-10",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "AI Video 2",
-      "date": "10-Sept-2026",
-      "assignTo": "Ai Video Editor",
-      "workingOn": "Nouman",
-      "status": "Assigned",
-      "postType": "AI Video"
-    },
-    {
-      "taskId": "AID-T-MTK1SBA3-3535-11",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post AI Video 2",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MTK1SBFI-2385-12",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Graphic 4",
-      "date": "10-Sept-2026",
-      "assignTo": "Graphics",
-      "workingOn": "Sanmeet",
-      "status": "Assigned",
-      "postType": "Graphic"
-    },
-    {
-      "taskId": "AID-T-MTK1SC3C-4050-13",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post Graphic 4",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MTK1SC8Q-6869-14",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Reel 2",
+      "taskId": "AID-T-MTK2BATI-1431-4",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
+      "taskTitle": "Graphic 2",
       "date": "11-Sept-2026",
-      "assignTo": "Graphics",
-      "workingOn": "Sanmeet",
-      "status": "Assigned",
-      "postType": "Reel"
-    },
-    {
-      "taskId": "AID-T-MTK1SCE8-9162-15",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post Reel 2",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MTK1SCJ4-5258-16",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Graphic 5",
-      "date": "12-Sept-2026",
-      "assignTo": "Graphics",
-      "workingOn": "Sanmeet",
+      "assignTo": "Graphic Designer",
+      "workingOn": "Swapnil",
       "status": "Assigned",
       "postType": "Graphic"
     },
     {
-      "taskId": "AID-T-MTK1SCOV-9982-17",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post Graphic 5",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
+      "taskId": "AID-T-MTK2BB9C-2975-5",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
+      "taskTitle": "Post Graphic 2",
+      "date": "12-Sept-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
       "status": "Assigned",
       "postType": "Posting"
     },
     {
-      "taskId": "AID-T-MTK1SCUZ-4517-18",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "AI Video 3",
-      "date": "15-Sept-2026",
+      "taskId": "AID-T-MTK2BBL7-6019-6",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
+      "taskTitle": "AI Video Script 1",
+      "date": "16-Sept-2026",
+      "assignTo": "AI Video Lead",
+      "workingOn": "",
+      "status": "Not Started",
+      "postType": "Script"
+    },
+    {
+      "taskId": "AID-T-MTK2BCCP-3613-7",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
+      "taskTitle": "AI Video 1",
+      "date": "17-Sept-2026",
       "assignTo": "Ai Video Editor",
-      "workingOn": "Nouman",
+      "workingOn": "Divyansh",
       "status": "Assigned",
       "postType": "AI Video"
     },
     {
-      "taskId": "AID-T-MTK1SD0N-7386-19",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post AI Video 3",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MTK1SD5T-8110-20",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Graphic 6",
-      "date": "15-Sept-2026",
-      "assignTo": "Graphics",
-      "workingOn": "Sanmeet",
-      "status": "Assigned",
-      "postType": "Graphic"
-    },
-    {
-      "taskId": "AID-T-MTK1SDAL-5592-21",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post Graphic 6",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MTK1SDFU-6573-22",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Reel 3",
-      "date": "16-Sept-2026",
-      "assignTo": "Graphics",
-      "workingOn": "Sanmeet",
-      "status": "Assigned",
-      "postType": "Reel"
-    },
-    {
-      "taskId": "AID-T-MTK1SDKX-8516-23",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post Reel 3",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MTK1SDQ7-7423-24",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Graphic 7",
-      "date": "17-Sept-2026",
-      "assignTo": "Graphics",
-      "workingOn": "Sanmeet",
-      "status": "Assigned",
-      "postType": "Graphic"
-    },
-    {
-      "taskId": "AID-T-MTK1SDVO-1038-25",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post Graphic 7",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
-      "status": "Assigned",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MTK1SE15-1711-26",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Graphic 8",
+      "taskId": "AID-T-MTK2BLN1-6856-8",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
+      "taskTitle": "Post AI Video 1",
       "date": "18-Sept-2026",
-      "assignTo": "Graphics",
-      "workingOn": "Sanmeet",
-      "status": "Assigned",
-      "postType": "Graphic"
-    },
-    {
-      "taskId": "AID-T-MTK1SE6K-5666-27",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post Graphic 8",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
+      "assignTo": "Digital Marketing Executive",
       "workingOn": "Harshit Gajbhiye",
       "status": "Assigned",
       "postType": "Posting"
     },
     {
-      "taskId": "AID-T-MTK1SECI-2150-28",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Graphic 9",
-      "date": "19-Sept-2026",
-      "assignTo": "Graphics",
+      "taskId": "AID-T-MTK2BMBM-6678-9",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
+      "taskTitle": "Graphic 3",
+      "date": "21-Sept-2026",
+      "assignTo": "Graphic Designer",
       "workingOn": "Sanmeet",
       "status": "Assigned",
       "postType": "Graphic"
     },
     {
-      "taskId": "AID-T-MTK1SEI2-9374-29",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post Graphic 9",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
+      "taskId": "AID-T-MTK2BMP0-3984-10",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
+      "taskTitle": "Post Graphic 3",
+      "date": "22-Sept-2026",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Rama",
       "status": "Assigned",
       "postType": "Posting"
     },
     {
-      "taskId": "AID-T-MTK1SENX-3193-30",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
+      "taskId": "AID-T-MTK2BN2G-5391-11",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
       "taskTitle": "Weekly Report 1",
       "date": "10-Sept-2026",
-      "assignTo": "Social Media Marketing",
-      "workingOn": "Harshit Gajbhiye",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Pujan",
       "status": "Assigned",
       "postType": "Report"
     },
     {
-      "taskId": "AID-T-MTK1SETL-7303-31",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
+      "taskId": "AID-T-MTK2BNFW-4496-12",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
       "taskTitle": "Weekly Report 2",
       "date": "18-Sept-2026",
-      "assignTo": "Social Media Marketing",
-      "workingOn": "Harshit Gajbhiye",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Preet",
       "status": "Assigned",
       "postType": "Report"
     },
     {
-      "taskId": "AID-T-MTK1SEYK-9456-32",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
+      "taskId": "AID-T-MTK2BNTB-5663-13",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
       "taskTitle": "Weekly Report 3",
       "date": "26-Sept-2026",
-      "assignTo": "Social Media Marketing",
+      "assignTo": "Digital Marketing Executive",
       "workingOn": "Harshit Gajbhiye",
       "status": "Assigned",
       "postType": "Report"
     },
     {
-      "taskId": "AID-T-MTK1SF3H-6853-33",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
+      "taskId": "AID-T-MTK2BO6R-9768-14",
+      "clientId": "AID-0004",
+      "businessName": "A Siddhanatth Car's",
       "taskTitle": "Weekly Report 4",
       "date": "05-Oct-2026",
-      "assignTo": "Social Media Marketing",
-      "workingOn": "Harshit Gajbhiye",
+      "assignTo": "Digital Marketing Executive",
+      "workingOn": "Rama",
       "status": "Assigned",
       "postType": "Report"
-    },
-    {
-      "taskId": "AID-T-MTK1S9V4-5259-1-POST-MTK1SGW3-4753",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post Graphic 1",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
-      "status": "Not Started",
-      "postType": "Posting"
-    },
-    {
-      "taskId": "AID-T-MTK1SA05-3357-2-POST-MTK1SH6T-4313",
-      "clientId": "AID-0068",
-      "businessName": "aaa",
-      "taskTitle": "Post AI Video 1",
-      "date": "Trigger on Approval",
-      "assignTo": "Content Posting",
-      "workingOn": "Harshit Gajbhiye",
-      "status": "Not Started",
-      "postType": "Posting"
     }
   ]
 }

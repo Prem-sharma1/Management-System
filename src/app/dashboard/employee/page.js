@@ -639,8 +639,10 @@ export default function EmployeeDashboard() {
       const q = searchQuery.toLowerCase();
       if (!task.title?.toLowerCase().includes(q) && !task.description?.toLowerCase().includes(q) && !task.createdBy?.name?.toLowerCase().includes(q)) return false;
     }
-    const isPastOverdue = ['OVERDUE', 'Overdue', 'PENDING', 'Pending'].includes(task.status) || (task.dueDate && task.dueDate < todayIso && !['DONE', 'Completed', 'Completion'].includes(task.status));
-    if (isPastOverdue) return true;
+    if (task.dueDate && task.dueDate < todayIso) {
+      if (filterDate && task.dueDate === formats.isoFormat) return true;
+      return false;
+    }
     if (!filterDate) return true;
     return task.dueDate === formats.isoFormat;
   });
@@ -651,8 +653,10 @@ export default function EmployeeDashboard() {
       if (!ct.taskTitle?.toLowerCase().includes(q) && !ct.businessName?.toLowerCase().includes(q) && !ct.notes?.toLowerCase().includes(q)) return false;
     }
     const ctIso = convertDbDateToIso(ct.date);
-    const isPastOverdue = ['Overdue', 'OVERDUE', 'Pending', 'PENDING'].includes(ct.status) || (ctIso && ctIso < todayIso && !['Completion', 'Completed', 'DONE', 'Done', 'Posted', 'Client Review'].includes(ct.status));
-    if (isPastOverdue) return true;
+    if (ctIso && ctIso < todayIso) {
+      if (filterDate && ctIso === formats.isoFormat) return true;
+      return false;
+    }
     if (!filterDate) return true;
     if (isTaskReadyToPostToday(ct) && filterDate === todayIso) return true;
     return ctIso === formats.isoFormat;
@@ -1161,17 +1165,17 @@ export default function EmployeeDashboard() {
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm mt-6">
-                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-4">Today's & Carry-Forward Priorities</h4>
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-4">Today's Priorities</h4>
                   <div className="space-y-3">
                     {(() => {
                       const todayIso = new Date().toISOString().split('T')[0];
                       const todayTasks = [
                         ...employeeTasksList
-                          .filter(t => t.status !== 'DONE' && t.dueDate && t.dueDate <= todayIso)
-                          .map(t => ({ ...t, type: 'internal', isOverdue: t.dueDate < todayIso })),
+                          .filter(t => t.status !== 'DONE' && t.dueDate && t.dueDate === todayIso)
+                          .map(t => ({ ...t, type: 'internal', isOverdue: false })),
                         ...employeeMyClientTasks
-                          .filter(ct => !['Completed', 'Done', 'DONE', 'Posted', 'Completion'].includes(ct.status) && convertDbDateToIso(ct.date) && convertDbDateToIso(ct.date) <= todayIso)
-                          .map(ct => ({ ...ct, type: 'client', isOverdue: convertDbDateToIso(ct.date) < todayIso }))
+                          .filter(ct => !['Completed', 'Done', 'DONE', 'Posted', 'Completion'].includes(ct.status) && convertDbDateToIso(ct.date) && convertDbDateToIso(ct.date) === todayIso)
+                          .map(ct => ({ ...ct, type: 'client', isOverdue: false }))
                       ];
                       
                       if (todayTasks.length === 0) {
@@ -1283,8 +1287,8 @@ export default function EmployeeDashboard() {
               <div className="p-6 space-y-4">
                 {(() => {
                   const overdueCount = [
-                    ...filteredTasksList.filter(t => ['OVERDUE', 'Overdue'].includes(t.status) || (t.dueDate && t.dueDate < todayIso && t.status !== 'DONE')),
-                    ...filteredClientTasks.filter(ct => ['Overdue', 'OVERDUE'].includes(ct.status) || (convertDbDateToIso(ct.date) && convertDbDateToIso(ct.date) < todayIso && !['Completion', 'Completed', 'DONE', 'Done', 'Posted', 'Client Review'].includes(ct.status)))
+                    ...filteredTasksList.filter(t => ['OVERDUE', 'Overdue'].includes(t.status) && t.dueDate === todayIso),
+                    ...filteredClientTasks.filter(ct => ['Overdue', 'OVERDUE'].includes(ct.status) && convertDbDateToIso(ct.date) === todayIso)
                   ].length;
 
                   if (overdueCount > 0) {
