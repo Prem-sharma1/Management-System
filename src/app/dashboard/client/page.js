@@ -47,7 +47,7 @@ export default function ClientDashboard() {
   const [darkMode, setDarkMode] = useState(true);
 
   useEffect(() => {
-    const isDark = localStorage.getItem('theme') === 'dark' || 
+    const isDark = localStorage.getItem('theme') === 'dark' ||
       (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
     if (isDark) {
       setDarkMode(true);
@@ -87,7 +87,7 @@ export default function ClientDashboard() {
       try {
         const res = await fetch('/api/auth/me');
         const data = await res.json();
-        
+
         if (!res.ok || !data.user || data.user.role !== 'CLIENT') {
           router.push('/');
           return;
@@ -150,7 +150,7 @@ export default function ClientDashboard() {
         setFeedbackSuccess(`${feedbackType} submitted successfully!`);
         setFeedbackMessage('');
         setFeedbackRating(5);
-        
+
         // Refresh feedback list
         const fbRes = await fetch('/api/client/feedback');
         const fbData = await fbRes.json();
@@ -243,18 +243,18 @@ export default function ClientDashboard() {
       const [y, m, d] = cleanStr.slice(0, 10).split('-').map(v => parseInt(v, 10));
       return new Date(y, m - 1, d);
     }
-    const parts = cleanStr.split(/[\/\-]/);
+    const parts = cleanStr.split(/[\/\-\s]+/);
     if (parts.length >= 3) {
       const day = parseInt(parts[0], 10);
       const monthPart = parts[1].toLowerCase().trim();
-      const year = parseInt(parts[2], 10);
+      const year = parseInt(parts[2].length === 2 ? `20${parts[2]}` : parts[2], 10);
 
       const months = {
         jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-        jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+        jul: 6, aug: 7, sep: 8, sept: 8, oct: 9, nov: 10, dec: 11
       };
 
-      let month = months[monthPart.slice(0, 3)];
+      let month = months[monthPart.slice(0, 4)] || months[monthPart.slice(0, 3)];
       if (month === undefined && !isNaN(parseInt(monthPart, 10))) {
         month = parseInt(monthPart, 10) - 1;
       }
@@ -264,6 +264,42 @@ export default function ClientDashboard() {
     }
     const d = new Date(cleanStr);
     return isNaN(d.getTime()) ? new Date() : d;
+  };
+
+  // Helper to convert any task date to ISO YYYY-MM-DD
+  const parseTaskDateToISO = (dStr) => {
+    if (!dStr || dStr === 'Trigger on Approval' || dStr === 'Posting') return null;
+    const cleanStr = dStr.trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(cleanStr)) {
+      return cleanStr.slice(0, 10);
+    }
+    const parts = cleanStr.split(/[\/\-\s]+/);
+    if (parts.length >= 3) {
+      const day = parts[0].padStart(2, '0');
+      const monthPart = parts[1].toLowerCase().trim();
+      const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+
+      const months = {
+        jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+        jul: '07', aug: '08', sep: '09', sept: '09', oct: '10', nov: '11', dec: '12'
+      };
+
+      let month = months[monthPart.slice(0, 4)] || months[monthPart.slice(0, 3)];
+      if (!month && !isNaN(parseInt(monthPart, 10))) {
+        month = String(parseInt(monthPart, 10)).padStart(2, '0');
+      }
+      if (month && !isNaN(parseInt(day, 10)) && !isNaN(parseInt(year, 10))) {
+        return `${year}-${month}-${day}`;
+      }
+    }
+    const d = new Date(cleanStr);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+    return null;
   };
 
   const formatDbDate = (date) => {
@@ -277,15 +313,15 @@ export default function ClientDashboard() {
   // Calculations for current cycle
   const getCycleStats = () => {
     if (!clientInfo) return { startStr: '', expiryStr: '', daysLeft: 0, progressPct: 0 };
-    
+
     const cycleStart = parseDbDate(clientInfo.joiningDate);
     const cycleEnd = new Date(cycleStart.getTime() + 30 * 24 * 60 * 60 * 1000);
     const today = new Date();
-    
+
     const totalDays = 30;
     const timeDiff = cycleEnd.getTime() - today.getTime();
     const daysLeft = Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
-    
+
     const elapsedDays = Math.max(0, Math.min(totalDays, totalDays - daysLeft));
     const progressPct = Math.round((elapsedDays / totalDays) * 100);
 
@@ -308,11 +344,29 @@ export default function ClientDashboard() {
     );
   }
 
-  // Filter tasks belonging to current contract cycle or general client tasks
-  const currentCycleTasks = tasks;
+  // Cutoff date for overdue removal on client side: remove overdue items before 4 September 2026
+  const OVERDUE_CUTOFF_DATE = '2026-09-04';
+
+  // Filter tasks: remove all overdue tasks before 4 September from client side
+  const currentCycleTasks = tasks.filter(t => {
+    const iso = parseTaskDateToISO(t.date);
+    const isCompleted = COMPLETED_STATUSES.includes(t.status);
+    const isOverdue = ['Overdue', 'OVERDUE', 'overdue'].includes(t.status?.trim());
+
+    // If task date is strictly before 4 September 2026:
+    if (iso && iso < OVERDUE_CUTOFF_DATE) {
+      // Exclude if it's marked overdue or is an uncompleted past item
+      if (isOverdue || !isCompleted) return false;
+    } else if (!iso && isOverdue) {
+      // If task has no date and is marked overdue, exclude
+      return false;
+    }
+
+    return true;
+  });
 
   const totalDeliverables = currentCycleTasks.length;
-  const completedDeliverables = currentCycleTasks.filter(t => 
+  const completedDeliverables = currentCycleTasks.filter(t =>
     COMPLETED_STATUSES.includes(t.status)
   ).length;
   const pendingDeliverables = totalDeliverables - completedDeliverables;
@@ -338,7 +392,7 @@ export default function ClientDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans select-none antialiased transition-colors duration-300">
-      
+
       {/* Header bar */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 px-6 py-4 flex justify-between items-center transition-colors duration-300">
         <div className="flex items-center gap-3">
@@ -352,7 +406,7 @@ export default function ClientDashboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={toggleDarkMode}
             className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-xs hover:shadow-md transition-all duration-300 transform active:scale-95 cursor-pointer"
             title="Toggle Dark / Light Mode"
@@ -385,33 +439,30 @@ export default function ClientDashboard() {
       <div className="bg-slate-900/40 border-b border-slate-800/60 px-6 flex items-center text-[10px] uppercase font-bold tracking-wider">
         <button
           onClick={() => setActivePortalTab('onboarding')}
-          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
-            activePortalTab === 'onboarding'
-              ? 'border-blue-500 text-white font-extrabold'
-              : 'border-transparent text-slate-450 hover:text-slate-200'
-          }`}
+          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${activePortalTab === 'onboarding'
+            ? 'border-blue-500 text-white font-extrabold'
+            : 'border-transparent text-slate-450 hover:text-slate-200'
+            }`}
         >
           <FileText className="w-3.5 h-3.5 text-blue-400" />
           <span>Brand Onboarding Form</span>
         </button>
         <button
           onClick={() => setActivePortalTab('deliverables')}
-          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
-            activePortalTab === 'deliverables'
-              ? 'border-blue-500 text-white font-extrabold'
-              : 'border-transparent text-slate-450 hover:text-slate-200'
-          }`}
+          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${activePortalTab === 'deliverables'
+            ? 'border-blue-500 text-white font-extrabold'
+            : 'border-transparent text-slate-450 hover:text-slate-200'
+            }`}
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
           <span>Deliverables Checklist</span>
         </button>
         <button
           onClick={() => setActivePortalTab('feedback')}
-          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
-            activePortalTab === 'feedback'
-              ? 'border-blue-500 text-white font-extrabold'
-              : 'border-transparent text-slate-450 hover:text-slate-200'
-          }`}
+          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${activePortalTab === 'feedback'
+            ? 'border-blue-500 text-white font-extrabold'
+            : 'border-transparent text-slate-450 hover:text-slate-200'
+            }`}
         >
           <MessageSquare className="w-3.5 h-3.5" />
           <span>Submit Feedback & Concerns</span>
@@ -420,7 +471,7 @@ export default function ClientDashboard() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
-        
+
         {error && (
           <div className="p-4 bg-red-950/40 border border-red-900/50 rounded-xl flex items-center gap-3 text-red-400 text-xs">
             <AlertCircle className="w-5 h-5 shrink-0" />
@@ -460,11 +511,11 @@ export default function ClientDashboard() {
 
             {/* Top row: Client Details & Cycle Countdown Card */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              
+
               {/* Client Info Card */}
               <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between gap-6 shadow-xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none"></div>
-                
+
                 <div className="space-y-4">
                   <div className="flex justify-between items-start">
                     <div>
@@ -518,7 +569,7 @@ export default function ClientDashboard() {
               {/* Cycle Tracker Card */}
               <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between gap-6 shadow-xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
-                
+
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
@@ -570,7 +621,7 @@ export default function ClientDashboard() {
 
             {/* Middle row: Progress Metrics cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              
+
               <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1 relative overflow-hidden">
                 <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">Total Scheduled Deliverables</span>
                 <div className="text-3xl font-black text-white mt-1.5">{totalDeliverables}</div>
@@ -602,7 +653,7 @@ export default function ClientDashboard() {
                   <div className="text-3xl font-black text-white mt-1">{completionPct}%</div>
                   <span className="text-[9px] text-slate-500 font-medium block">Approved deliverables share</span>
                 </div>
-                
+
                 {/* SVG Progress Ring */}
                 <div className="relative w-16 h-16 shrink-0">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
@@ -633,7 +684,7 @@ export default function ClientDashboard() {
 
             {/* Bottom Row: Deliverables Timeline / Checklist */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
-              
+
               {/* Filter controls */}
               <div className="p-5 border-b border-slate-800/80 bg-slate-900/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -648,11 +699,10 @@ export default function ClientDashboard() {
                       <button
                         key={type}
                         onClick={() => setTaskFilter(type)}
-                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition ${
-                          taskFilter === type
-                            ? 'bg-blue-600 text-white'
-                            : 'text-slate-455 hover:text-slate-205'
-                        }`}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition ${taskFilter === type
+                          ? 'bg-blue-600 text-white'
+                          : 'text-slate-455 hover:text-slate-205'
+                          }`}
                       >
                         {type}
                       </button>
@@ -703,11 +753,11 @@ export default function ClientDashboard() {
                         const isProcessing = task.status === 'Processing';
                         const isClientReview = task.status === 'Client Review';
                         const isPending = task.status === 'Pending';
-                        const isOverdue = task.status === 'Overdue';
+                        const isOverdue = task.status === 'Overdue' || task.status === 'OVERDUE';
 
                         return (
                           <tr key={task.id} className="hover:bg-slate-955/10 transition text-slate-300">
-                            
+
                             {/* Date */}
                             <td className="p-4 pl-6 font-semibold whitespace-nowrap text-slate-400">
                               {task.date}
@@ -717,10 +767,10 @@ export default function ClientDashboard() {
                             <td className="p-4 font-bold text-white">
                               {task.taskTitle}
                               {task.workSampleUrl && (
-                                <a 
-                                  href={task.workSampleUrl.startsWith('http://') || task.workSampleUrl.startsWith('https://') || task.workSampleUrl.startsWith('/') ? task.workSampleUrl : `https://${task.workSampleUrl}`} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer" 
+                                <a
+                                  href={task.workSampleUrl.startsWith('http://') || task.workSampleUrl.startsWith('https://') || task.workSampleUrl.startsWith('/') ? task.workSampleUrl : `https://${task.workSampleUrl}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
                                   className="block text-[10px] text-blue-400 hover:underline mt-1 font-bold"
                                 >
                                   🔗 View Content Draft
@@ -730,12 +780,11 @@ export default function ClientDashboard() {
 
                             {/* Category */}
                             <td className="p-4 font-medium uppercase text-[10px]">
-                              <span className={`px-2 py-0.5 rounded border ${
-                                task.postType === 'Graphic' ? 'bg-indigo-950/30 text-indigo-400 border-indigo-900/40' :
+                              <span className={`px-2 py-0.5 rounded border ${task.postType === 'Graphic' ? 'bg-indigo-950/30 text-indigo-400 border-indigo-900/40' :
                                 task.postType === 'Reel' ? 'bg-pink-955/30 text-pink-400 border-pink-900/40' :
-                                task.postType === 'AI Video' ? 'bg-purple-950/30 text-purple-400 border-purple-900/40' :
-                                'bg-slate-800/40 text-slate-400 border-slate-700/40'
-                              }`}>
+                                  task.postType === 'AI Video' ? 'bg-purple-950/30 text-purple-400 border-purple-900/40' :
+                                    'bg-slate-800/40 text-slate-400 border-slate-700/40'
+                                }`}>
                                 {task.postType || 'Content'}
                               </span>
                             </td>
@@ -752,15 +801,14 @@ export default function ClientDashboard() {
 
                             {/* Status */}
                             <td className="p-4 font-bold">
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider ${
-                                isDone ? 'bg-emerald-950 text-emerald-400 border border-emerald-900/50' :
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider ${isDone ? 'bg-emerald-950 text-emerald-400 border border-emerald-900/50' :
                                 isRev ? 'bg-red-955 text-red-400 border border-red-900/50' :
-                                isProcessing ? 'bg-blue-950 text-blue-400 border border-blue-900/50' :
-                                isClientReview ? 'bg-amber-955/40 text-amber-400 border border-amber-900/40' :
-                                isPending ? 'bg-orange-950 text-orange-400 border border-orange-900/50' :
-                                isOverdue ? 'bg-rose-950 text-rose-400 border border-rose-900/50' :
-                                'bg-slate-900 text-slate-400 border border-slate-800'
-                              }`}>
+                                  isProcessing ? 'bg-blue-950 text-blue-400 border border-blue-900/50' :
+                                    isClientReview ? 'bg-amber-955/40 text-amber-400 border border-amber-900/40' :
+                                      isOverdue ? 'bg-rose-950 text-rose-400 border border-rose-900/50' :
+                                        isPending ? 'bg-orange-950 text-orange-400 border border-orange-900/50' :
+                                          'bg-slate-900 text-slate-400 border border-slate-800'
+                                }`}>
                                 {isDone ? (
                                   <>
                                     <Check className="w-3 h-3 text-emerald-400" />
@@ -781,20 +829,20 @@ export default function ClientDashboard() {
                                     <Info className="w-3 h-3 text-amber-400 animate-pulse" />
                                     <span>Client Review</span>
                                   </>
-                                ) : isPending ? (
-                                  <>
-                                    <Clock className="w-3 h-3 text-orange-400" />
-                                    <span>Pending</span>
-                                  </>
                                 ) : isOverdue ? (
                                   <>
                                     <AlertCircle className="w-3 h-3 text-rose-450" />
                                     <span>Overdue</span>
                                   </>
+                                ) : isPending ? (
+                                  <>
+                                    <Clock className="w-3 h-3 text-orange-400" />
+                                    <span>Pending</span>
+                                  </>
                                 ) : (
                                   <>
                                     <Clock className="w-3 h-3 text-slate-400" />
-                                    <span>Not Started</span>
+                                    <span>Scheduled</span>
                                   </>
                                 )}
                               </span>
@@ -847,11 +895,11 @@ export default function ClientDashboard() {
         ) : activePortalTab === 'feedback' ? (
           /* Feedback & Concerns Portal tab */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in text-xs">
-            
+
             {/* Submit Form Card */}
             <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col justify-between min-h-[480px]">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none"></div>
-              
+
               <div className="space-y-6">
                 <div>
                   <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
@@ -869,7 +917,7 @@ export default function ClientDashboard() {
                 )}
 
                 <form onSubmit={handleSubmitFeedback} className="space-y-4">
-                  
+
                   {/* Type Selector */}
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Submission Category</label>
@@ -885,20 +933,18 @@ export default function ClientDashboard() {
                             setFeedbackType(t.key);
                             setFeedbackSuccess('');
                           }}
-                          className={`flex-1 p-3 rounded-xl border text-[10px] font-bold text-left transition flex items-center justify-between cursor-pointer ${
-                            feedbackType === t.key
-                              ? t.key === 'Feedback'
-                                ? 'bg-emerald-950/20 border-emerald-500 text-emerald-400 shadow-sm'
-                                : 'bg-red-955/15 border-red-500 text-red-400 shadow-sm'
-                              : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:bg-slate-950/85'
-                          }`}
+                          className={`flex-1 p-3 rounded-xl border text-[10px] font-bold text-left transition flex items-center justify-between cursor-pointer ${feedbackType === t.key
+                            ? t.key === 'Feedback'
+                              ? 'bg-emerald-950/20 border-emerald-500 text-emerald-400 shadow-sm'
+                              : 'bg-red-955/15 border-red-500 text-red-400 shadow-sm'
+                            : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:bg-slate-950/85'
+                            }`}
                         >
                           <span>{t.label}</span>
-                          <span className={`w-2 h-2 rounded-full ${
-                            feedbackType === t.key
-                              ? t.key === 'Feedback' ? 'bg-emerald-500' : 'bg-red-500'
-                              : 'bg-slate-800'
-                          }`} />
+                          <span className={`w-2 h-2 rounded-full ${feedbackType === t.key
+                            ? t.key === 'Feedback' ? 'bg-emerald-500' : 'bg-red-500'
+                            : 'bg-slate-800'
+                            }`} />
                         </button>
                       ))}
                     </div>
@@ -917,9 +963,8 @@ export default function ClientDashboard() {
                             className="p-1 cursor-pointer transition transform hover:scale-110"
                           >
                             <svg
-                              className={`w-6 h-6 ${
-                                star <= feedbackRating ? 'text-amber-400 fill-amber-400' : 'text-slate-700'
-                              }`}
+                              className={`w-6 h-6 ${star <= feedbackRating ? 'text-amber-400 fill-amber-400' : 'text-slate-700'
+                                }`}
                               xmlns="http://www.w3.org/2000/svg"
                               viewBox="0 0 24 24"
                               fill="none"
@@ -966,8 +1011,8 @@ export default function ClientDashboard() {
                     type="submit"
                     disabled={actionLoading || !feedbackMessage.trim()}
                     className={`w-full py-2.5 px-4 rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-md disabled:opacity-50 cursor-pointer text-[10px] uppercase tracking-wider
-                      ${feedbackType === 'Feedback' 
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/10' 
+                      ${feedbackType === 'Feedback'
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/10'
                         : 'bg-red-600 hover:bg-red-700 text-white shadow-red-500/10'
                       }`}
                   >
@@ -1002,24 +1047,22 @@ export default function ClientDashboard() {
                     const isPending = fb.status === 'Pending';
                     const isConcern = fb.type === 'Concern';
                     const dateObj = new Date(fb.createdAt);
-                    
+
                     return (
                       <div
                         key={fb.id}
-                        className={`p-3.5 rounded-xl border flex flex-col gap-2.5 bg-slate-950/35 transition ${
-                          isConcern 
-                            ? 'border-red-950/60 hover:border-red-900/60' 
-                            : 'border-slate-800 hover:border-slate-700'
-                        }`}
+                        className={`p-3.5 rounded-xl border flex flex-col gap-2.5 bg-slate-950/35 transition ${isConcern
+                          ? 'border-red-950/60 hover:border-red-900/60'
+                          : 'border-slate-800 hover:border-slate-700'
+                          }`}
                       >
                         <div className="flex justify-between items-start gap-2">
                           <div className="flex items-center gap-1.5">
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                              isConcern ? 'bg-red-950/60 text-red-400 border border-red-900/50' : 'bg-emerald-950 text-emerald-400 border border-emerald-900/40'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${isConcern ? 'bg-red-950/60 text-red-400 border border-red-900/50' : 'bg-emerald-950 text-emerald-400 border border-emerald-900/40'
+                              }`}>
                               {fb.type}
                             </span>
-                            
+
                             {/* Stars rating if feedback */}
                             {!isConcern && fb.rating && (
                               <div className="flex items-center text-amber-400">
@@ -1030,11 +1073,10 @@ export default function ClientDashboard() {
                             )}
                           </div>
 
-                          <span className={`px-2 py-0.5 rounded-full text-[7px] font-bold uppercase tracking-wider ${
-                            isPending 
-                              ? 'bg-slate-800 text-slate-350 border border-slate-700/60' 
-                              : 'bg-emerald-955/80 text-emerald-400 border border-emerald-900/60'
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded-full text-[7px] font-bold uppercase tracking-wider ${isPending
+                            ? 'bg-slate-800 text-slate-350 border border-slate-700/60'
+                            : 'bg-emerald-955/80 text-emerald-400 border border-emerald-900/60'
+                            }`}>
                             {fb.status}
                           </span>
                         </div>
@@ -1069,7 +1111,7 @@ export default function ClientDashboard() {
       {showRevisionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl relative">
-            
+
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-extrabold text-sm text-white">Submit Revision Request</h3>

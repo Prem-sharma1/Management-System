@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AgencyDashboard from './AgencyDashboard';
 import CampaignDeliveriesTable from './CampaignDeliveriesTable';
+import AdminSellerDashboard from './AdminSellerDashboard';
 import ClientOnboardingInspector from '../employee/ClientOnboardingInspector';
 import {
   Users,
@@ -34,7 +35,9 @@ import {
   BarChart2,
   Edit3,
   X,
-  UserX
+  UserX,
+  PhoneCall,
+  TrendingUp
 } from 'lucide-react';
 import { uploadFileAction } from '@/app/actions/uploadAction';
 
@@ -266,11 +269,11 @@ export default function AdminDashboard() {
       const parseToISO = (dateStr) => {
         if (!dateStr || typeof dateStr !== 'string') return null;
         if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return dateStr.slice(0, 10);
-        const monthMap = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12' };
+        const monthMap = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',sept:'09',oct:'10',nov:'11',dec:'12' };
         const parts = dateStr.split('-');
         if (parts.length === 3) {
           const [dd, mon, yyyy] = parts;
-          const mm = monthMap[mon.toLowerCase()];
+          const mm = monthMap[mon.toLowerCase()] || monthMap[mon.toLowerCase().slice(0, 3)];
           if (mm && dd && yyyy) return `${yyyy}-${mm}-${dd.padStart(2, '0')}`;
         }
         const d = new Date(dateStr);
@@ -1768,6 +1771,18 @@ export default function AdminDashboard() {
             </button>
 
             <button
+              onClick={() => setActiveTab('seller-dashboard')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                activeTab === 'seller-dashboard'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <PhoneCall className="w-4 h-4 text-emerald-500" />
+              Seller Dashboard
+            </button>
+
+            <button
               onClick={() => setActiveTab('clients')}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
                 activeTab === 'clients'
@@ -1981,6 +1996,11 @@ export default function AdminDashboard() {
           {/* TAB: CAMPAIGN DELIVERIES */}
           {activeTab === 'campaign-deliveries' && (
             <CampaignDeliveriesTable deliveries={allClientDeliveries} />
+          )}
+
+          {/* TAB: SELLER DASHBOARD */}
+          {activeTab === 'seller-dashboard' && (
+            <AdminSellerDashboard usersList={usersList} refreshData={refreshData} />
           )}
 
           {/* TAB 1: OVERVIEW */}

@@ -32,14 +32,17 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
     // ISO: YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}/.test(clean)) return clean.slice(0, 10);
 
-    // DD/MM/YYYY or DD-MM-YYYY or DD-Mon-YYYY
-    const parts = clean.split(/[\/\-]/);
+    // DD/MM/YYYY or DD-MM-YYYY or DD-Mon-YYYY or DD Mon YYYY
+    const parts = clean.split(/[\/\-\s]+/);
     if (parts.length === 3) {
-      const monthMap = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',
-                         jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12' };
+      const monthMap = { 
+        jan:'01', feb:'02', mar:'03', apr:'04', may:'05', jun:'06',
+        jul:'07', aug:'08', sep:'09', sept:'09', oct:'10', nov:'11', dec:'12' 
+      };
       const [p1, p2, p3] = parts;
-      let yyyy = p3.length === 4 ? p3 : p1.length === 4 ? p1 : '2026';
-      let mm = monthMap[p2.toLowerCase()] || p2.padStart(2, '0');
+      let yyyy = p3.length === 4 ? p3 : p1.length === 4 ? p1 : (p3.length === 2 ? '20' + p3 : '2026');
+      const p2Clean = p2.toLowerCase();
+      let mm = monthMap[p2Clean] || monthMap[p2Clean.slice(0, 3)] || p2.padStart(2, '0');
       let dd = p1.length === 4 ? p3.padStart(2, '0') : p1.padStart(2, '0');
       if (parseInt(mm, 10) > 12) {
         const tmp = mm;
@@ -95,11 +98,15 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
     return s === 'done' || s === 'completed' || s === 'complete task' || s === 'delivered' || s === 'posted';
   };
 
+  // Cutoff date for overdue carry-forwards: do not carry forward any tasks before 3 September 2026
+  const OVERDUE_CUTOFF_DATE = '2026-09-03';
+
   const todayTasks = tasks.filter(t => {
     const iso = parseToISO(t.date);
     if (!iso) return false;
     if (iso === todayStr) return true;
-    if (iso < todayStr && !isDoneStatus(t.status)) return true;
+    // Only include overdue tasks if they are dated on or after September 3, 2026
+    if (iso >= OVERDUE_CUTOFF_DATE && iso < todayStr && !isDoneStatus(t.status)) return true;
     return false;
   });
 
@@ -107,7 +114,8 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
     const iso = parseToISO(d.postDate);
     if (!iso) return false;
     if (iso === todayStr) return true;
-    if (iso < todayStr && !isDoneStatus(d.status)) return true;
+    // Only include overdue deliveries if they are dated on or after September 3, 2026
+    if (iso >= OVERDUE_CUTOFF_DATE && iso < todayStr && !isDoneStatus(d.status)) return true;
     return false;
   });
 

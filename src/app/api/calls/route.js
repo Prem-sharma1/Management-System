@@ -13,8 +13,14 @@ export async function GET(req) {
       include: {
         salesPerson: {
           select: {
+            id: true,
             name: true,
-            email: true
+            email: true,
+            mobile: true,
+            department: true,
+            designation: true,
+            avatar: true,
+            role: true
           }
         }
       },
