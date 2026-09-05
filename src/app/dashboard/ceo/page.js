@@ -14,6 +14,7 @@ import {
   Calendar,
   Building,
   UserCheck,
+  UserX,
   Search,
   CheckCircle,
   FileText,
@@ -23,7 +24,9 @@ import {
   Moon,
   Sun,
   Send,
-  CheckSquare
+  CheckSquare,
+  BarChart2,
+  RefreshCw
 } from 'lucide-react';
 
 export default function CeoDashboard() {
@@ -43,7 +46,18 @@ export default function CeoDashboard() {
     totalEmployees: 0,
     activeAdmins: 0,
     totalPayroll: 0,
-    taskCompletionRate: 0
+    taskCompletionRate: 0,
+    activeClients: 0,
+    totalClients: 0,
+    actualRevenue: 0,
+    expectedRevenue: 0,
+    pendingRevenue: 0,
+    totalRevenue: 0,
+    estRevenue: 0,
+    pendingTasks: 0,
+    completedTasks: 0,
+    pendingDeliveries: 0,
+    completedDeliveries: 0
   });
 
   // Modal States
@@ -51,6 +65,9 @@ export default function CeoDashboard() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [clientMonthFilter, setClientMonthFilter] = useState('all');
+  const [clientPaymentFilter, setClientPaymentFilter] = useState('all');
+  const [clientRevenueStreamFilter, setClientRevenueStreamFilter] = useState('all');
 
   // Form Fields - Client CRM
   const [showAddClientModal, setShowAddClientModal] = useState(false);
@@ -96,6 +113,8 @@ export default function CeoDashboard() {
   const [formDept, setFormDept] = useState('Social Media Marketing');
   const [formSalary, setFormSalary] = useState('');
   const [formAvatar, setFormAvatar] = useState('👤');
+  const [formStatus, setFormStatus] = useState('ACTIVE');
+  const [userStatusFilter, setUserStatusFilter] = useState('ALL'); // 'ALL', 'ACTIVE', 'INACTIVE'
 
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
@@ -150,6 +169,144 @@ export default function CeoDashboard() {
       console.warn(`Fetch error for ${url}:`, err);
       return { ok: false, status: 500, data: {} };
     }
+  };
+
+  const parseClientMonthKey = (client) => {
+    if (!client) return null;
+    if (client.joiningDate) {
+      const parts = client.joiningDate.split('-');
+      if (parts.length === 3) {
+        const monthMap = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',sept:'09',oct:'10',nov:'11',dec:'12' };
+        const mm = monthMap[parts[1]?.toLowerCase()] || parts[1];
+        const yyyy = parts[2]?.length === 4 ? parts[2] : `20${parts[2]}`;
+        if (yyyy && mm) return `${yyyy}-${mm.padStart(2, '0')}`;
+      }
+      const d = new Date(client.joiningDate);
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 7);
+    }
+
+    if (client.createdAt) {
+      const d = new Date(client.createdAt);
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 7);
+    }
+    return null;
+  };
+
+  const parseDbDate = (dateStr) => {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    const clean = dateStr.trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(clean)) return new Date(clean.slice(0, 10));
+    const parts = clean.split(/[\/\-\s]+/);
+    if (parts.length === 3) {
+      const monthMap = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, sept: 8, oct: 9, nov: 10, dec: 11 };
+      const [p1, p2, p3] = parts;
+      let yyyy = p3.length === 4 ? parseInt(p3, 10) : (p1.length === 4 ? parseInt(p1, 10) : 2026);
+      const p2Clean = p2.toLowerCase();
+      let mm = monthMap[p2Clean] !== undefined ? monthMap[p2Clean] : (parseInt(p2, 10) - 1);
+      let dd = p1.length === 4 ? parseInt(p3, 10) : parseInt(p1, 10);
+      return new Date(yyyy, mm, dd);
+    }
+    const d = new Date(clean);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const getClientPlanStatus = (client) => {
+    const start = parseDbDate(client.joiningDate || client.createdAt);
+    if (!start) return { status: 'Unknown', daysLeft: 0, daysPassed: 0 };
+    
+    const expiry = new Date(start);
+    expiry.setDate(expiry.getDate() + 30);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    expiry.setHours(0, 0, 0, 0);
+    
+    const diffTime = expiry.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const daysPassed = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays <= 0) {
+      return { status: 'Expired', daysLeft: diffDays, daysPassed };
+    } else if (daysPassed >= 22) {
+      return { status: 'Expiring Soon', daysLeft: diffDays, daysPassed };
+    }
+    return { status: 'Active', daysLeft: diffDays, daysPassed };
+  };
+
+  // Helper to determine revenue stream source (New Purchase vs Renewal vs Active Retainer)
+  const getClientRevenueStream = (client, selectedMonthKey) => {
+    if (!client || !client.active) return { type: 'Inactive', label: 'Inactive Account', badge: 'Inactive', badgeClass: 'bg-slate-100 text-slate-500' };
+
+    const joiningMonth = parseClientMonthKey(client);
+    let createdMonth = null;
+    if (client.createdAt) {
+      const cd = new Date(client.createdAt);
+      if (!isNaN(cd.getTime())) createdMonth = cd.toISOString().slice(0, 7);
+    }
+
+    let isRenewed = false;
+    try {
+      if (client.notes && client.notes.toLowerCase().includes('renew')) isRenewed = true;
+    } catch (e) {}
+
+    if (createdMonth && joiningMonth && createdMonth !== joiningMonth) {
+      isRenewed = true;
+    }
+
+    if (isRenewed) {
+      return {
+        type: 'Renewal',
+        label: 'Plan Renewed',
+        badge: '🔄 Renewed',
+        badgeClass: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+      };
+    }
+
+    if (createdMonth && (!selectedMonthKey || selectedMonthKey === 'all' || createdMonth === selectedMonthKey)) {
+      return {
+        type: 'NewPurchase',
+        label: 'New Plan Purchase',
+        badge: '🛒 New Plan',
+        badgeClass: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+      };
+    }
+
+    return {
+      type: 'ActiveRetainer',
+      label: 'Active Retainer',
+      badge: '💼 Retainer',
+      badgeClass: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+    };
+  };
+
+  // Helper to parse payment status and revenue breakdown
+  const getClientPaymentInfo = (client) => {
+    if (!client) return { pStatus: 'Full', paidAmount: 0, totalAmount: 0, pendingBalance: 0, isPartial: false };
+    const totalAmount = client.packageAmount || 0;
+    let pStatus = 'Full';
+    let paidAmount = totalAmount;
+
+    try {
+      if (client.notes) {
+        const parsed = JSON.parse(client.notes);
+        if (parsed && typeof parsed === 'object') {
+          pStatus = parsed.paymentStatus || 'Full';
+          paidAmount = parsed.paidAmount !== undefined ? parseFloat(parsed.paidAmount) || 0 : (pStatus === 'Pending' ? 0 : totalAmount);
+        }
+      }
+    } catch (e) {}
+
+    const pendingBalance = Math.max(0, totalAmount - paidAmount);
+    const isPartial = pStatus === 'Half' || pStatus === 'Partial' || (pendingBalance > 0 && pStatus !== 'Pending');
+
+    return {
+      pStatus,
+      paidAmount,
+      totalAmount,
+      pendingBalance,
+      isPartial
+    };
   };
 
   // Auth fetch
@@ -223,9 +380,22 @@ export default function CeoDashboard() {
       const activeClientsCount = (clientsData.clients || []).filter(c => c.active).length;
       const totalClientsCount = (clientsData.clients || []).length;
       
-      // Revenue Calculation
-      const totalRevenue = (clientsData.clients || []).filter(c => c.active).reduce((sum, c) => sum + (c.packageAmount || 0), 0);
-      const estRevenue = (clientsData.clients || []).reduce((sum, c) => sum + (c.packageAmount || 0), 0);
+      // 3-Way Revenue Breakdown (Actual, Expected, Pending)
+      let actualRevenue = 0;
+      let expectedRevenue = 0;
+      (clientsData.clients || []).forEach(c => {
+        if (!c.active) return;
+        const pkgAmt = c.packageAmount || 0;
+        expectedRevenue += pkgAmt;
+
+        const pInfo = getClientPaymentInfo(c);
+        if (pInfo.pStatus === 'Full') {
+          actualRevenue += pkgAmt;
+        } else if (pInfo.pStatus === 'Partial' || pInfo.pStatus === 'Half') {
+          actualRevenue += pInfo.paidAmount;
+        }
+      });
+      const pendingRevenue = Math.max(0, expectedRevenue - actualRevenue);
       
       // Tasks Pipeline Calculation
       const ctArray = ctData.tasks || [];
@@ -244,8 +414,11 @@ export default function CeoDashboard() {
         taskCompletionRate: rate,
         activeClients: activeClientsCount,
         totalClients: totalClientsCount,
-        totalRevenue: totalRevenue,
-        estRevenue: estRevenue,
+        actualRevenue: actualRevenue,
+        expectedRevenue: expectedRevenue,
+        pendingRevenue: pendingRevenue,
+        totalRevenue: actualRevenue,
+        estRevenue: expectedRevenue,
         pendingTasks: pendingTasksCount,
         completedTasks: completedTasksCount,
         pendingDeliveries: pendingDeliveries,
@@ -534,6 +707,7 @@ export default function CeoDashboard() {
     setFormDept(user.department);
     setFormSalary(user.salary.toString());
     setFormAvatar(user.avatar || '👤');
+    setFormStatus(user.status || 'ACTIVE');
     setFormError('');
     setShowEditModal(true);
   };
@@ -600,7 +774,8 @@ export default function CeoDashboard() {
           role: formRole,
           department: formDept,
           salary: parseFloat(formSalary),
-          avatar: formAvatar
+          avatar: formAvatar,
+          status: formStatus
         })
       });
 
@@ -621,8 +796,19 @@ export default function CeoDashboard() {
     }
   };
 
-  const handleDeleteUser = async (id, name) => {
-    if (!confirm(`Are you absolutely sure you want to delete ${name}? This action is irreversible.`)) {
+  const handleToggleUserStatus = async (id, name, currentStatus) => {
+    if (id === currentUser.id) {
+      showToast('Cannot deactivate your own account.', 'error');
+      return;
+    }
+
+    const willDeactivate = currentStatus === 'ACTIVE';
+    const actionText = willDeactivate ? 'deactivate' : 'reactivate';
+    const confirmMessage = willDeactivate 
+      ? `Are you sure you want to deactivate ${name}? All records (tasks, attendance, payroll, documents) will be permanently preserved in the system, but the user cannot log in.`
+      : `Are you sure you want to reactivate ${name}? They will regain account access.`;
+
+    if (!confirm(confirmMessage)) {
       return;
     }
 
@@ -631,11 +817,11 @@ export default function CeoDashboard() {
       const data = await res.json();
 
       if (!res.ok) {
-        showToast(data.error || 'Failed to delete user.', 'error');
+        showToast(data.error || `Failed to ${actionText} user.`, 'error');
         return;
       }
 
-      showToast(`User ${name} successfully deleted!`);
+      showToast(data.message || `User ${name} status updated to ${data.status}. Record maintained.`);
       await refreshData();
     } catch (err) {
       showToast('Connection error.', 'error');
@@ -663,12 +849,20 @@ export default function CeoDashboard() {
     );
   }
 
-  // Filter users based on search
-  const filteredUsers = usersList.filter(u => 
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.department.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter users based on search and status
+  const activeUsersCount = usersList.filter(u => u.status === 'ACTIVE').length;
+  const inactiveUsersCount = usersList.filter(u => u.status === 'INACTIVE').length;
+
+  const filteredUsers = usersList.filter(u => {
+    const matchesSearch = 
+      u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.department.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+    if (userStatusFilter === 'ACTIVE') return u.status === 'ACTIVE';
+    if (userStatusFilter === 'INACTIVE') return u.status === 'INACTIVE';
+    return true;
+  });
 
   return (
     <div className={`min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300`}>
@@ -855,87 +1049,86 @@ export default function CeoDashboard() {
           {activeTab === 'overview' && (
             <div className="space-y-8 animate-fade-in">
               {/* Metric grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
                 
                 {/* Active Clients Card */}
-                <div className="relative bg-white dark:bg-slate-900 p-5 xl:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 animate-slide-up group" style={{ animationDelay: '100ms' }}>
-                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-blue-50 dark:bg-blue-900/20 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-24 h-24 bg-blue-50/80 dark:bg-blue-900/40 rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  
+                <div className="relative bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 group">
+                  <div className="absolute -right-6 -top-6 w-24 h-24 bg-blue-500/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
                   <div className="space-y-1 relative z-10 min-w-0 pr-2">
-                    <div className="text-[10px] xl:text-xs text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Active Clients</div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Active Clients</div>
                     <div className="flex items-baseline gap-1.5 flex-wrap">
-                      <h3 className="text-2xl xl:text-3xl font-black text-slate-900 dark:text-white truncate">{metrics.activeClients}</h3>
+                      <h3 className="text-2xl font-black text-slate-900 dark:text-white truncate">{metrics.activeClients}</h3>
                       <span className="text-xs font-bold text-slate-500 whitespace-nowrap">/ {metrics.totalClients} Total</span>
                     </div>
+                    <span className="text-[9px] text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full border border-blue-100 dark:border-blue-900 block w-fit">
+                      Live Accounts
+                    </span>
                   </div>
-                  <div className="shrink-0 relative z-10 w-10 h-10 xl:w-12 xl:h-12 rounded-xl bg-white/90 dark:bg-slate-800 backdrop-blur-sm shadow-md border border-white dark:border-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                    <Users className="w-5 h-5 xl:w-6 xl:h-6" />
-                  </div>
-                </div>
-
-                {/* Total Revenue Card */}
-                <div className="relative bg-white dark:bg-slate-900 p-5 xl:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 animate-slide-up group" style={{ animationDelay: '200ms' }}>
-                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-emerald-50 dark:bg-emerald-900/20 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-24 h-24 bg-emerald-50/80 dark:bg-emerald-900/40 rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  
-                  <div className="space-y-2 relative z-10 min-w-0 pr-2 flex-grow">
-                    <div className="text-[10px] xl:text-xs text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Total Revenue</div>
-                    <div>
-                      <h3 className="text-2xl xl:text-3xl font-black text-slate-900 dark:text-white truncate">₹{metrics.totalRevenue.toLocaleString()}</h3>
-                    </div>
-                    <div className="inline-block mt-1">
-                      <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] xl:text-[10px] font-bold rounded-full whitespace-nowrap">
-                        Est: ₹{metrics.estRevenue.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="shrink-0 relative z-10 w-10 h-10 xl:w-12 xl:h-12 rounded-xl bg-white/90 dark:bg-slate-800 backdrop-blur-sm shadow-md border border-white dark:border-slate-700 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                    <DollarSign className="w-5 h-5 xl:w-6 xl:h-6" />
+                  <div className="shrink-0 relative z-10 w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-100 dark:border-blue-900">
+                    <Users className="w-5 h-5" />
                   </div>
                 </div>
 
-                {/* Tasks Pipeline Card */}
-                <div className="relative bg-white dark:bg-slate-900 p-5 xl:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 animate-slide-up group" style={{ animationDelay: '300ms' }}>
-                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 dark:bg-purple-900/20 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-24 h-24 bg-purple-50/80 dark:bg-purple-900/40 rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  
-                  <div className="space-y-2 relative z-10 min-w-0 pr-2 flex-grow">
-                    <div className="text-[10px] xl:text-xs text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Tasks Pipeline</div>
+                {/* Actual Revenue Card */}
+                <div className="relative bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 group">
+                  <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="space-y-1 relative z-10 min-w-0 pr-2 flex-grow">
+                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase tracking-wider truncate">Actual Revenue</div>
+                    <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 truncate">₹{(metrics.actualRevenue || 0).toLocaleString()}</h3>
+                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900 block w-fit">
+                      {metrics.expectedRevenue > 0 ? Math.round(((metrics.actualRevenue || 0) / metrics.expectedRevenue) * 100) : 0}% Realized
+                    </span>
+                  </div>
+                  <div className="shrink-0 relative z-10 w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-900">
+                    <DollarSign className="w-5 h-5" />
+                  </div>
+                </div>
+
+                {/* Expected Revenue Card */}
+                <div className="relative bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 group">
+                  <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="space-y-1 relative z-10 min-w-0 pr-2 flex-grow">
+                    <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-extrabold uppercase tracking-wider truncate">Expected Revenue</div>
+                    <h3 className="text-2xl font-black text-indigo-600 dark:text-indigo-400 truncate">₹{(metrics.expectedRevenue || 0).toLocaleString()}</h3>
+                    <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900 block w-fit">
+                      Contract Target
+                    </span>
+                  </div>
+                  <div className="shrink-0 relative z-10 w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-100 dark:border-indigo-900">
+                    <BarChart2 className="w-5 h-5" />
+                  </div>
+                </div>
+
+                {/* Pending Revenue Card */}
+                <div className="relative bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 group">
+                  <div className="absolute -right-6 -top-6 w-24 h-24 bg-orange-500/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="space-y-1 relative z-10 min-w-0 pr-2 flex-grow">
+                    <div className="text-[10px] text-orange-600 dark:text-orange-400 font-extrabold uppercase tracking-wider truncate">Pending Revenue</div>
+                    <h3 className="text-2xl font-black text-orange-500 truncate">₹{(metrics.pendingRevenue || 0).toLocaleString()}</h3>
+                    <span className="text-[9px] text-orange-600 dark:text-orange-400 font-bold bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-full border border-orange-100 dark:border-orange-900 block w-fit">
+                      Outstanding Due
+                    </span>
+                  </div>
+                  <div className="shrink-0 relative z-10 w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 flex items-center justify-center border border-orange-100 dark:border-orange-900">
+                    <AlertCircle className="w-5 h-5" />
+                  </div>
+                </div>
+
+                {/* Tasks & Deliveries Pipeline Card */}
+                <div className="relative bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 group">
+                  <div className="absolute -right-6 -top-6 w-24 h-24 bg-purple-500/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="space-y-1 relative z-10 min-w-0 pr-2 flex-grow">
+                    <div className="text-[10px] text-purple-600 dark:text-purple-400 font-extrabold uppercase tracking-wider truncate">Pipeline</div>
                     <div className="flex items-baseline gap-1.5 flex-wrap">
-                      <h3 className="text-2xl xl:text-3xl font-black text-slate-900 dark:text-white truncate">{metrics.pendingTasks}</h3>
+                      <h3 className="text-2xl font-black text-slate-900 dark:text-white truncate">{(metrics.pendingTasks || 0) + (metrics.pendingDeliveries || 0)}</h3>
                       <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Pending</span>
                     </div>
-                    <div className="inline-block mt-1">
-                      <span className="px-2 py-0.5 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-[9px] xl:text-[10px] font-bold rounded-full whitespace-nowrap">
-                        Completed: {metrics.completedTasks}
-                      </span>
-                    </div>
+                    <span className="text-[9px] text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-full border border-purple-100 dark:border-purple-800/30 block w-fit">
+                      Done: {(metrics.completedTasks || 0) + (metrics.completedDeliveries || 0)}
+                    </span>
                   </div>
-                  <div className="shrink-0 relative z-10 w-10 h-10 xl:w-12 xl:h-12 rounded-xl bg-white/90 dark:bg-slate-800 backdrop-blur-sm shadow-md border border-white dark:border-slate-700 flex items-center justify-center text-purple-600 dark:text-purple-400">
-                    <Activity className="w-5 h-5 xl:w-6 xl:h-6" />
-                  </div>
-                </div>
-
-                {/* Deliveries Card */}
-                <div className="relative bg-white dark:bg-slate-900 p-5 xl:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-between hover:translate-y-[-2px] transition duration-200 animate-slide-up group" style={{ animationDelay: '400ms' }}>
-                  <div className="absolute -right-6 -top-6 w-32 h-32 bg-orange-50 dark:bg-orange-900/20 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-24 h-24 bg-orange-50/80 dark:bg-orange-900/40 rounded-full pointer-events-none group-hover:scale-150 transition-transform duration-500"></div>
-                  
-                  <div className="space-y-2 relative z-10 min-w-0 pr-2 flex-grow">
-                    <div className="text-[10px] xl:text-xs text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider truncate">Deliveries</div>
-                    <div className="flex items-baseline gap-1.5 flex-wrap">
-                      <h3 className="text-2xl xl:text-3xl font-black text-slate-900 dark:text-white truncate">{metrics.pendingDeliveries}</h3>
-                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Pending</span>
-                    </div>
-                    <div className="inline-block mt-1">
-                      <span className="px-2 py-0.5 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-[9px] xl:text-[10px] font-bold rounded-full whitespace-nowrap">
-                        Completed: {metrics.completedDeliveries}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="shrink-0 relative z-10 w-10 h-10 xl:w-12 xl:h-12 rounded-xl bg-white/90 dark:bg-slate-800 backdrop-blur-sm shadow-md border border-white dark:border-slate-700 flex items-center justify-center text-orange-600 dark:text-orange-400">
-                    <CheckCircle className="w-5 h-5 xl:w-6 xl:h-6" />
+                  <div className="shrink-0 relative z-10 w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-100 dark:border-purple-900">
+                    <Activity className="w-5 h-5" />
                   </div>
                 </div>
 
@@ -1003,21 +1196,62 @@ export default function CeoDashboard() {
             </div>
           )}
 
-          {/* TAB 2: DIRECTORY */}
+          {/* TAB 2: USERS DIRECTORY */}
           {activeTab === 'users' && (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-fade-in">
               <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
                 
-                {/* Search Bar */}
-                <div className="relative flex items-center w-full max-w-sm">
-                  <Search className="absolute left-3 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search name, email, department..."
-                    className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 text-xs transition"
-                  />
+                {/* Search Bar & Status Filter Control */}
+                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto flex-1 max-w-2xl">
+                  <div className="relative flex items-center w-full max-w-xs">
+                    <Search className="absolute left-3 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search name, email, department..."
+                      className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 text-xs transition"
+                    />
+                  </div>
+
+                  {/* Status Segmented Control */}
+                  <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setUserStatusFilter('ALL')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                        userStatusFilter === 'ALL'
+                          ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      All ({usersList.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserStatusFilter('ACTIVE')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                        userStatusFilter === 'ACTIVE'
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
+                      }`}
+                    >
+                      <UserCheck className="w-3 h-3" />
+                      Active ({activeUsersCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserStatusFilter('INACTIVE')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                        userStatusFilter === 'INACTIVE'
+                          ? 'bg-amber-600 text-white shadow-sm'
+                          : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
+                      }`}
+                    >
+                      <UserX className="w-3 h-3" />
+                      Inactive ({inactiveUsersCount})
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -1046,7 +1280,7 @@ export default function CeoDashboard() {
                   <tbody>
                     {filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="p-8 text-center text-slate-400">No staff found.</td>
+                        <td colSpan="7" className="p-8 text-center text-slate-400">No staff match the current filter.</td>
                       </tr>
                     ) : (
                       filteredUsers.map((user) => (
@@ -1070,10 +1304,13 @@ export default function CeoDashboard() {
                           <td className="p-4 text-slate-500 font-semibold">{user.department}</td>
                           <td className="p-4 font-bold text-slate-900 dark:text-white">${user.salary.toLocaleString()}/mo</td>
                           <td className="p-4">
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase
-                              ${user.status === 'ACTIVE' ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600' : 'bg-red-50 dark:bg-red-950/50 text-red-600'}`}
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase
+                              ${user.status === 'ACTIVE' 
+                                ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' 
+                                : 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800'}`}
                             >
-                              {user.status}
+                              <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                              {user.status || 'ACTIVE'}
                             </span>
                           </td>
                           <td className="p-4 text-right">
@@ -1081,18 +1318,29 @@ export default function CeoDashboard() {
                               <button 
                                 onClick={() => openEditModal(user)}
                                 className="p-1.5 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 transition"
-                                title="Edit user"
+                                title="Edit staff profile"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
-                              <button 
-                                onClick={() => handleDeleteUser(user.id, user.name)}
-                                disabled={user.id === currentUser.id}
-                                className="p-1.5 border border-slate-200 dark:border-slate-800 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                                title="Delete user"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              {user.status === 'ACTIVE' ? (
+                                <button 
+                                  onClick={() => handleToggleUserStatus(user.id, user.name, user.status)}
+                                  disabled={user.id === currentUser.id}
+                                  className="p-1.5 border border-slate-200 dark:border-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-600 dark:text-amber-400 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                  title="Deactivate staff (Record & history maintained)"
+                                >
+                                  <UserX className="w-3.5 h-3.5" />
+                                </button>
+                              ) : (
+                                <button 
+                                  onClick={() => handleToggleUserStatus(user.id, user.name, user.status)}
+                                  disabled={user.id === currentUser.id}
+                                  className="p-1.5 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                  title="Reactivate staff account"
+                                >
+                                  <UserCheck className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1484,166 +1732,524 @@ export default function CeoDashboard() {
           )}
 
           {/* TAB 5: CLIENT CRM */}
-          {activeTab === 'clients' && (
-            <div className="space-y-6 animate-fade-in text-xs">
-              
-              {/* Client Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Total Clients</span>
-                  <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">{clientsList.length}</div>
-                  <span className="text-[9px] text-slate-400 font-medium">Onboarded CRM accounts</span>
-                </div>
+          {activeTab === 'clients' && (() => {
+            const availableClientMonths = (() => {
+              const monthMap = new Map();
+              clientsList.forEach(c => {
+                const mk = parseClientMonthKey(c);
+                if (mk && mk.length >= 7) {
+                  if (!monthMap.has(mk)) {
+                    const [yyyy, mm] = mk.split('-');
+                    const d = new Date(parseInt(yyyy, 10), parseInt(mm, 10) - 1, 1);
+                    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                    monthMap.set(mk, { key: mk, label, count: 0, revenue: 0 });
+                  }
+                  const item = monthMap.get(mk);
+                  item.count += 1;
+                  if (c.active) item.revenue += (c.packageAmount || 0);
+                }
+              });
+              return Array.from(monthMap.values()).sort((a, b) => b.key.localeCompare(a.key));
+            })();
+
+            const filteredClients = clientsList.filter(c => {
+              const query = searchQuery.toLowerCase();
+              const matchesQuery = !query || (
+                c.businessName.toLowerCase().includes(query) ||
+                c.clientId.toLowerCase().includes(query) ||
+                (c.clientName && c.clientName.toLowerCase().includes(query)) ||
+                (c.services && c.services.toLowerCase().includes(query)) ||
+                (c.sector && c.sector.toLowerCase().includes(query)) ||
+                (c.email && c.email.toLowerCase().includes(query))
+              );
+              if (!matchesQuery) return false;
+
+              if (clientMonthFilter !== 'all') {
+                const mk = parseClientMonthKey(c);
+                if (mk !== clientMonthFilter) return false;
+              }
+
+              if (clientPaymentFilter !== 'all') {
+                const pInfo = getClientPaymentInfo(c);
+                if (clientPaymentFilter === 'Full' && pInfo.pStatus !== 'Full') return false;
+                if (clientPaymentFilter === 'Partial' && pInfo.pStatus !== 'Partial' && pInfo.pStatus !== 'Half') return false;
+                if (clientPaymentFilter === 'Pending' && pInfo.pStatus !== 'Pending' && pInfo.pStatus !== 'Unpaid') return false;
+              }
+
+              if (clientRevenueStreamFilter !== 'all') {
+                const stream = getClientRevenueStream(c, clientMonthFilter);
+                if (stream.type !== clientRevenueStreamFilter) return false;
+              }
+
+              return true;
+            });
+
+            const activeFilteredClients = filteredClients.filter(c => c.active);
+            let expectedRevenue = 0;
+            let actualRevenue = 0;
+            let paymentReceivedCount = 0;
+            let paymentPendingCount = 0;
+
+            let newPurchasesCount = 0;
+            let newPurchasesExpected = 0;
+            let newPurchasesActual = 0;
+
+            let renewalsCount = 0;
+            let renewalsExpected = 0;
+            let renewalsActual = 0;
+
+            let retainersCount = 0;
+            let retainersExpected = 0;
+            let retainersActual = 0;
+
+            let notRenewedCount = 0;
+            let notRenewedExpected = 0;
+            let expiringSoonCount = 0;
+            let expiringSoonExpected = 0;
+
+            activeFilteredClients.forEach(c => {
+              const pkgAmt = c.packageAmount || 0;
+              expectedRevenue += pkgAmt;
+
+              let pPaid = 0;
+              const pInfo = getClientPaymentInfo(c);
+              if (pInfo.pStatus === 'Full') {
+                pPaid = pkgAmt;
+                actualRevenue += pkgAmt;
+                paymentReceivedCount += 1;
+              } else if (pInfo.pStatus === 'Partial' || pInfo.pStatus === 'Half') {
+                pPaid = pInfo.paidAmount;
+                actualRevenue += pInfo.paidAmount;
+                paymentReceivedCount += 1;
+                paymentPendingCount += 1;
+              } else {
+                paymentPendingCount += 1;
+              }
+
+              const stream = getClientRevenueStream(c, clientMonthFilter);
+              const planStatus = getClientPlanStatus(c);
+
+              if (stream.type === 'NewPurchase') {
+                newPurchasesCount += 1;
+                newPurchasesExpected += pkgAmt;
+                newPurchasesActual += pPaid;
+              } else if (stream.type === 'Renewal') {
+                renewalsCount += 1;
+                renewalsExpected += pkgAmt;
+                renewalsActual += pPaid;
+              } else {
+                retainersCount += 1;
+                retainersExpected += pkgAmt;
+                retainersActual += pPaid;
+              }
+
+              if (stream.type !== 'Renewal' && planStatus.status === 'Expired') {
+                notRenewedCount += 1;
+                notRenewedExpected += pkgAmt;
+              }
+              if (planStatus.status === 'Expiring Soon') {
+                expiringSoonCount += 1;
+                expiringSoonExpected += pkgAmt;
+              }
+            });
+
+            const pendingRevenue = Math.max(0, expectedRevenue - actualRevenue);
+            const actualPercent = expectedRevenue > 0 ? Math.round((actualRevenue / expectedRevenue) * 100) : 0;
+            const currentMonthLabel = clientMonthFilter === 'all' 
+              ? 'All Months (All-Time)' 
+              : (availableClientMonths.find(m => m.key === clientMonthFilter)?.label || clientMonthFilter);
+
+            const totalRenewalPool = renewalsExpected + notRenewedExpected;
+            const renewalPercent = totalRenewalPool > 0 ? Math.round((renewalsExpected / totalRenewalPool) * 100) : (renewalsCount > 0 ? 100 : 0);
+            const notRenewedPercent = totalRenewalPool > 0 ? Math.round((notRenewedExpected / totalRenewalPool) * 100) : (notRenewedCount > 0 ? 100 : 0);
+
+            return (
+              <div className="space-y-6 animate-fade-in text-xs">
                 
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Active Services</span>
-                  <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                    {clientsList.filter(c => c.active).length}
+                {/* Client Metrics Divided into Actual, Expected & Pending with Stream Breakdown */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Total / Active Clients */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Clients / Services</span>
+                      <Users className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <div className="my-2">
+                      <div className="text-2xl font-black text-slate-900 dark:text-white">
+                        {activeFilteredClients.length} <span className="text-sm font-semibold text-slate-400">Active</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        {filteredClients.length} Total CRM Accounts {clientMonthFilter !== 'all' && `in ${currentMonthLabel}`}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      <span className="text-[9px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/40">
+                        🛒 {newPurchasesCount} New
+                      </span>
+                      <span className="text-[9px] text-purple-700 dark:text-purple-300 font-bold bg-purple-50 dark:bg-purple-950/40 px-1.5 py-0.5 rounded border border-purple-100 dark:border-purple-800/40">
+                        🔄 {renewalsCount} Renewed
+                      </span>
+                      <span className="text-[9px] text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-800/40">
+                        💼 {retainersCount} Retainers
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[9px] text-slate-400 font-medium">Currently in contract</span>
-                </div>
 
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Monthly Revenue (MRR)</span>
-                  <div className="text-xl font-bold text-blue-700 dark:text-blue-400 mt-1">
-                    ₹{clientsList.filter(c => c.active).reduce((sum, c) => sum + c.packageAmount, 0).toLocaleString()}
+                  {/* Actual Revenue (Collected) */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase tracking-wider">Actual Revenue</span>
+                      <DollarSign className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <div className="my-2">
+                      <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                        ₹{actualRevenue.toLocaleString()}
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        Cash Collected / Realized ({actualPercent}%)
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1 text-[9px] font-medium text-slate-500 dark:text-slate-400">
+                      <span>New: <b className="text-emerald-600 font-bold">₹{newPurchasesActual.toLocaleString()}</b></span>
+                      <span>•</span>
+                      <span>Renew: <b className="text-purple-600 font-bold">₹{renewalsActual.toLocaleString()}</b></span>
+                      <span>•</span>
+                      <span>Ret: <b className="text-blue-600 font-bold">₹{retainersActual.toLocaleString()}</b></span>
+                    </div>
                   </div>
-                  <span className="text-[9px] text-slate-400 font-medium">Active packages volume</span>
-                </div>
 
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Average Ticket</span>
-                  <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">
-                    ₹{Math.round(
-                      clientsList.filter(c => c.active).reduce((sum, c) => sum + c.packageAmount, 0) / 
-                      (clientsList.filter(c => c.active).length || 1)
-                    ).toLocaleString()}
+                  {/* Expected Revenue (Total Billing) */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-extrabold uppercase tracking-wider">Expected Revenue</span>
+                      <BarChart2 className="w-4 h-4 text-indigo-500" />
+                    </div>
+                    <div className="my-2">
+                      <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+                        ₹{expectedRevenue.toLocaleString()}
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        Total Contract Billing Target
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1 text-[9px] font-medium text-slate-500 dark:text-slate-400">
+                      <span>New: <b className="text-indigo-600 font-bold">₹{newPurchasesExpected.toLocaleString()}</b></span>
+                      <span>•</span>
+                      <span>Renew: <b className="text-purple-600 font-bold">₹{renewalsExpected.toLocaleString()}</b></span>
+                      <span>•</span>
+                      <span>Ret: <b className="text-blue-600 font-bold">₹{retainersExpected.toLocaleString()}</b></span>
+                    </div>
                   </div>
-                  <span className="text-[9px] text-slate-400 font-medium">Per active account</span>
-                </div>
-              </div>
 
-              {/* Action Toolbar */}
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-                <div className="relative flex items-center w-full max-w-md">
-                  <Search className="absolute left-3 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search business, name, ID, sector, services..."
-                    className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl focus:outline-none focus:border-blue-600 text-xs transition"
-                  />
+                  {/* Pending Revenue (Outstanding) */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-orange-600 dark:text-orange-400 font-extrabold uppercase tracking-wider">Pending Revenue</span>
+                      <AlertCircle className="w-4 h-4 text-orange-500" />
+                    </div>
+                    <div className="my-2">
+                      <div className="text-2xl font-black text-orange-500">
+                        ₹{pendingRevenue.toLocaleString()}
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        Outstanding Balance to Collect
+                      </div>
+                    </div>
+                    <span className="text-[9px] text-orange-600 dark:text-orange-400 font-bold bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-full border border-orange-100 dark:border-orange-800/40 w-fit">
+                      {paymentPendingCount} Accounts Pending
+                    </span>
+                  </div>
                 </div>
-                
-                <button
-                  onClick={() => { resetClientForm(); setShowAddClientModal(true); }}
-                  className="bg-blue-800 hover:bg-blue-900 text-white py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-1.5 transition text-xs shadow-md shadow-blue-500/10 shrink-0"
-                >
-                  <Plus className="w-4 h-4" />
-                  Onboard New Client
-                </button>
-              </div>
 
-              {/* Table List */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/40 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase tracking-wider">
-                        <th className="p-4">ID</th>
-                        <th className="p-4">Business / Client Name</th>
-                        <th className="p-4">Service Details</th>
-                        <th className="p-4">Amount</th>
-                        <th className="p-4">Joined Date</th>
-                        <th className="p-4 text-center">Page Ready?</th>
-                        <th className="p-4 text-center">Active?</th>
-                        <th className="p-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {clientsList
-                        .filter(c => {
-                          const query = searchQuery.toLowerCase();
-                          return (
-                            c.businessName.toLowerCase().includes(query) ||
-                            c.clientId.toLowerCase().includes(query) ||
-                            (c.clientName && c.clientName.toLowerCase().includes(query)) ||
-                            c.services.toLowerCase().includes(query) ||
-                            (c.sector && c.sector.toLowerCase().includes(query)) ||
-                            (c.email && c.email.toLowerCase().includes(query))
-                          );
-                        })
-                        .map((client) => (
-                          <tr key={client.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition">
-                            <td className="p-4 font-bold text-slate-450">{client.clientId}</td>
-                            <td className="p-4">
-                              <div className="font-bold text-slate-900 dark:text-white">{client.businessName}</div>
-                              <div className="text-[10px] text-slate-400 mt-0.5">{client.clientName || 'No Contact Person'}</div>
-                            </td>
-                            <td className="p-4">
-                              <span className="font-semibold text-slate-800 dark:text-slate-250">{client.services}</span>
-                              <div className="text-[9px] text-slate-400 mt-0.5">{client.packageName}</div>
-                            </td>
-                            <td className="p-4 font-extrabold text-slate-900 dark:text-white">
-                              ₹{client.packageAmount.toLocaleString()}
-                            </td>
-                            <td className="p-4 text-slate-500 font-medium">{client.joiningDate}</td>
-                            <td className="p-4 text-center">
-                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${client.accountReady ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600' : 'bg-red-50 dark:bg-red-950/40 text-red-600'}`}>
-                                {client.accountReady ? 'Yes' : 'No'}
-                              </span>
-                            </td>
-                            <td className="p-4 text-center">
-                              <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${client.active ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
-                                {client.active ? 'ACTIVE' : 'INACTIVE'}
-                              </span>
-                            </td>
-                            <td className="p-4 text-right">
-                              <div className="flex gap-2 justify-end">
-                                <button
-                                  onClick={() => {
-                                    setSelectedClient(client);
-                                    setShowClientDetailModal(true);
-                                    refreshClientTasks(client.id);
-                                    setClientTaskFormId(`${client.clientId}-TASK-01`);
-                                    setClientTaskFormTitle('');
-                                    setClientTaskFormDate(new Date().toISOString().split('T')[0]);
-                                    setClientTaskFormAssignTo('Graphic Designer');
-                                    setClientTaskFormWorkingOn('');
-                                    setClientTaskFormStatus('Not Started');
-                                    setClientTaskFormPostType('Graphic');
-                                    setClientTaskFormNotes('');
-                                    setClientTaskEditMode(false);
-                                  }}
-                                  className="py-1 px-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-lg transition"
-                                >
-                                  Details
-                                </button>
-                                <button
-                                  onClick={() => { resetClientForm(client); setShowEditClientModal(true); }}
-                                  className="p-1.5 border border-slate-200 dark:border-slate-855 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition"
-                                  title="Edit"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteClient(client.id, client.businessName)}
-                                  className="p-1.5 border border-slate-200 dark:border-slate-855 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-red-650 transition"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
+                {/* Plan Renewals vs Non-Renewals Progress Bar Card in CEO CRM */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-900">
+                        <RefreshCw className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                          Renewals vs Non-Renewals Revenue ({currentMonthLabel})
+                        </h4>
+                        <p className="text-[10px] text-slate-400">
+                          Renewed plan revenue vs overdue / unrenewed contract revenue
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black px-2.5 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg border border-purple-200/60 dark:border-purple-800 w-fit">
+                      Renewal Rate: {renewalPercent}%
+                    </span>
+                  </div>
+
+                  {/* Dual Progress Bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] font-bold gap-1">
+                      <span className="flex items-center gap-1.5 text-purple-700 dark:text-purple-400">
+                        <span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+                        🔄 Renewed: ₹{renewalsExpected.toLocaleString()} ({renewalsCount} accounts • {renewalPercent}%)
+                      </span>
+                      <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                        ⚠️ Not Renewed: ₹{notRenewedExpected.toLocaleString()} ({notRenewedCount} accounts • {notRenewedPercent}%)
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-6 rounded-xl overflow-hidden flex shadow-inner p-1 gap-1">
+                      {renewalsExpected > 0 && (
+                        <div 
+                          className="bg-gradient-to-r from-purple-500 to-indigo-600 h-full rounded-lg transition-all duration-1000 ease-out flex items-center justify-center text-[9px] font-black text-white px-2 shadow-sm"
+                          style={{ width: `${Math.max(renewalPercent, 10)}%` }}
+                        >
+                          {renewalPercent}% Renewed (₹{renewalsExpected.toLocaleString()})
+                        </div>
+                      )}
+                      {notRenewedExpected > 0 && (
+                        <div 
+                          className="bg-gradient-to-r from-rose-500 to-red-600 h-full rounded-lg transition-all duration-1000 ease-out flex items-center justify-center text-[9px] font-black text-white px-2 shadow-sm"
+                          style={{ width: `${Math.max(notRenewedPercent, 10)}%` }}
+                        >
+                          {notRenewedPercent}% Not Renewed (₹{notRenewedExpected.toLocaleString()})
+                        </div>
+                      )}
+                      {totalRenewalPool === 0 && (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400 font-bold">
+                          No renewal cycle data in this period
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Toolbar with Filters */}
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 flex-wrap">
+                    <div className="relative flex items-center flex-1 min-w-[200px] max-w-md">
+                      <Search className="absolute left-3 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search business, name, ID, sector, services..."
+                        className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl focus:outline-none focus:border-blue-600 text-xs transition"
+                      />
+                    </div>
+
+                    {/* Month Filter Selector */}
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={clientMonthFilter}
+                        onChange={(e) => setClientMonthFilter(e.target.value)}
+                        className="px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-600 cursor-pointer shadow-sm"
+                      >
+                        <option value="all">📅 All Months</option>
+                        {availableClientMonths.map(m => (
+                          <option key={m.key} value={m.key}>
+                            📅 {m.label} ({m.count} clients)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Revenue Stream Filter Selector */}
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={clientRevenueStreamFilter}
+                        onChange={(e) => setClientRevenueStreamFilter(e.target.value)}
+                        className="px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-600 cursor-pointer shadow-sm"
+                      >
+                        <option value="all">🌐 All Streams</option>
+                        <option value="NewPurchase">🛒 New Plan Purchases</option>
+                        <option value="Renewal">🔄 Plan Renewals</option>
+                        <option value="ActiveRetainer">💼 Active Retainers</option>
+                      </select>
+                    </div>
+
+                    {/* Payment Status Filter Selector */}
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={clientPaymentFilter}
+                        onChange={(e) => setClientPaymentFilter(e.target.value)}
+                        className="px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-600 cursor-pointer shadow-sm"
+                      >
+                        <option value="all">💳 All Payments</option>
+                        <option value="Full">✅ Fully Paid</option>
+                        <option value="Partial">⏳ Partial / Half</option>
+                        <option value="Pending">⚠️ Pending / Unpaid</option>
+                      </select>
+                    </div>
+
+                    {(clientMonthFilter !== 'all' || clientRevenueStreamFilter !== 'all' || clientPaymentFilter !== 'all' || searchQuery) && (
+                      <button
+                        onClick={() => {
+                          setClientMonthFilter('all');
+                          setClientRevenueStreamFilter('all');
+                          setClientPaymentFilter('all');
+                          setSearchQuery('');
+                        }}
+                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold transition"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  
+                  <button
+                    onClick={() => { resetClientForm(); setShowAddClientModal(true); }}
+                    className="bg-blue-800 hover:bg-blue-900 text-white py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-1.5 transition text-xs shadow-md shadow-blue-500/10 shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Onboard New Client
+                  </button>
+                </div>
+
+                {/* Table List */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800/40 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase tracking-wider">
+                          <th className="p-4">ID</th>
+                          <th className="p-4">Business / Client Name</th>
+                          <th className="p-4">Service & Plan Stream</th>
+                          <th className="p-4">Amount & Payment</th>
+                          <th className="p-4">Joined Date</th>
+                          <th className="p-4 text-center">Page Ready?</th>
+                          <th className="p-4 text-center">Active?</th>
+                          <th className="p-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {filteredClients.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="p-8 text-center text-slate-400 font-medium">
+                              No clients found matching the selected filter ({currentMonthLabel}).
                             </td>
                           </tr>
-                        ))}
+                        ) : (
+                          filteredClients.map((client) => {
+                            const stream = getClientRevenueStream(client, clientMonthFilter);
+                            const pInfo = getClientPaymentInfo(client);
+                            return (
+                              <tr key={client.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition">
+                                <td className="p-4 font-bold text-slate-450">{client.clientId}</td>
+                                <td className="p-4">
+                                  <div className="font-bold text-slate-900 dark:text-white">{client.businessName}</div>
+                                  <div className="text-[10px] text-slate-400 mt-0.5">{client.clientName || 'No Contact Person'}</div>
+                                </td>
+                                <td className="p-4">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-semibold text-slate-800 dark:text-slate-250">{client.services}</span>
+                                    <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${stream.badgeClass}`}>
+                                      {stream.badge}
+                                    </span>
+                                  </div>
+                                  <div className="text-[9px] text-slate-400 mt-0.5">{client.packageName}</div>
+                                </td>
+                                <td className="p-4">
+                                  <div className="font-extrabold text-slate-900 dark:text-white">
+                                    ₹{client.packageAmount.toLocaleString()}
+                                  </div>
+                                  {pInfo.pStatus === 'Full' ? (
+                                    <div className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                      ✓ Full Paid (₹{pInfo.paidAmount.toLocaleString()})
+                                    </div>
+                                  ) : (pInfo.pStatus === 'Partial' || pInfo.pStatus === 'Half') ? (
+                                    <div className="text-[9px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                                      Paid: ₹{pInfo.paidAmount.toLocaleString()} • Due: ₹{pInfo.pendingBalance.toLocaleString()}
+                                    </div>
+                                  ) : (
+                                    <div className="text-[9px] font-bold text-red-500 mt-0.5">
+                                      ⚠️ Pending (₹{client.packageAmount.toLocaleString()})
+                                    </div>
+                                  )}
+                                </td>
+                              <td className="p-4">
+                                <div className="font-extrabold text-slate-900 dark:text-white">
+                                  ₹{client.packageAmount.toLocaleString()}
+                                </div>
+                                {(() => {
+                                  const pInfo = getClientPaymentInfo(client);
+                                  if (pInfo.pStatus === 'Full') {
+                                    return (
+                                      <div className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                        ✓ Full Paid (₹{pInfo.paidAmount.toLocaleString()})
+                                      </div>
+                                    );
+                                  } else if (pInfo.pStatus === 'Partial' || pInfo.pStatus === 'Half') {
+                                    return (
+                                      <div className="text-[9px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                                        Paid: ₹{pInfo.paidAmount.toLocaleString()} • Due: ₹{pInfo.pendingBalance.toLocaleString()}
+                                      </div>
+                                    );
+                                  } else {
+                                    return (
+                                      <div className="text-[9px] font-bold text-red-500 mt-0.5">
+                                        ⚠️ Pending (₹{client.packageAmount.toLocaleString()})
+                                      </div>
+                                    );
+                                  }
+                                })()}
+                              </td>
+                              <td className="p-4 text-slate-500 font-medium">{client.joiningDate}</td>
+                              <td className="p-4 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${client.accountReady ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600' : 'bg-red-50 dark:bg-red-950/40 text-red-600'}`}>
+                                  {client.accountReady ? 'Yes' : 'No'}
+                                </span>
+                              </td>
+                              <td className="p-4 text-center">
+                                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${client.active ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
+                                  {client.active ? 'ACTIVE' : 'INACTIVE'}
+                                </span>
+                              </td>
+                              <td className="p-4 text-right">
+                                <div className="flex gap-2 justify-end">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedClient(client);
+                                      setShowClientDetailModal(true);
+                                      refreshClientTasks(client.id);
+                                      setClientTaskFormId(`${client.clientId}-TASK-01`);
+                                      setClientTaskFormTitle('');
+                                      setClientTaskFormDate(new Date().toISOString().split('T')[0]);
+                                      setClientTaskFormAssignTo('Graphic Designer');
+                                      setClientTaskFormWorkingOn('');
+                                      setClientTaskFormStatus('Not Started');
+                                      setClientTaskFormPostType('Graphic');
+                                      setClientTaskFormNotes('');
+                                      setClientTaskEditMode(false);
+                                    }}
+                                    className="py-1 px-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-lg transition"
+                                  >
+                                    Details
+                                  </button>
+                                  <button
+                                    onClick={() => { resetClientForm(client); setShowEditClientModal(true); }}
+                                    className="p-1.5 border border-slate-200 dark:border-slate-855 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition"
+                                    title="Edit"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteClient(client.id, client.businessName)}
+                                    className="p-1.5 border border-slate-200 dark:border-slate-855 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-red-650 transition"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
         </div>
       </main>
@@ -1885,6 +2491,18 @@ export default function CeoDashboard() {
                       onChange={(e) => setFormAvatar(e.target.value)}
                       className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white text-center focus:outline-none"
                     />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 dark:text-slate-300">Status</label>
+                    <select
+                      value={formStatus}
+                      disabled={selectedUser && selectedUser.id === currentUser.id}
+                      onChange={(e) => setFormStatus(e.target.value)}
+                      className="w-full p-2.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-blue-600 disabled:opacity-50"
+                    >
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="INACTIVE">INACTIVE</option>
+                    </select>
                   </div>
                 </div>
 

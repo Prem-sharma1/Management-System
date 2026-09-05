@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { 
   Users, DollarSign, FileText, CheckCircle, Clock, Truck, FileCheck, Target,
-  ChevronDown, ChevronUp, BarChart2, AlertCircle, Layers
+  ChevronDown, ChevronUp, BarChart2, AlertCircle, Layers, RefreshCw, AlertTriangle, TrendingUp
 } from 'lucide-react';
 
 export default function AgencyDashboard({ deliveries = [], clients = [], tasks = [] }) {
@@ -92,6 +92,7 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
   // --- DATASET 2: TODAY'S & CARRY-FORWARD OVERDUE ITEMS ---
   const todayStr = new Date().toISOString().slice(0, 10);
   const [taskFilterTab, setTaskFilterTab] = useState('all'); // 'all', 'today', 'overdue'
+  const [selectedRevenueMonth, setSelectedRevenueMonth] = useState('all'); // 'all' or 'YYYY-MM'
 
   const isDoneStatus = (status) => {
     const s = (status || '').toLowerCase();
@@ -199,13 +200,162 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
   const todayEmployeeList = Object.values(todayByEmployee)
     .sort((a, b) => b.tasks.length - a.tasks.length);
 
-  // Compute revenue/billing details dynamically from active clients
+  // Helper to extract YYYY-MM from client joining date or creation date
+  const getClientMonthKey = (client) => {
+    if (!client) return null;
+    const rawDate = client.joiningDate || client.createdAt;
+    if (!rawDate) return null;
+    
+    if (typeof rawDate === 'string') {
+      const clean = rawDate.trim();
+      if (/^\d{4}-\d{2}/.test(clean)) return clean.slice(0, 7);
+      
+      const monthMap = { 
+        jan:'01', feb:'02', mar:'03', apr:'04', may:'05', jun:'06',
+        jul:'07', aug:'08', sep:'09', sept:'09', oct:'10', nov:'11', dec:'12' 
+      };
+      const parts = clean.split(/[\/\-\s]+/);
+      if (parts.length === 3) {
+        const [p1, p2, p3] = parts;
+        let yyyy = p3.length === 4 ? p3 : p1.length === 4 ? p1 : (p3.length === 2 ? '20' + p3 : '2026');
+        const p2Clean = p2.toLowerCase();
+        let mm = monthMap[p2Clean] || monthMap[p2Clean.slice(0, 3)];
+        if (!mm) {
+          if (!isNaN(p2) && parseInt(p2, 10) >= 1 && parseInt(p2, 10) <= 12) mm = p2.padStart(2, '0');
+          else if (!isNaN(p1) && parseInt(p1, 10) >= 1 && parseInt(p1, 10) <= 12) mm = p1.padStart(2, '0');
+          else mm = '01';
+        }
+        return `${yyyy}-${mm}`;
+      }
+
+      const d = new Date(clean);
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 7);
+    }
+
+    if (client.createdAt) {
+      const d = new Date(client.createdAt);
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 7);
+    }
+    return null;
+  };
+
+  // Extract distinct available months from clients
+  const availableRevenueMonths = React.useMemo(() => {
+    const monthMap = new Map();
+    const now = new Date();
+    const curKey = now.toISOString().slice(0, 7);
+    const curLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    monthMap.set(curKey, { key: curKey, label: curLabel, count: 0, revenue: 0 });
+
+    clients.forEach(c => {
+      const mk = getClientMonthKey(c);
+      if (mk && mk.length >= 7) {
+        if (!monthMap.has(mk)) {
+          const [yyyy, mm] = mk.split('-');
+          const dateObj = new Date(parseInt(yyyy, 10), parseInt(mm, 10) - 1, 1);
+          const label = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+          monthMap.set(mk, { key: mk, label, count: 0, revenue: 0 });
+        }
+        const item = monthMap.get(mk);
+        item.count += 1;
+        if (c.active) {
+          item.revenue += (c.packageAmount || 0);
+        }
+      }
+    });
+
+    return Array.from(monthMap.values()).sort((a, b) => b.key.localeCompare(a.key));
+  }, [clients]);
+
+  // Filter clients for selected month
+  const filteredRevenueClients = React.useMemo(() => {
+    if (selectedRevenueMonth === 'all') return clients;
+    return clients.filter(c => getClientMonthKey(c) === selectedRevenueMonth);
+  }, [clients, selectedRevenueMonth]);
+
+  // Helper to determine revenue stream source (New Purchase vs Renewal vs Active Retainer)
+  const getClientRevenueStream = (client, selectedMonth) => {
+    if (!client || !client.active) return { type: 'Inactive', label: 'Inactive' };
+    const joiningMonth = getClientMonthKey(client);
+    let createdMonth = null;
+    if (client.createdAt) {
+      const cd = new Date(client.createdAt);
+      if (!isNaN(cd.getTime())) createdMonth = cd.toISOString().slice(0, 7);
+    }
+
+    let isRenewed = false;
+    try {
+      if (client.notes && client.notes.toLowerCase().includes('renew')) isRenewed = true;
+    } catch (e) {}
+
+    if (createdMonth && joiningMonth && createdMonth !== joiningMonth) {
+      isRenewed = true;
+    }
+
+    if (isRenewed) {
+      return { type: 'Renewal', label: 'Plan Renewed', badge: '🔄 Renewed' };
+    }
+    if (createdMonth && (selectedMonth === 'all' || createdMonth === selectedMonth)) {
+      return { type: 'NewPurchase', label: 'New Purchase', badge: '🛒 New Plan' };
+    }
+    return { type: 'ActiveRetainer', label: 'Active Retainer', badge: '💼 Retainer' };
+  };
+
+  // Helper to determine 30-day cycle plan health for a client
+  const getClientPlanHealth = (client) => {
+    if (!client) return { status: 'Unknown', diffDays: 0, daysPassed: 0 };
+    const rawDate = client.joiningDate || client.createdAt;
+    const iso = parseToISO(rawDate);
+    if (!iso) return { status: 'Unknown', diffDays: 0, daysPassed: 0 };
+    
+    const [yyyy, mm, dd] = iso.split('-').map(Number);
+    const start = new Date(yyyy, mm - 1, dd);
+    start.setHours(0, 0, 0, 0);
+
+    const expiry = new Date(start);
+    expiry.setDate(expiry.getDate() + 30);
+    expiry.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const diffTime = expiry.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const daysPassed = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 0) {
+      return { status: 'Expired', diffDays, daysPassed };
+    } else if (daysPassed >= 22) {
+      return { status: 'ExpiringSoon', diffDays, daysPassed };
+    }
+    return { status: 'Active', diffDays, daysPassed };
+  };
+
+  // Compute revenue/billing details dynamically for the filtered month
   let dynamicTotalRevenue = 0;       // Received revenue
   let dynamicEstimatedRevenue = 0;   // Total active package amount
   let paymentReceivedCount = 0;
   let paymentPendingCount = 0;
 
-  clients.forEach(c => {
+  let newPurchasesCount = 0;
+  let newPurchasesExpected = 0;
+  let newPurchasesActual = 0;
+
+  let renewalsCount = 0;
+  let renewalsExpected = 0;
+  let renewalsActual = 0;
+
+  let notRenewedCount = 0;
+  let notRenewedExpected = 0;
+
+  let expiringSoonCount = 0;
+  let expiringSoonExpected = 0;
+
+  let retainersCount = 0;
+  let retainersExpected = 0;
+  let retainersActual = 0;
+
+  filteredRevenueClients.forEach(c => {
     if (!c.active) return;
     const pkgAmt = c.packageAmount || 0;
     dynamicEstimatedRevenue += pkgAmt;
@@ -221,19 +371,59 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
       }
     } catch (e) {}
 
+    let actualCollected = 0;
     if (pStatus === 'Full') {
+      actualCollected = pkgAmt;
       dynamicTotalRevenue += pkgAmt;
       paymentReceivedCount += 1;
-    } else if (pStatus === 'Partial') {
+    } else if (pStatus === 'Partial' || pStatus === 'Half') {
+      actualCollected = paidAmt;
       dynamicTotalRevenue += paidAmt;
       paymentReceivedCount += 1;
       paymentPendingCount += 1;
     } else {
       paymentPendingCount += 1;
     }
+
+    // Classify revenue stream & plan cycle health
+    const stream = getClientRevenueStream(c, selectedRevenueMonth);
+    const health = getClientPlanHealth(c);
+
+    if (stream.type === 'NewPurchase') {
+      newPurchasesCount += 1;
+      newPurchasesExpected += pkgAmt;
+      newPurchasesActual += actualCollected;
+    } else if (stream.type === 'Renewal') {
+      renewalsCount += 1;
+      renewalsExpected += pkgAmt;
+      renewalsActual += actualCollected;
+    } else {
+      retainersCount += 1;
+      retainersExpected += pkgAmt;
+      retainersActual += actualCollected;
+    }
+
+    if (stream.type !== 'Renewal' && health.status === 'Expired') {
+      notRenewedCount += 1;
+      notRenewedExpected += pkgAmt;
+    }
+
+    if (health.status === 'ExpiringSoon') {
+      expiringSoonCount += 1;
+      expiringSoonExpected += pkgAmt;
+    }
   });
 
   const pendingRevenue = Math.max(0, dynamicEstimatedRevenue - dynamicTotalRevenue);
+
+  // Renewal Opportunity Metrics (Renewed vs Overdue Non-Renewals)
+  const totalRenewalPoolRevenue = renewalsExpected + notRenewedExpected;
+  const renewalPercent = totalRenewalPoolRevenue > 0 
+    ? Math.round((renewalsExpected / totalRenewalPoolRevenue) * 100) 
+    : (renewalsCount > 0 ? 100 : 0);
+  const notRenewedPercent = totalRenewalPoolRevenue > 0 
+    ? Math.round((notRenewedExpected / totalRenewalPoolRevenue) * 100) 
+    : (notRenewedCount > 0 ? 100 : 0);
 
   // Dynamically calculate employee data from both tasks and deliveries
   const empMap = {};
@@ -305,60 +495,85 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
     <div className="space-y-8 animate-fade-in text-slate-800 dark:text-slate-200">
       
       {/* 1. KPIs Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between relative overflow-hidden group">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Active Clients */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between relative overflow-hidden group">
           <div className="absolute -right-6 -top-6 w-24 h-24 bg-blue-500/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
-          <div className="space-y-2 relative z-10">
-            <span className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest font-extrabold font-sans">Active Clients</span>
-            <div className="flex items-end gap-2">
-              <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white">{topLevelMetrics.activeClients}</h3>
-              <span className="text-sm text-slate-500 font-semibold mb-1">/ {topLevelMetrics.totalClients} Total</span>
+          <div className="space-y-1.5 relative z-10">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-extrabold font-sans">Active Clients</span>
+            <div className="flex items-end gap-1.5">
+              <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white">{filteredRevenueClients.filter(c => c.active).length}</h3>
+              <span className="text-xs text-slate-400 font-semibold mb-0.5">/ {filteredRevenueClients.length} in period</span>
             </div>
+            <span className="text-[9px] text-blue-500 font-bold bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full border border-blue-100 dark:border-blue-800/30 block w-fit">
+              {selectedRevenueMonth === 'all' ? 'All CRM Accounts' : `${availableRevenueMonths.find(m => m.key === selectedRevenueMonth)?.label || selectedRevenueMonth}`}
+            </span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center relative z-10 shadow-inner border border-blue-100 dark:border-blue-900">
-            <Users className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center relative z-10 shadow-inner border border-blue-100 dark:border-blue-900 shrink-0">
+            <Users className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between relative overflow-hidden group">
+        {/* Actual Revenue (Collected) */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between relative overflow-hidden group">
           <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
-          <div className="space-y-2 relative z-10">
-            <span className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest font-extrabold font-sans">Total Revenue</span>
-            <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white">{topLevelMetrics.totalRevenue}</h3>
-            <span className="text-[10px] text-emerald-500 font-bold bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-800/30">Est: {topLevelMetrics.estimatedMonthlyRevenue}</span>
+          <div className="space-y-1.5 relative z-10">
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-widest font-extrabold font-sans">Actual Revenue</span>
+            <h3 className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">₹{dynamicTotalRevenue.toLocaleString()}</h3>
+            <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-800/40 block w-fit">
+              Collected ({revReceivedPercent}%)
+            </span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center relative z-10 shadow-inner border border-emerald-100 dark:border-emerald-900">
-            <DollarSign className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between relative overflow-hidden group">
-          <div className="absolute -right-6 -top-6 w-24 h-24 bg-purple-500/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
-          <div className="space-y-2 relative z-10">
-            <span className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest font-extrabold font-sans">Tasks Pipeline</span>
-            <div className="flex items-end gap-2">
-              <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white">{topLevelMetrics.taskPending}</h3>
-              <span className="text-sm text-slate-500 font-semibold mb-1">Pending</span>
-            </div>
-            <span className="text-[10px] text-purple-500 font-bold bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-full border border-purple-100 dark:border-purple-800/30">Completed: {topLevelMetrics.taskCompleted}</span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center relative z-10 shadow-inner border border-purple-100 dark:border-purple-900">
-            <Target className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center relative z-10 shadow-inner border border-emerald-100 dark:border-emerald-900 shrink-0">
+            <DollarSign className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between relative overflow-hidden group">
+        {/* Expected Revenue (Total Target) */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between relative overflow-hidden group">
+          <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+          <div className="space-y-1.5 relative z-10">
+            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 uppercase tracking-widest font-extrabold font-sans">Expected Revenue</span>
+            <h3 className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400">₹{dynamicEstimatedRevenue.toLocaleString()}</h3>
+            <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/40 block w-fit">
+              Target Billing (100%)
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center relative z-10 shadow-inner border border-indigo-100 dark:border-indigo-900 shrink-0">
+            <BarChart2 className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Pending Revenue (Outstanding) */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between relative overflow-hidden group">
           <div className="absolute -right-6 -top-6 w-24 h-24 bg-orange-500/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
-          <div className="space-y-2 relative z-10">
-            <span className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest font-extrabold font-sans">Deliveries</span>
-            <div className="flex items-end gap-2">
-              <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white">{topLevelMetrics.deliveryPending}</h3>
-              <span className="text-sm text-slate-500 font-semibold mb-1">Pending</span>
-            </div>
-            <span className="text-[10px] text-orange-500 font-bold bg-orange-50 dark:bg-orange-900/30 px-2 py-0.5 rounded-full border border-orange-100 dark:border-orange-800/30">Completed: {topLevelMetrics.deliveryCompleted}</span>
+          <div className="space-y-1.5 relative z-10">
+            <span className="text-[10px] text-orange-600 dark:text-orange-400 uppercase tracking-widest font-extrabold font-sans">Pending Revenue</span>
+            <h3 className="text-2xl font-extrabold text-orange-500">₹{pendingRevenue.toLocaleString()}</h3>
+            <span className="text-[9px] text-orange-600 dark:text-orange-400 font-bold bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-full border border-orange-100 dark:border-orange-800/40 block w-fit">
+              Outstanding ({revPendingPercent}%)
+            </span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 flex items-center justify-center relative z-10 shadow-inner border border-orange-100 dark:border-orange-900">
-            <Truck className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 flex items-center justify-center relative z-10 shadow-inner border border-orange-100 dark:border-orange-900 shrink-0">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Tasks & Deliveries Pipeline */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between relative overflow-hidden group">
+          <div className="absolute -right-6 -top-6 w-24 h-24 bg-purple-500/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+          <div className="space-y-1.5 relative z-10">
+            <span className="text-[10px] text-purple-600 dark:text-purple-400 uppercase tracking-widest font-extrabold font-sans">Pipeline</span>
+            <div className="flex items-end gap-1.5">
+              <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white">{topLevelMetrics.taskPending + topLevelMetrics.deliveryPending}</h3>
+              <span className="text-xs text-slate-400 font-semibold mb-0.5">Pending</span>
+            </div>
+            <span className="text-[9px] text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-full border border-purple-100 dark:border-purple-800/30 block w-fit">
+              Done: {topLevelMetrics.taskCompleted + topLevelMetrics.deliveryCompleted}
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center relative z-10 shadow-inner border border-purple-100 dark:border-purple-900 shrink-0">
+            <Target className="w-5 h-5" />
           </div>
         </div>
       </div>
@@ -368,51 +583,178 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
         
         {/* Revenue Progress Chart */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <h4 className="text-base font-extrabold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-emerald-500" />
-            Monthly Revenue Breakdown
-          </h4>
-          
-          <div className="space-y-6 my-auto">
-            <div className="space-y-2">
-              <div className="flex justify-between items-end">
-                <div>
-                  <div className="text-sm font-bold text-slate-700 dark:text-slate-300">Received</div>
-                  <div className="text-2xl font-black text-emerald-600 dark:text-emerald-500">₹{dynamicTotalRevenue.toLocaleString()}</div>
-                </div>
-                <div className="text-xl font-bold text-slate-300 dark:text-slate-600">{revReceivedPercent}%</div>
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <div>
+                <h4 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-emerald-500" />
+                  Revenue Breakdown (Actual vs Expected vs Pending)
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Period: <span className="font-bold text-slate-700 dark:text-slate-300">{selectedRevenueMonth === 'all' ? 'All Months' : (availableRevenueMonths.find(m => m.key === selectedRevenueMonth)?.label || selectedRevenueMonth)}</span> • {filteredRevenueClients.filter(c => c.active).length} Active Accounts
+                </p>
               </div>
-              <div className="w-full bg-slate-100 dark:bg-slate-800 h-6 rounded-full overflow-hidden shadow-inner relative">
+
+              {/* Month Selector Dropdown */}
+              <select
+                value={selectedRevenueMonth}
+                onChange={(e) => setSelectedRevenueMonth(e.target.value)}
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl px-3 py-1.5 focus:outline-none focus:border-emerald-500 transition cursor-pointer shadow-sm"
+              >
+                <option value="all">🌐 All Months (Combined)</option>
+                {availableRevenueMonths.map(m => (
+                  <option key={m.key} value={m.key}>
+                    📅 {m.label} ({m.count} clients)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Quick Month Filter Pills */}
+            <div className="flex flex-wrap gap-1.5 mb-5 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSelectedRevenueMonth('all')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+                  selectedRevenueMonth === 'all'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                All Months
+              </button>
+              {availableRevenueMonths.map(m => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => setSelectedRevenueMonth(m.key)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition flex items-center gap-1 ${
+                    selectedRevenueMonth === m.key
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <span>{m.label.split(' ')[0]}</span>
+                  <span className="text-[9px] opacity-75 font-normal">({m.count})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <div className="space-y-5 my-auto">
+            {/* 1. Actual Revenue */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-end">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Actual Revenue (Collected)</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">₹{dynamicTotalRevenue.toLocaleString()}</span>
+                  <span className="text-xs font-bold text-slate-400">({revReceivedPercent}%)</span>
+                </div>
+              </div>
+              <div className="w-full bg-slate-100 dark:bg-slate-800 h-4 rounded-full overflow-hidden shadow-inner relative">
                 <div 
                   className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full transition-all duration-1000 ease-out" 
                   style={{ width: `${revReceivedPercent}%` }}
-                >
-                  <div className="w-full h-full opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIj48L3JlY3Q+CjxwYXRoIGQ9Ik0wIDBMOCA4Wk04IDBMMCA4WiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD4KPC9zdmc+')] mix-blend-overlay"></div>
-                </div>
+                />
               </div>
+              <div className="text-[10px] text-slate-400 text-right">{paymentReceivedCount} accounts paid</div>
             </div>
 
-            <div className="space-y-2">
+            {/* 2. Expected Revenue */}
+            <div className="space-y-1.5">
               <div className="flex justify-between items-end">
-                <div>
-                  <div className="text-sm font-bold text-slate-700 dark:text-slate-300">Pending</div>
-                  <div className="text-2xl font-black text-orange-500">₹{pendingRevenue.toLocaleString()}</div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block"></span>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Expected Revenue (Total Target)</span>
                 </div>
-                <div className="text-xl font-bold text-slate-300 dark:text-slate-600">{revPendingPercent}%</div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">₹{dynamicEstimatedRevenue.toLocaleString()}</span>
+                  <span className="text-xs font-bold text-slate-400">(100%)</span>
+                </div>
               </div>
-              <div className="w-full bg-slate-100 dark:bg-slate-800 h-6 rounded-full overflow-hidden shadow-inner relative">
+              <div className="w-full bg-slate-100 dark:bg-slate-800 h-4 rounded-full overflow-hidden shadow-inner relative">
+                <div 
+                  className="bg-gradient-to-r from-indigo-400 to-indigo-600 h-full rounded-full transition-all duration-1000 ease-out" 
+                  style={{ width: `100%` }}
+                />
+              </div>
+              <div className="text-[10px] text-slate-400 text-right">{filteredRevenueClients.filter(c => c.active).length} active contracts</div>
+            </div>
+
+            {/* 3. Pending Revenue */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-end">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block"></span>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Pending Revenue (Outstanding)</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-black text-orange-500">₹{pendingRevenue.toLocaleString()}</span>
+                  <span className="text-xs font-bold text-slate-400">({revPendingPercent}%)</span>
+                </div>
+              </div>
+              <div className="w-full bg-slate-100 dark:bg-slate-800 h-4 rounded-full overflow-hidden shadow-inner relative">
                 <div 
                   className="bg-gradient-to-r from-orange-400 to-orange-500 h-full rounded-full transition-all duration-1000 ease-out delay-300" 
                   style={{ width: `${revPendingPercent}%` }}
-                >
-                  <div className="w-full h-full opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIj48L3JlY3Q+CjxwYXRoIGQ9Ik0wIDBMOCA4Wk04IDBMMCA4WiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD4KPC9zdmc+')] mix-blend-overlay"></div>
-                </div>
+                />
+              </div>
+              <div className="text-[10px] text-slate-400 text-right">{paymentPendingCount} accounts pending</div>
+            </div>
+          </div>
+          
+          {/* Interlinked Revenue Streams Breakdown */}
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+            <div className="bg-emerald-50/70 dark:bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-100 dark:border-emerald-800/30 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-extrabold uppercase">🛒 New Purchases</span>
+                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-900/50 px-1.5 py-0.2 rounded">{newPurchasesCount}</span>
+              </div>
+              <div className="mt-1.5">
+                <span className="text-xs font-black text-slate-900 dark:text-white">₹{newPurchasesExpected.toLocaleString()}</span>
+                <div className="text-[9px] text-slate-400">Paid: <span className="font-bold text-emerald-600">₹{newPurchasesActual.toLocaleString()}</span></div>
+              </div>
+            </div>
+
+            <div className="bg-purple-50/70 dark:bg-purple-950/20 p-2.5 rounded-xl border border-purple-100 dark:border-purple-800/30 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-purple-700 dark:text-purple-400 font-extrabold uppercase">🔄 Renewals</span>
+                <span className="text-[9px] font-bold text-purple-700 bg-purple-100 dark:bg-purple-900/50 px-1.5 py-0.2 rounded">{renewalsCount}</span>
+              </div>
+              <div className="mt-1.5">
+                <span className="text-xs font-black text-slate-900 dark:text-white">₹{renewalsExpected.toLocaleString()}</span>
+                <div className="text-[9px] text-slate-400">Paid: <span className="font-bold text-purple-600">₹{renewalsActual.toLocaleString()}</span></div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50/70 dark:bg-blue-950/20 p-2.5 rounded-xl border border-blue-100 dark:border-blue-800/30 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-blue-700 dark:text-blue-400 font-extrabold uppercase">💼 Retainers</span>
+                <span className="text-[9px] font-bold text-blue-700 bg-blue-100 dark:bg-blue-900/50 px-1.5 py-0.2 rounded">{retainersCount}</span>
+              </div>
+              <div className="mt-1.5">
+                <span className="text-xs font-black text-slate-900 dark:text-white">₹{retainersExpected.toLocaleString()}</span>
+                <div className="text-[9px] text-slate-400">Paid: <span className="font-bold text-blue-600">₹{retainersActual.toLocaleString()}</span></div>
               </div>
             </div>
           </div>
           
-          <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-sm">
-            <span className="text-slate-500 font-semibold">Total Billing: <strong className="text-slate-900 dark:text-white">₹{dynamicEstimatedRevenue.toLocaleString()}</strong></span>
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-2 text-center text-xs">
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 p-2 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
+              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold block">Actual</span>
+              <span className="text-xs font-extrabold text-emerald-800 dark:text-emerald-300">₹{dynamicTotalRevenue.toLocaleString()}</span>
+            </div>
+            <div className="bg-indigo-50 dark:bg-indigo-950/30 p-2 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
+              <span className="text-[10px] text-indigo-700 dark:text-indigo-400 font-bold block">Expected</span>
+              <span className="text-xs font-extrabold text-indigo-800 dark:text-indigo-300">₹{dynamicEstimatedRevenue.toLocaleString()}</span>
+            </div>
+            <div className="bg-orange-50 dark:bg-orange-950/30 p-2 rounded-xl border border-orange-100 dark:border-orange-800/30">
+              <span className="text-[10px] text-orange-700 dark:text-orange-400 font-bold block">Pending</span>
+              <span className="text-xs font-extrabold text-orange-800 dark:text-orange-300">₹{pendingRevenue.toLocaleString()}</span>
+            </div>
           </div>
         </div>
 
@@ -491,6 +833,155 @@ export default function AgencyDashboard({ deliveries = [], clients = [], tasks =
           </div>
         </div>
 
+      </div>
+
+      {/* 2.5. Plan Renewals vs Non-Renewals Revenue Health & Progress Bar Card */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-100 dark:border-purple-900 shadow-inner shrink-0">
+              <RefreshCw className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                Plan Renewals vs Non-Renewals Revenue Analysis
+                <span className="text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2.5 py-0.5 rounded-full border border-purple-100 dark:border-purple-800/40">
+                  {selectedRevenueMonth === 'all' ? 'All Months Portfolio' : `${availableRevenueMonths.find(m => m.key === selectedRevenueMonth)?.label || selectedRevenueMonth}`}
+                </span>
+              </h4>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Real-time tracking of renewed subscription revenue vs overdue / unrenewed plan revenue at risk
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/40 text-purple-700 dark:text-purple-300 text-xs font-black">
+              Renewal Conversion: {renewalPercent}%
+            </span>
+          </div>
+        </div>
+
+        {/* Dual-Segment Progress Bar */}
+        <div className="space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-bold gap-2">
+            <span className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
+              <span className="w-3 h-3 rounded-full bg-purple-600 inline-block shadow-sm"></span>
+              🔄 Renewed: <span className="font-extrabold text-slate-900 dark:text-white">₹{renewalsExpected.toLocaleString()}</span>
+              <span className="text-[10px] text-slate-400 font-semibold">({renewalsCount} clients • {renewalPercent}%)</span>
+            </span>
+            <span className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+              <span className="w-3 h-3 rounded-full bg-rose-500 inline-block shadow-sm"></span>
+              ⚠️ Not Renewed / Overdue: <span className="font-extrabold text-slate-900 dark:text-white">₹{notRenewedExpected.toLocaleString()}</span>
+              <span className="text-[10px] text-slate-400 font-semibold">({notRenewedCount} clients • {notRenewedPercent}%)</span>
+            </span>
+          </div>
+
+          {/* Stacked Interactive Bar */}
+          <div className="w-full bg-slate-100 dark:bg-slate-800 h-7 rounded-2xl overflow-hidden flex shadow-inner p-1 gap-1">
+            {renewalsExpected > 0 && (
+              <div 
+                className="bg-gradient-to-r from-purple-500 to-indigo-600 h-full rounded-xl transition-all duration-1000 ease-out flex items-center justify-center text-[10px] font-black text-white px-2 shadow-sm"
+                style={{ width: `${Math.max(renewalPercent, 12)}%` }}
+                title={`Renewed: ₹${renewalsExpected.toLocaleString()} (${renewalsCount} accounts)`}
+              >
+                {renewalPercent}% Renewed (₹{renewalsExpected.toLocaleString()})
+              </div>
+            )}
+            {notRenewedExpected > 0 && (
+              <div 
+                className="bg-gradient-to-r from-rose-500 to-red-600 h-full rounded-xl transition-all duration-1000 ease-out flex items-center justify-center text-[10px] font-black text-white px-2 shadow-sm"
+                style={{ width: `${Math.max(notRenewedPercent, 12)}%` }}
+                title={`Not Renewed / Expired: ₹${notRenewedExpected.toLocaleString()} (${notRenewedCount} accounts)`}
+              >
+                {notRenewedPercent}% Not Renewed (₹{notRenewedExpected.toLocaleString()})
+              </div>
+            )}
+            {totalRenewalPoolRevenue === 0 && (
+              <div className="w-full h-full flex items-center justify-center text-[11px] text-slate-400 font-bold">
+                No renewal cycle data recorded in this period
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 4 Detail Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 text-xs">
+          {/* 1. Renewed Revenue */}
+          <div className="p-3.5 bg-purple-50/70 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-800/40 rounded-xl flex flex-col justify-between">
+            <div className="flex items-center justify-between text-[10px] font-extrabold uppercase text-purple-700 dark:text-purple-400">
+              <span>🔄 Renewed Revenue</span>
+              <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/60 font-black">{renewalsCount} Accounts</span>
+            </div>
+            <div className="my-1.5">
+              <div className="text-lg font-black text-purple-700 dark:text-purple-300">
+                ₹{renewalsExpected.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Cash Collected: <b className="text-emerald-600 font-bold">₹{renewalsActual.toLocaleString()}</b>
+              </div>
+            </div>
+            <span className="text-[9px] text-purple-600 dark:text-purple-400 font-semibold">
+              ✓ Active cycle renewed
+            </span>
+          </div>
+
+          {/* 2. Not Renewed / Expired Revenue */}
+          <div className="p-3.5 bg-rose-50/70 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-800/40 rounded-xl flex flex-col justify-between">
+            <div className="flex items-center justify-between text-[10px] font-extrabold uppercase text-rose-700 dark:text-rose-400">
+              <span>⚠️ Not Renewed (Expired)</span>
+              <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/60 font-black">{notRenewedCount} Accounts</span>
+            </div>
+            <div className="my-1.5">
+              <div className="text-lg font-black text-rose-600 dark:text-rose-400">
+                ₹{notRenewedExpected.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-rose-600 dark:text-rose-300 font-semibold mt-0.5">
+                Revenue at risk (Overdue)
+              </div>
+            </div>
+            <span className="text-[9px] text-rose-500 font-semibold">
+              ⚠️ Immediate renewal required
+            </span>
+          </div>
+
+          {/* 3. Expiring Soon Revenue */}
+          <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-800/40 rounded-xl flex flex-col justify-between">
+            <div className="flex items-center justify-between text-[10px] font-extrabold uppercase text-amber-700 dark:text-amber-400">
+              <span>⏳ Expiring Soon (7 Days)</span>
+              <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 font-black">{expiringSoonCount} Accounts</span>
+            </div>
+            <div className="my-1.5">
+              <div className="text-lg font-black text-amber-600 dark:text-amber-400">
+                ₹{expiringSoonExpected.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Days 23–30 of active cycle
+              </div>
+            </div>
+            <span className="text-[9px] text-amber-600 dark:text-amber-400 font-semibold">
+              Upcoming renewal pipeline
+            </span>
+          </div>
+
+          {/* 4. Renewal Conversion Rate */}
+          <div className="p-3.5 bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-800/40 rounded-xl flex flex-col justify-between">
+            <div className="flex items-center justify-between text-[10px] font-extrabold uppercase text-indigo-700 dark:text-indigo-400">
+              <span>📊 Retention Rate</span>
+              <span className="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 font-black">{renewalPercent}%</span>
+            </div>
+            <div className="my-1.5">
+              <div className="text-lg font-black text-indigo-700 dark:text-indigo-300">
+                {renewalsCount} / {renewalsCount + notRenewedCount} Renewed
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                {notRenewedCount} contracts pending renewal
+              </div>
+            </div>
+            <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-semibold">
+              Conversion on 30-day cycles
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* 3. Employee Performance & Invoice Status Row */}

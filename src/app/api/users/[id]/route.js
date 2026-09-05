@@ -166,41 +166,38 @@ export async function DELETE(request, { params }) {
     }
 
     if (requester.role === 'ADMIN' && (targetUser.role === 'CEO' || targetUser.role === 'ADMIN')) {
-      return NextResponse.json({ error: 'Admins cannot delete other Admins or CEOs' }, { status: 403 });
+      return NextResponse.json({ error: 'Admins cannot modify other Admins or CEOs' }, { status: 403 });
     }
 
     if (requester.id === id) {
-      return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 });
+      return NextResponse.json({ error: 'Cannot deactivate yourself' }, { status: 400 });
     }
 
-    // Delete all call records associated with this user
-    await prisma.callRecord.deleteMany({
-      where: { salesPersonId: id }
-    });
+    // Toggle status between INACTIVE and ACTIVE (Never delete employee records)
+    const newStatus = targetUser.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
 
-    // Delete all tasks assigned to or created by this user
-    await prisma.task.deleteMany({
-      where: {
-        OR: [
-          { assignedToId: id },
-          { createdById: id }
-        ]
-      }
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { status: newStatus }
     });
-
-    await prisma.user.delete({ where: { id } });
 
     await prisma.auditLog.create({
       data: {
-        action: `Deleted user ${targetUser.name} (${id})`,
+        action: `${newStatus === 'INACTIVE' ? 'Deactivated' : 'Reactivated'} user ${targetUser.name} (${id}) - Record maintained`,
         performedByName: requester.name,
         performedByRole: requester.role
       }
     });
 
-    return NextResponse.json({ success: true });
+    const { password: _, ...safeUser } = updatedUser;
+    return NextResponse.json({ 
+      success: true, 
+      status: newStatus,
+      message: `Employee ${targetUser.name} is now ${newStatus}. All historical records and tasks are maintained.`,
+      user: safeUser 
+    });
   } catch (error) {
-    console.error('User DELETE error:', error);
+    console.error('User DELETE/Deactivate error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

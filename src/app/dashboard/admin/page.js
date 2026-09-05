@@ -128,6 +128,8 @@ export default function AdminDashboard() {
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [clientMonthFilter, setClientMonthFilter] = useState('all');
+  const [clientPaymentFilter, setClientPaymentFilter] = useState('all');
 
   // Form Fields - User
   const [formName, setFormName] = useState('');
@@ -237,6 +239,91 @@ export default function AdminDashboard() {
   // Pending Payments tab states
   const [paymentTabFilter, setPaymentTabFilter] = useState('All'); // 'All', 'Overdue7', 'Within7'
   const [paymentTabSearch, setPaymentTabSearch] = useState('');
+  const [clientRevenueStreamFilter, setClientRevenueStreamFilter] = useState('all'); // 'all', 'NewPurchase', 'Renewal', 'ActiveRetainer'
+  const [employeeStatusFilter, setEmployeeStatusFilter] = useState('ALL'); // 'ALL', 'ACTIVE', 'INACTIVE'
+
+  const parseClientMonthKey = (client) => {
+    if (!client) return null;
+    const rawDate = client.joiningDate || client.createdAt;
+    if (!rawDate) return null;
+    
+    if (typeof rawDate === 'string') {
+      const clean = rawDate.trim();
+      if (/^\d{4}-\d{2}/.test(clean)) return clean.slice(0, 7);
+      
+      const monthMap = { 
+        jan:'01', feb:'02', mar:'03', apr:'04', may:'05', jun:'06',
+        jul:'07', aug:'08', sep:'09', sept:'09', oct:'10', nov:'11', dec:'12' 
+      };
+      const parts = clean.split(/[\/\-\s]+/);
+      if (parts.length === 3) {
+        const [p1, p2, p3] = parts;
+        let yyyy = p3.length === 4 ? p3 : p1.length === 4 ? p1 : (p3.length === 2 ? '20' + p3 : '2026');
+        const p2Clean = p2.toLowerCase();
+        let mm = monthMap[p2Clean] || monthMap[p2Clean.slice(0, 3)];
+        if (!mm) {
+          if (!isNaN(p2) && parseInt(p2, 10) >= 1 && parseInt(p2, 10) <= 12) mm = p2.padStart(2, '0');
+          else if (!isNaN(p1) && parseInt(p1, 10) >= 1 && parseInt(p1, 10) <= 12) mm = p1.padStart(2, '0');
+          else mm = '01';
+        }
+        return `${yyyy}-${mm}`;
+      }
+
+      const d = new Date(clean);
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 7);
+    }
+
+    if (client.createdAt) {
+      const d = new Date(client.createdAt);
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 7);
+    }
+    return null;
+  };
+
+  const getClientRevenueStream = (client, selectedMonthKey) => {
+    if (!client || !client.active) return { type: 'Inactive', label: 'Inactive Account', badge: 'Inactive', badgeClass: 'bg-slate-100 text-slate-500' };
+
+    const joiningMonth = parseClientMonthKey(client);
+    let createdMonth = null;
+    if (client.createdAt) {
+      const cd = new Date(client.createdAt);
+      if (!isNaN(cd.getTime())) createdMonth = cd.toISOString().slice(0, 7);
+    }
+
+    let isRenewed = false;
+    try {
+      if (client.notes && client.notes.toLowerCase().includes('renew')) isRenewed = true;
+    } catch (e) {}
+
+    if (createdMonth && joiningMonth && createdMonth !== joiningMonth) {
+      isRenewed = true;
+    }
+
+    if (isRenewed) {
+      return {
+        type: 'Renewal',
+        label: 'Plan Renewed',
+        badge: '🔄 Renewed',
+        badgeClass: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+      };
+    }
+
+    if (createdMonth && (!selectedMonthKey || selectedMonthKey === 'all' || createdMonth === selectedMonthKey)) {
+      return {
+        type: 'NewPurchase',
+        label: 'New Plan Purchase',
+        badge: '🛒 New Plan',
+        badgeClass: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+      };
+    }
+
+    return {
+      type: 'ActiveRetainer',
+      label: 'Active Retainer',
+      badge: '💼 Retainer',
+      badgeClass: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+    };
+  };
 
   const getClientPaymentInfo = (client) => {
     if (!client) return { pStatus: 'Full', paidAmount: 0, totalAmount: 0, pendingBalance: 0, isPartial: false, daysPassed: 0, isOverdue7Days: false, actualNotes: '' };
@@ -1543,8 +1630,14 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteUser = async (id, name) => {
-    if (!confirm(`Are you sure you want to delete the employee account for ${name}?`)) {
+  const handleToggleUserStatus = async (id, name, currentStatus) => {
+    const willDeactivate = currentStatus === 'ACTIVE';
+    const actionText = willDeactivate ? 'deactivate' : 'reactivate';
+    const confirmMessage = willDeactivate 
+      ? `Are you sure you want to deactivate ${name}? Their employee records, past attendance, and assigned tasks will be permanently maintained in the system, but they will not be able to log in.`
+      : `Are you sure you want to reactivate ${name}? They will regain access to log in.`;
+
+    if (!confirm(confirmMessage)) {
       return;
     }
 
@@ -1553,11 +1646,11 @@ export default function AdminDashboard() {
       const data = await res.json();
 
       if (!res.ok) {
-        showToast(data.error || 'Failed to delete user.', 'error');
+        showToast(data.error || `Failed to ${actionText} employee.`, 'error');
         return;
       }
 
-      showToast(`Employee ${name} successfully deleted.`);
+      showToast(data.message || `Employee ${name} status updated to ${data.status}. Record maintained.`);
       await refreshData();
     } catch (err) {
       showToast('Connection error.', 'error');
@@ -1678,11 +1771,19 @@ export default function AdminDashboard() {
 
   // Filters for directories
   const employeesList = usersList.filter(u => u.role === 'EMPLOYEE');
-  const filteredEmployees = employeesList.filter(u =>
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.department.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const activeEmployeesCount = employeesList.filter(u => u.status === 'ACTIVE').length;
+  const inactiveEmployeesCount = employeesList.filter(u => u.status === 'INACTIVE').length;
+
+  const filteredEmployees = employeesList.filter(u => {
+    const matchesSearch =
+      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.department.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+    if (employeeStatusFilter === 'ACTIVE') return u.status === 'ACTIVE';
+    if (employeeStatusFilter === 'INACTIVE') return u.status === 'INACTIVE';
+    return true;
+  });
 
   const expiringClientsList = clientsList.filter(client => {
     if (!client.active) return false;
@@ -2223,16 +2324,57 @@ export default function AdminDashboard() {
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-fade-in">
               <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
                 
-                {/* Search Bar */}
-                <div className="relative flex items-center w-full max-w-sm">
-                  <Search className="absolute left-3 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search name, email, department..."
-                    className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 text-xs transition"
-                  />
+                {/* Search Bar & Status Filter Pills */}
+                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto flex-1 max-w-2xl">
+                  <div className="relative flex items-center w-full max-w-xs">
+                    <Search className="absolute left-3 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search name, email, department..."
+                      className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 text-xs transition"
+                    />
+                  </div>
+
+                  {/* Status Segmented Control */}
+                  <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setEmployeeStatusFilter('ALL')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                        employeeStatusFilter === 'ALL'
+                          ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      All ({employeesList.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEmployeeStatusFilter('ACTIVE')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                        employeeStatusFilter === 'ACTIVE'
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
+                      }`}
+                    >
+                      <UserCheck className="w-3 h-3" />
+                      Active ({activeEmployeesCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEmployeeStatusFilter('INACTIVE')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                        employeeStatusFilter === 'INACTIVE'
+                          ? 'bg-amber-600 text-white shadow-sm'
+                          : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
+                      }`}
+                    >
+                      <UserX className="w-3 h-3" />
+                      Inactive ({inactiveEmployeesCount})
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -2259,7 +2401,7 @@ export default function AdminDashboard() {
                   <tbody>
                     {filteredEmployees.length === 0 ? (
                       <tr>
-                        <td colSpan="5" className="p-8 text-center text-slate-400">No employees registered.</td>
+                        <td colSpan="5" className="p-8 text-center text-slate-400">No employees match the current filter.</td>
                       </tr>
                     ) : (
                       filteredEmployees.map((user) => (
@@ -2276,10 +2418,13 @@ export default function AdminDashboard() {
                           <td className="p-4 text-slate-500">{user.email}</td>
                           <td className="p-4 text-slate-500 font-semibold">{user.department}</td>
                           <td className="p-4">
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase
-                              ${user.status === 'ACTIVE' ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600' : 'bg-red-50 dark:bg-red-950/50 text-red-600'}`}
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase
+                              ${user.status === 'ACTIVE' 
+                                ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' 
+                                : 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800'}`}
                             >
-                              {user.status}
+                              <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                              {user.status || 'ACTIVE'}
                             </span>
                           </td>
                           <td className="p-4 text-right">
@@ -2287,15 +2432,28 @@ export default function AdminDashboard() {
                               <button 
                                 onClick={() => openEditUserModal(user)}
                                 className="p-1.5 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 transition"
+                                title="Edit employee profile"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
-                              <button 
-                                onClick={() => handleDeleteUser(user.id, user.name)}
-                                className="p-1.5 border border-slate-200 dark:border-slate-800 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-red-600 transition"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              {user.status === 'ACTIVE' ? (
+                                <button 
+                                  onClick={() => handleToggleUserStatus(user.id, user.name, user.status)}
+                                  disabled={user.id === currentUser.id}
+                                  className="p-1.5 border border-slate-200 dark:border-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-600 dark:text-amber-400 rounded-lg transition disabled:opacity-30"
+                                  title="Deactivate employee (Record & history maintained)"
+                                >
+                                  <UserX className="w-3.5 h-3.5" />
+                                </button>
+                              ) : (
+                                <button 
+                                  onClick={() => handleToggleUserStatus(user.id, user.name, user.status)}
+                                  className="p-1.5 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-lg transition"
+                                  title="Reactivate employee account"
+                                >
+                                  <UserCheck className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -3394,6 +3552,163 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
+              {/* Renewal vs Non-Renewal Revenue Health Card with Dual Progress Bar */}
+              {(() => {
+                const activeRenewalClients = clientsList.filter(c => c.active);
+                let renewalRenewedExpected = 0;
+                let renewalRenewedActual = 0;
+                let renewalRenewedCount = 0;
+
+                let renewalExpiredExpected = 0;
+                let renewalExpiredCount = 0;
+
+                let renewalExpiringSoonExpected = 0;
+                let renewalExpiringSoonCount = 0;
+
+                activeRenewalClients.forEach(c => {
+                  const pkgAmt = c.packageAmount || 0;
+                  const planStatus = getClientPlanStatus(c);
+                  const stream = getClientRevenueStream(c, 'all');
+                  const pInfo = getClientPaymentInfo(c);
+
+                  if (stream.type === 'Renewal') {
+                    renewalRenewedCount += 1;
+                    renewalRenewedExpected += pkgAmt;
+                    renewalRenewedActual += pInfo.paidAmount;
+                  }
+
+                  if (planStatus.status === 'Expired' && stream.type !== 'Renewal') {
+                    renewalExpiredCount += 1;
+                    renewalExpiredExpected += pkgAmt;
+                  } else if (planStatus.status === 'Expiring Soon') {
+                    renewalExpiringSoonCount += 1;
+                    renewalExpiringSoonExpected += pkgAmt;
+                  }
+                });
+
+                const totalRenewalPool = renewalRenewedExpected + renewalExpiredExpected;
+                const renewalPercent = totalRenewalPool > 0 ? Math.round((renewalRenewedExpected / totalRenewalPool) * 100) : (renewalRenewedCount > 0 ? 100 : 0);
+                const notRenewedPercent = totalRenewalPool > 0 ? Math.round((renewalExpiredExpected / totalRenewalPool) * 100) : (renewalExpiredCount > 0 ? 100 : 0);
+
+                return (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-100 dark:border-purple-900 shadow-inner shrink-0">
+                          <RefreshCw className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                            Plan Renewals vs Non-Renewals Revenue Analysis
+                          </h4>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            Breakdown of successfully renewed contracts vs overdue / expired unrenewed revenue
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/40 text-purple-700 dark:text-purple-300 text-xs font-black w-fit">
+                        Renewal Conversion: {renewalPercent}%
+                      </span>
+                    </div>
+
+                    {/* Dual-Segment Progress Bar */}
+                    <div className="space-y-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-bold gap-2">
+                        <span className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
+                          <span className="w-3 h-3 rounded-full bg-purple-600 inline-block shadow-sm"></span>
+                          🔄 Renewed: <span className="font-extrabold text-slate-900 dark:text-white">₹{renewalRenewedExpected.toLocaleString()}</span>
+                          <span className="text-[10px] text-slate-400 font-semibold">({renewalRenewedCount} accounts • {renewalPercent}%)</span>
+                        </span>
+                        <span className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                          <span className="w-3 h-3 rounded-full bg-rose-500 inline-block shadow-sm"></span>
+                          ⚠️ Not Renewed (Expired): <span className="font-extrabold text-slate-900 dark:text-white">₹{renewalExpiredExpected.toLocaleString()}</span>
+                          <span className="text-[10px] text-slate-400 font-semibold">({renewalExpiredCount} accounts • {notRenewedPercent}%)</span>
+                        </span>
+                      </div>
+
+                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-7 rounded-2xl overflow-hidden flex shadow-inner p-1 gap-1">
+                        {renewalRenewedExpected > 0 && (
+                          <div 
+                            className="bg-gradient-to-r from-purple-500 to-indigo-600 h-full rounded-xl transition-all duration-1000 ease-out flex items-center justify-center text-[10px] font-black text-white px-2 shadow-sm"
+                            style={{ width: `${Math.max(renewalPercent, 12)}%` }}
+                          >
+                            {renewalPercent}% Renewed (₹{renewalRenewedExpected.toLocaleString()})
+                          </div>
+                        )}
+                        {renewalExpiredExpected > 0 && (
+                          <div 
+                            className="bg-gradient-to-r from-rose-500 to-red-600 h-full rounded-xl transition-all duration-1000 ease-out flex items-center justify-center text-[10px] font-black text-white px-2 shadow-sm"
+                            style={{ width: `${Math.max(notRenewedPercent, 12)}%` }}
+                          >
+                            {notRenewedPercent}% Not Renewed (₹{renewalExpiredExpected.toLocaleString()})
+                          </div>
+                        )}
+                        {totalRenewalPool === 0 && (
+                          <div className="w-full h-full flex items-center justify-center text-[11px] text-slate-400 font-bold">
+                            No renewal cycle data recorded in this period
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 4 Detail Metric Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 text-xs">
+                      <div className="p-3 bg-purple-50/70 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-800/40 rounded-xl">
+                        <div className="flex items-center justify-between text-[10px] font-extrabold uppercase text-purple-700 dark:text-purple-400">
+                          <span>🔄 Renewed Revenue</span>
+                          <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/60 font-black">{renewalRenewedCount}</span>
+                        </div>
+                        <div className="text-base font-black text-purple-700 dark:text-purple-300 mt-1">
+                          ₹{renewalRenewedExpected.toLocaleString()}
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          Collected: <b className="text-emerald-600 font-bold">₹{renewalRenewedActual.toLocaleString()}</b>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-rose-50/70 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-800/40 rounded-xl">
+                        <div className="flex items-center justify-between text-[10px] font-extrabold uppercase text-rose-700 dark:text-rose-400">
+                          <span>⚠️ Not Renewed (Expired)</span>
+                          <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/60 font-black">{renewalExpiredCount}</span>
+                        </div>
+                        <div className="text-base font-black text-rose-600 dark:text-rose-400 mt-1">
+                          ₹{renewalExpiredExpected.toLocaleString()}
+                        </div>
+                        <div className="text-[10px] text-rose-600 dark:text-rose-300 font-semibold mt-0.5">
+                          Immediate renewal required
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-800/40 rounded-xl">
+                        <div className="flex items-center justify-between text-[10px] font-extrabold uppercase text-amber-700 dark:text-amber-400">
+                          <span>⏳ Expiring Soon (7 Days)</span>
+                          <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 font-black">{renewalExpiringSoonCount}</span>
+                        </div>
+                        <div className="text-base font-black text-amber-600 dark:text-amber-400 mt-1">
+                          ₹{renewalExpiringSoonExpected.toLocaleString()}
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          Days 23–30 of active cycle
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-800/40 rounded-xl">
+                        <div className="flex items-center justify-between text-[10px] font-extrabold uppercase text-indigo-700 dark:text-indigo-400">
+                          <span>📊 Retention Rate</span>
+                          <span className="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 font-black">{renewalPercent}%</span>
+                        </div>
+                        <div className="text-base font-black text-indigo-700 dark:text-indigo-300 mt-1">
+                          {renewalRenewedCount} / {renewalRenewedCount + renewalExpiredCount} Renewed
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          {renewalExpiredCount} contracts pending renewal
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 
                 {/* Search and Filters Bar */}
@@ -3715,166 +4030,496 @@ export default function AdminDashboard() {
           )}
           
           {/* TAB 6: CLIENT CRM */}
-          {activeTab === 'clients' && (
-            <div className="space-y-6 animate-fade-in text-xs">
-              
-              {/* Client Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Total Clients</span>
-                  <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">{clientsList.length}</div>
-                  <span className="text-[9px] text-slate-400 font-medium">Onboarded CRM accounts</span>
-                </div>
+          {activeTab === 'clients' && (() => {
+            const availableClientMonths = (() => {
+              const monthMap = new Map();
+              clientsList.forEach(c => {
+                const mk = parseClientMonthKey(c);
+                if (mk && mk.length >= 7) {
+                  if (!monthMap.has(mk)) {
+                    const [yyyy, mm] = mk.split('-');
+                    const d = new Date(parseInt(yyyy, 10), parseInt(mm, 10) - 1, 1);
+                    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                    monthMap.set(mk, { key: mk, label, count: 0, revenue: 0 });
+                  }
+                  const item = monthMap.get(mk);
+                  item.count += 1;
+                  if (c.active) item.revenue += (c.packageAmount || 0);
+                }
+              });
+              return Array.from(monthMap.values()).sort((a, b) => b.key.localeCompare(a.key));
+            })();
+
+            const filteredClients = clientsList.filter(c => {
+              const query = searchQuery.toLowerCase();
+              const matchesQuery = !query || (
+                c.businessName.toLowerCase().includes(query) ||
+                c.clientId.toLowerCase().includes(query) ||
+                (c.clientName && c.clientName.toLowerCase().includes(query)) ||
+                (c.services && c.services.toLowerCase().includes(query)) ||
+                (c.sector && c.sector.toLowerCase().includes(query)) ||
+                (c.email && c.email.toLowerCase().includes(query))
+              );
+              if (!matchesQuery) return false;
+
+              if (clientMonthFilter !== 'all') {
+                const mk = parseClientMonthKey(c);
+                if (mk !== clientMonthFilter) return false;
+              }
+
+              if (clientPaymentFilter !== 'all') {
+                const pInfo = getClientPaymentInfo(c);
+                if (clientPaymentFilter === 'Full' && pInfo.pStatus !== 'Full') return false;
+                if (clientPaymentFilter === 'Partial' && pInfo.pStatus !== 'Partial' && pInfo.pStatus !== 'Half') return false;
+                if (clientPaymentFilter === 'Pending' && pInfo.pStatus !== 'Pending' && pInfo.pStatus !== 'Unpaid') return false;
+              }
+
+              if (clientRevenueStreamFilter !== 'all') {
+                const stream = getClientRevenueStream(c, clientMonthFilter);
+                if (stream.type !== clientRevenueStreamFilter) return false;
+              }
+
+              return true;
+            });
+
+            const activeFilteredClients = filteredClients.filter(c => c.active);
+            let expectedRevenue = 0;
+            let actualRevenue = 0;
+            let paymentReceivedCount = 0;
+            let paymentPendingCount = 0;
+
+            let newPurchasesCount = 0;
+            let newPurchasesExpected = 0;
+            let newPurchasesActual = 0;
+
+            let renewalsCount = 0;
+            let renewalsExpected = 0;
+            let renewalsActual = 0;
+
+            let retainersCount = 0;
+            let retainersExpected = 0;
+            let retainersActual = 0;
+            let notRenewedCount = 0;
+            let notRenewedExpected = 0;
+            let expiringSoonCount = 0;
+            let expiringSoonExpected = 0;
+
+            activeFilteredClients.forEach(c => {
+              const pkgAmt = c.packageAmount || 0;
+              expectedRevenue += pkgAmt;
+
+              let pPaid = 0;
+              const pInfo = getClientPaymentInfo(c);
+              if (pInfo.pStatus === 'Full') {
+                pPaid = pkgAmt;
+                actualRevenue += pkgAmt;
+                paymentReceivedCount += 1;
+              } else if (pInfo.pStatus === 'Partial' || pInfo.pStatus === 'Half') {
+                pPaid = pInfo.paidAmount;
+                actualRevenue += pInfo.paidAmount;
+                paymentReceivedCount += 1;
+                paymentPendingCount += 1;
+              } else {
+                paymentPendingCount += 1;
+              }
+
+              const stream = getClientRevenueStream(c, clientMonthFilter);
+              const planStatus = getClientPlanStatus(c);
+
+              if (stream.type === 'NewPurchase') {
+                newPurchasesCount += 1;
+                newPurchasesExpected += pkgAmt;
+                newPurchasesActual += pPaid;
+              } else if (stream.type === 'Renewal') {
+                renewalsCount += 1;
+                renewalsExpected += pkgAmt;
+                renewalsActual += pPaid;
+              } else {
+                retainersCount += 1;
+                retainersExpected += pkgAmt;
+                retainersActual += pPaid;
+              }
+
+              if (stream.type !== 'Renewal' && planStatus.status === 'Expired') {
+                notRenewedCount += 1;
+                notRenewedExpected += pkgAmt;
+              }
+              if (planStatus.status === 'Expiring Soon') {
+                expiringSoonCount += 1;
+                expiringSoonExpected += pkgAmt;
+              }
+            });
+
+            const pendingRevenue = Math.max(0, expectedRevenue - actualRevenue);
+            const actualPercent = expectedRevenue > 0 ? Math.round((actualRevenue / expectedRevenue) * 100) : 0;
+            const currentMonthLabel = clientMonthFilter === 'all' 
+              ? 'All Months (All-Time)' 
+              : (availableClientMonths.find(m => m.key === clientMonthFilter)?.label || clientMonthFilter);
+
+            const totalRenewalPool = renewalsExpected + notRenewedExpected;
+            const renewalPercent = totalRenewalPool > 0 ? Math.round((renewalsExpected / totalRenewalPool) * 100) : (renewalsCount > 0 ? 100 : 0);
+            const notRenewedPercent = totalRenewalPool > 0 ? Math.round((notRenewedExpected / totalRenewalPool) * 100) : (notRenewedCount > 0 ? 100 : 0);
+
+            return (
+              <div className="space-y-6 animate-fade-in text-xs">
                 
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Active Services</span>
-                  <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                    {clientsList.filter(c => c.active).length}
+                {/* Client Metrics Divided into Actual, Expected & Pending with Stream Breakdown */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Total / Active Clients */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Clients / Services</span>
+                      <Users className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <div className="my-2">
+                      <div className="text-2xl font-black text-slate-900 dark:text-white">
+                        {activeFilteredClients.length} <span className="text-sm font-semibold text-slate-400">Active</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        {filteredClients.length} Total CRM Accounts {clientMonthFilter !== 'all' && `in ${currentMonthLabel}`}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      <span className="text-[9px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/40">
+                        🛒 {newPurchasesCount} New
+                      </span>
+                      <span className="text-[9px] text-purple-700 dark:text-purple-300 font-bold bg-purple-50 dark:bg-purple-950/40 px-1.5 py-0.5 rounded border border-purple-100 dark:border-purple-800/40">
+                        🔄 {renewalsCount} Renewed
+                      </span>
+                      <span className="text-[9px] text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-800/40">
+                        💼 {retainersCount} Retainers
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[9px] text-slate-400 font-medium">Currently in contract</span>
-                </div>
 
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Monthly Revenue (MRR)</span>
-                  <div className="text-xl font-bold text-blue-700 dark:text-blue-400 mt-1">
-                    ₹{clientsList.filter(c => c.active).reduce((sum, c) => sum + c.packageAmount, 0).toLocaleString()}
+                  {/* Actual Revenue (Collected) */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase tracking-wider">Actual Revenue</span>
+                      <DollarSign className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <div className="my-2">
+                      <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                        ₹{actualRevenue.toLocaleString()}
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        Cash Collected / Realized ({actualPercent}%)
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1 text-[9px] font-medium text-slate-500 dark:text-slate-400">
+                      <span>New: <b className="text-emerald-600 font-bold">₹{newPurchasesActual.toLocaleString()}</b></span>
+                      <span>•</span>
+                      <span>Renew: <b className="text-purple-600 font-bold">₹{renewalsActual.toLocaleString()}</b></span>
+                      <span>•</span>
+                      <span>Ret: <b className="text-blue-600 font-bold">₹{retainersActual.toLocaleString()}</b></span>
+                    </div>
                   </div>
-                  <span className="text-[9px] text-slate-400 font-medium">Active packages volume</span>
-                </div>
 
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Average Ticket</span>
-                  <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">
-                    ₹{Math.round(
-                      clientsList.filter(c => c.active).reduce((sum, c) => sum + c.packageAmount, 0) / 
-                      (clientsList.filter(c => c.active).length || 1)
-                    ).toLocaleString()}
+                  {/* Expected Revenue (Total Billing) */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-extrabold uppercase tracking-wider">Expected Revenue</span>
+                      <BarChart2 className="w-4 h-4 text-indigo-500" />
+                    </div>
+                    <div className="my-2">
+                      <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+                        ₹{expectedRevenue.toLocaleString()}
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        Total Contract Billing Target
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1 text-[9px] font-medium text-slate-500 dark:text-slate-400">
+                      <span>New: <b className="text-indigo-600 font-bold">₹{newPurchasesExpected.toLocaleString()}</b></span>
+                      <span>•</span>
+                      <span>Renew: <b className="text-purple-600 font-bold">₹{renewalsExpected.toLocaleString()}</b></span>
+                      <span>•</span>
+                      <span>Ret: <b className="text-blue-600 font-bold">₹{retainersExpected.toLocaleString()}</b></span>
+                    </div>
                   </div>
-                  <span className="text-[9px] text-slate-400 font-medium">Per active account</span>
-                </div>
-              </div>
 
-              {/* Action Toolbar */}
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-                <div className="relative flex items-center w-full max-w-md">
-                  <Search className="absolute left-3 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search business, name, ID, sector, services..."
-                    className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl focus:outline-none focus:border-blue-600 text-xs transition"
-                  />
+                  {/* Pending Revenue (Outstanding) */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-orange-600 dark:text-orange-400 font-extrabold uppercase tracking-wider">Pending Revenue</span>
+                      <AlertCircle className="w-4 h-4 text-orange-500" />
+                    </div>
+                    <div className="my-2">
+                      <div className="text-2xl font-black text-orange-500">
+                        ₹{pendingRevenue.toLocaleString()}
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        Outstanding Balance to Collect
+                      </div>
+                    </div>
+                    <span className="text-[9px] text-orange-600 dark:text-orange-400 font-bold bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-full border border-orange-100 dark:border-orange-800/40 w-fit">
+                      {paymentPendingCount} Accounts Pending
+                    </span>
+                  </div>
                 </div>
-                
-                <button
-                  onClick={() => { resetClientForm(); setShowAddClientModal(true); }}
-                  className="bg-blue-800 hover:bg-blue-900 text-white py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-1.5 transition text-xs shadow-md shadow-blue-500/10 shrink-0"
-                >
-                  <Plus className="w-4 h-4" />
-                  Onboard New Client
-                </button>
-              </div>
 
-              {/* Table List */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/40 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase tracking-wider">
-                        <th className="p-4">ID</th>
-                        <th className="p-4">Business / Client Name</th>
-                        <th className="p-4">Service Details</th>
-                        <th className="p-4">Amount</th>
-                        <th className="p-4">Joined Date</th>
-                        <th className="p-4 text-center">Page Ready?</th>
-                        <th className="p-4 text-center">Active?</th>
-                        <th className="p-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {clientsList
-                        .filter(c => {
-                          const query = searchQuery.toLowerCase();
-                          return (
-                            c.businessName.toLowerCase().includes(query) ||
-                            c.clientId.toLowerCase().includes(query) ||
-                            (c.clientName && c.clientName.toLowerCase().includes(query)) ||
-                            c.services.toLowerCase().includes(query) ||
-                            (c.sector && c.sector.toLowerCase().includes(query)) ||
-                            (c.email && c.email.toLowerCase().includes(query))
-                          );
-                        })
-                        .map((client) => (
-                          <tr key={client.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition">
-                            <td className="p-4 font-bold text-slate-450">{client.clientId}</td>
-                            <td className="p-4">
-                              <div className="font-bold text-slate-900 dark:text-white">{client.businessName}</div>
-                              <div className="text-[10px] text-slate-400 mt-0.5">{client.clientName || 'No Contact Person'}</div>
-                            </td>
-                            <td className="p-4">
-                              <span className="font-semibold text-slate-800 dark:text-slate-250">{client.services}</span>
-                              <div className="text-[9px] text-slate-400 mt-0.5">{client.packageName}</div>
-                            </td>
-                            <td className="p-4 font-extrabold text-slate-900 dark:text-white">
-                              ₹{client.packageAmount.toLocaleString()}
-                            </td>
-                            <td className="p-4 text-slate-500 font-medium">{client.joiningDate}</td>
-                            <td className="p-4 text-center">
-                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${client.accountReady ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600' : 'bg-red-50 dark:bg-red-950/40 text-red-600'}`}>
-                                {client.accountReady ? 'Yes' : 'No'}
-                              </span>
-                            </td>
-                            <td className="p-4 text-center">
-                              <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${client.active ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
-                                {client.active ? 'ACTIVE' : 'INACTIVE'}
-                              </span>
-                            </td>
-                            <td className="p-4 text-right">
-                              <div className="flex gap-2 justify-end">
-                                <button
-                                  onClick={() => {
-                                    setSelectedClient(client);
-                                    setShowClientDetailModal(true);
-                                    refreshClientTasks(client.id);
-                                    setClientTaskFormId(`${client.clientId}-TASK-01`);
-                                    setClientTaskFormTitle('');
-                                    setClientTaskFormDate(new Date().toISOString().split('T')[0]);
-                                    setClientTaskFormAssignTo('Graphic Designer');
-                                    setClientTaskFormWorkingOn('');
-                                    setClientTaskFormStatus('Not Started');
-                                    setClientTaskFormPostType('Graphic');
-                                    setClientTaskFormNotes('');
-                                    setClientTaskEditMode(false);
-                                  }}
-                                  className="py-1 px-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-855 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-lg transition"
-                                >
-                                  Details
-                                </button>
-                                <button
-                                  onClick={() => { resetClientForm(client); setShowEditClientModal(true); }}
-                                  className="p-1.5 border border-slate-200 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition"
-                                  title="Edit"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteClient(client.id, client.businessName)}
-                                  className="p-1.5 border border-slate-200 dark:border-slate-850 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-red-650 transition"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
+                {/* Plan Renewals vs Non-Renewals Progress Bar Card in CRM */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-900">
+                        <RefreshCw className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                          Renewals vs Non-Renewals Revenue ({currentMonthLabel})
+                        </h4>
+                        <p className="text-[10px] text-slate-400">
+                          Renewed plan revenue vs overdue / unrenewed contract revenue
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black px-2.5 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg border border-purple-200/60 dark:border-purple-800 w-fit">
+                      Renewal Rate: {renewalPercent}%
+                    </span>
+                  </div>
+
+                  {/* Dual Progress Bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] font-bold gap-1">
+                      <span className="flex items-center gap-1.5 text-purple-700 dark:text-purple-400">
+                        <span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+                        🔄 Renewed: ₹{renewalsExpected.toLocaleString()} ({renewalsCount} accounts • {renewalPercent}%)
+                      </span>
+                      <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                        ⚠️ Not Renewed: ₹{notRenewedExpected.toLocaleString()} ({notRenewedCount} accounts • {notRenewedPercent}%)
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-6 rounded-xl overflow-hidden flex shadow-inner p-1 gap-1">
+                      {renewalsExpected > 0 && (
+                        <div 
+                          className="bg-gradient-to-r from-purple-500 to-indigo-600 h-full rounded-lg transition-all duration-1000 ease-out flex items-center justify-center text-[9px] font-black text-white px-2 shadow-sm"
+                          style={{ width: `${Math.max(renewalPercent, 10)}%` }}
+                        >
+                          {renewalPercent}% Renewed (₹{renewalsExpected.toLocaleString()})
+                        </div>
+                      )}
+                      {notRenewedExpected > 0 && (
+                        <div 
+                          className="bg-gradient-to-r from-rose-500 to-red-600 h-full rounded-lg transition-all duration-1000 ease-out flex items-center justify-center text-[9px] font-black text-white px-2 shadow-sm"
+                          style={{ width: `${Math.max(notRenewedPercent, 10)}%` }}
+                        >
+                          {notRenewedPercent}% Not Renewed (₹{notRenewedExpected.toLocaleString()})
+                        </div>
+                      )}
+                      {totalRenewalPool === 0 && (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400 font-bold">
+                          No renewal cycle data in this period
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Toolbar with Filters */}
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 flex-wrap">
+                    <div className="relative flex items-center flex-1 min-w-[200px] max-w-md">
+                      <Search className="absolute left-3 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search business, name, ID, sector, services..."
+                        className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl focus:outline-none focus:border-blue-600 text-xs transition"
+                      />
+                    </div>
+
+                    {/* Month Filter Selector */}
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={clientMonthFilter}
+                        onChange={(e) => setClientMonthFilter(e.target.value)}
+                        className="px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-600 cursor-pointer shadow-sm"
+                      >
+                        <option value="all">📅 All Months</option>
+                        {availableClientMonths.map(m => (
+                          <option key={m.key} value={m.key}>
+                            📅 {m.label} ({m.count} clients)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Revenue Stream Filter Selector */}
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={clientRevenueStreamFilter}
+                        onChange={(e) => setClientRevenueStreamFilter(e.target.value)}
+                        className="px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-600 cursor-pointer shadow-sm"
+                      >
+                        <option value="all">🌐 All Streams</option>
+                        <option value="NewPurchase">🛒 New Plan Purchases</option>
+                        <option value="Renewal">🔄 Plan Renewals</option>
+                        <option value="ActiveRetainer">💼 Active Retainers</option>
+                      </select>
+                    </div>
+
+                    {/* Payment Status Filter Selector */}
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={clientPaymentFilter}
+                        onChange={(e) => setClientPaymentFilter(e.target.value)}
+                        className="px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-blue-600 cursor-pointer shadow-sm"
+                      >
+                        <option value="all">💳 All Payments</option>
+                        <option value="Full">✅ Fully Paid</option>
+                        <option value="Partial">⏳ Partial / Half</option>
+                        <option value="Pending">⚠️ Pending / Unpaid</option>
+                      </select>
+                    </div>
+
+                    {(clientMonthFilter !== 'all' || clientRevenueStreamFilter !== 'all' || clientPaymentFilter !== 'all' || searchQuery) && (
+                      <button
+                        onClick={() => {
+                          setClientMonthFilter('all');
+                          setClientRevenueStreamFilter('all');
+                          setClientPaymentFilter('all');
+                          setSearchQuery('');
+                        }}
+                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold transition"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  
+                  <button
+                    onClick={() => { resetClientForm(); setShowAddClientModal(true); }}
+                    className="bg-blue-800 hover:bg-blue-900 text-white py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-1.5 transition text-xs shadow-md shadow-blue-500/10 shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Onboard New Client
+                  </button>
+                </div>
+
+                {/* Table List */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800/40 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase tracking-wider">
+                          <th className="p-4">ID</th>
+                          <th className="p-4">Business / Client Name</th>
+                          <th className="p-4">Service & Plan Stream</th>
+                          <th className="p-4">Amount & Payment</th>
+                          <th className="p-4">Joined Date</th>
+                          <th className="p-4 text-center">Page Ready?</th>
+                          <th className="p-4 text-center">Active?</th>
+                          <th className="p-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {filteredClients.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="p-8 text-center text-slate-400 font-medium">
+                              No clients found matching the selected filter ({currentMonthLabel}).
                             </td>
                           </tr>
-                        ))}
+                        ) : (
+                          filteredClients.map((client) => {
+                            const stream = getClientRevenueStream(client, clientMonthFilter);
+                            const pInfo = getClientPaymentInfo(client);
+                            return (
+                              <tr key={client.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition">
+                                <td className="p-4 font-bold text-slate-450">{client.clientId}</td>
+                                <td className="p-4">
+                                  <div className="font-bold text-slate-900 dark:text-white">{client.businessName}</div>
+                                  <div className="text-[10px] text-slate-400 mt-0.5">{client.clientName || 'No Contact Person'}</div>
+                                </td>
+                                <td className="p-4">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-semibold text-slate-800 dark:text-slate-250">{client.services}</span>
+                                    <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${stream.badgeClass}`}>
+                                      {stream.badge}
+                                    </span>
+                                  </div>
+                                  <div className="text-[9px] text-slate-400 mt-0.5">{client.packageName}</div>
+                                </td>
+                                <td className="p-4">
+                                  <div className="font-extrabold text-slate-900 dark:text-white">
+                                    ₹{client.packageAmount.toLocaleString()}
+                                  </div>
+                                  {pInfo.pStatus === 'Full' ? (
+                                    <div className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                      ✓ Full Paid (₹{pInfo.paidAmount.toLocaleString()})
+                                    </div>
+                                  ) : (pInfo.pStatus === 'Partial' || pInfo.pStatus === 'Half') ? (
+                                    <div className="text-[9px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                                      Paid: ₹{pInfo.paidAmount.toLocaleString()} • Due: ₹{pInfo.pendingBalance.toLocaleString()}
+                                    </div>
+                                  ) : (
+                                    <div className="text-[9px] font-bold text-red-500 mt-0.5">
+                                      ⚠️ Pending (₹{client.packageAmount.toLocaleString()})
+                                    </div>
+                                  )}
+                                </td>
+                              <td className="p-4 text-slate-500 font-medium">{client.joiningDate}</td>
+                              <td className="p-4 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${client.accountReady ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600' : 'bg-red-50 dark:bg-red-950/40 text-red-600'}`}>
+                                  {client.accountReady ? 'Yes' : 'No'}
+                                </span>
+                              </td>
+                              <td className="p-4 text-center">
+                                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${client.active ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
+                                  {client.active ? 'ACTIVE' : 'INACTIVE'}
+                                </span>
+                              </td>
+                              <td className="p-4 text-right">
+                                <div className="flex gap-2 justify-end">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedClient(client);
+                                      setShowClientDetailModal(true);
+                                      refreshClientTasks(client.id);
+                                      setClientTaskFormId(`${client.clientId}-TASK-01`);
+                                      setClientTaskFormTitle('');
+                                      setClientTaskFormDate(new Date().toISOString().split('T')[0]);
+                                      setClientTaskFormAssignTo('Graphic Designer');
+                                      setClientTaskFormWorkingOn('');
+                                      setClientTaskFormStatus('Not Started');
+                                      setClientTaskFormPostType('Graphic');
+                                      setClientTaskFormNotes('');
+                                      setClientTaskEditMode(false);
+                                    }}
+                                    className="py-1 px-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-855 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-lg transition"
+                                  >
+                                    Details
+                                  </button>
+                                  <button
+                                    onClick={() => { resetClientForm(client); setShowEditClientModal(true); }}
+                                    className="p-1.5 border border-slate-200 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition"
+                                    title="Edit"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteClient(client.id, client.businessName)}
+                                    className="p-1.5 border border-slate-200 dark:border-slate-850 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-red-650 transition"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
         </div>
       </main>
