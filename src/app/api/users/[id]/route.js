@@ -173,6 +173,11 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 });
     }
 
+    // Delete all call records associated with this user
+    await prisma.callRecord.deleteMany({
+      where: { salesPersonId: id }
+    });
+
     // Delete all tasks assigned to or created by this user
     await prisma.task.deleteMany({
       where: {

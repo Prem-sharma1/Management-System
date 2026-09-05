@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-04T12:49:35.452Z",
+  "timestamp": "2026-09-05T06:36:39.657Z",
   "summary": {
     "totalClients": 58,
     "totalClientTasks": 1277,
@@ -76,31 +76,6 @@
         "AID-0060 (Tradewise)",
         "AID-0061 (KreerKraft)",
         "AID-0067 (\t Peachy Clothing)"
-      ]
-    },
-    "Divyansh": {
-      "count": 85,
-      "clients": [
-        "AID-0001 (HIT-OFFICE(Meta))",
-        "AID-0007 (Sanskruti Pre School)",
-        "AID-0012 (Apple Multispeciality)",
-        "AID-0014 (UPSC Decoded)",
-        "AID-0016 (House of Ricky Tasha)",
-        "AID-0017 (Prashantam Yoga)",
-        "AID-0019 (Canal Touch Resort )",
-        "AID-0024 (LIC)",
-        "AID-0025 (Trdewise)",
-        "AID-0027 (Electra Delar)",
-        "AID-0035 (MauRi Weaves)",
-        "AID-0045 (Kushal Prajapati)",
-        "AID-0049 (Vijay Oil Mill)",
-        "AID-0051 (Sharadam Salads and Soups)",
-        "AID-0053 (Indecor Interior)",
-        "AID-0055 (Color N Craft)",
-        "AID-0056 (Timeer's Badminton Academy)",
-        "AID-0057 (Eliteyatra)",
-        "AID-0058 (Prajakta W Makeup Artist)",
-        "AID-0052 (SHARAN 360 Services OPC Pvt. Ltd.  )"
       ]
     }
   },
@@ -1896,7 +1871,7 @@
       "date": "05-Sept-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -8848,7 +8823,7 @@
       "date": "05-Sept-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -10036,7 +10011,7 @@
       "date": "05-Sept-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -10597,7 +10572,7 @@
       "date": "05-Sept-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -10795,7 +10770,7 @@
       "date": "05-Sept-2026",
       "assignTo": "Graphic Designer",
       "workingOn": "Swapnil",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -11862,7 +11837,7 @@
       "date": "05-Sept-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Pujan",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Report"
     },
     {
@@ -12896,7 +12871,7 @@
       "date": "05-Sept-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Reel"
     },
     {
@@ -14403,7 +14378,7 @@
       "date": "04-Sept-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Graphic"
     },
     {
@@ -14414,7 +14389,7 @@
       "date": "05-Sept-2026",
       "assignTo": "Ai Video Editor",
       "workingOn": "Masoom",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "AI Video"
     },
     {
@@ -14425,7 +14400,7 @@
       "date": "05-Sept-2026",
       "assignTo": "Digital Marketing Executive",
       "workingOn": "Preet",
-      "status": "Assigned",
+      "status": "Overdue",
       "postType": "Ads"
     },
     {

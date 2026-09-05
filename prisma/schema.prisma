@@ -181,5 +181,5 @@ model CallRecord {
   expectedValue  Float?
   leadSource     String?
   salesPersonId  Int
-  salesPerson    User     @relation(fields: [salesPersonId], references: [id])
+  salesPerson    User     @relation(fields: [salesPersonId], references: [id], onDelete: Cascade)
 }
